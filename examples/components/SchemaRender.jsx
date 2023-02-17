@@ -1,26 +1,30 @@
 import React from 'react';
-import {render} from '../../src/index';
+import {render, toast, Button, LazyComponent, Drawer} from 'amis';
 import axios from 'axios';
 import Portal from 'react-overlays/Portal';
-import {toast} from '../../src/components/Toast';
-import {normalizeLink} from '../../src/utils/normalizeLink';
-import Button from '../../src/components/Button';
-import LazyComponent from '../../src/components/LazyComponent';
-import {default as DrawerContainer} from '../../src/components/Drawer';
-
+import {normalizeLink} from 'amis-core';
 import {withRouter} from 'react-router';
 import copy from 'copy-to-clipboard';
+import {qsparse, parseQuery} from 'amis-core';
+import isPlainObject from 'lodash/isPlainObject';
 
 function loadEditor() {
   return new Promise(resolve =>
-    require(['../../src/components/Editor'], component =>
-      resolve(component.default))
+    import('amis-ui').then(component => resolve(component.Editor))
   );
 }
 
 const viewMode = localStorage.getItem('amis-viewMode') || 'pc';
 
-export default function (schema, showCode, envOverrides) {
+/**
+ *
+ * @param {*} schema schema配置
+ * @param {*} schemaProps props配置
+ * @param {*} showCode 是否展示代码
+ * @param {Object} envOverrides 覆写环境变量
+ * @returns
+ */
+export default function (schema, schemaProps, showCode, envOverrides) {
   if (!schema['$schema']) {
     schema = {
       ...schema
@@ -48,14 +52,14 @@ export default function (schema, showCode, envOverrides) {
       constructor(props) {
         super(props);
 
-        const {router, route} = props;
+        const {history} = props;
         this.env = {
           updateLocation: (location, replace) => {
-            router[replace ? 'replace' : 'push'](normalizeLink(location));
+            history[replace ? 'replace' : 'push'](normalizeLink(location));
           },
           jumpTo: (to, action) => {
             if (to === 'goBack') {
-              return router.location.goBack();
+              return history.location.goBack();
             }
             to = normalizeLink(to);
             if (action && action.actionType === 'url') {
@@ -71,15 +75,36 @@ export default function (schema, showCode, envOverrides) {
             if (/^https?:\/\//.test(to)) {
               window.location.replace(to);
             } else {
-              router.push(to);
+              history.push(to);
             }
           },
           isCurrentUrl: to => {
-            if (!to) {
-              return false;
-            }
+            const history = this.props.history;
             const link = normalizeLink(to);
-            return router.isActive(link);
+            const location = history.location;
+            let pathname = link;
+            let search = '';
+            const idx = link.indexOf('?');
+            if (~idx) {
+              pathname = link.substring(0, idx);
+              search = link.substring(idx);
+            }
+
+            if (search) {
+              if (pathname !== location.pathname || !location.search) {
+                return false;
+              }
+              const currentQuery = parseQuery(location);
+              const query = qsparse(search.substring(1));
+
+              return Object.keys(query).every(
+                key => query[key] === currentQuery[key]
+              );
+            } else if (pathname === location.pathname) {
+              return true;
+            }
+
+            return false;
           },
           fetcher: ({url, method, data, config, headers}) => {
             config = config || {};
@@ -122,9 +147,7 @@ export default function (schema, showCode, envOverrides) {
             toast.success('内容已复制到粘贴板');
           },
           blockRouting: fn => {
-            return router.setRouteLeaveHook(route, nextLocation => {
-              return fn(nextLocation);
-            });
+            return history.block(fn);
           },
           tracker(eventTrack) {
             console.debug('eventTrack', eventTrack);
@@ -188,6 +211,7 @@ export default function (schema, showCode, envOverrides) {
             {
               schema: schema,
               props: {
+                ...(isPlainObject(schemaProps) ? schemaProps : {}),
                 location: this.props.location,
                 theme: this.props.theme,
                 locale: this.props.locale
@@ -211,7 +235,7 @@ export default function (schema, showCode, envOverrides) {
       }
 
       renderSchema() {
-        const {router, location, theme, locale} = this.props;
+        const {location, theme, locale} = this.props;
 
         if (viewMode === 'mobile') {
           return (
@@ -230,6 +254,7 @@ export default function (schema, showCode, envOverrides) {
         return render(
           schema,
           {
+            ...(isPlainObject(schemaProps) ? schemaProps : {}),
             location,
             theme,
             locale
@@ -245,7 +270,7 @@ export default function (schema, showCode, envOverrides) {
           <>
             <div className="schema-wrapper">
               {finalShowCode !== false ? (
-                <DrawerContainer
+                <Drawer
                   classPrefix={ns}
                   size="lg"
                   onHide={this.close}
@@ -255,7 +280,7 @@ export default function (schema, showCode, envOverrides) {
                   position="right"
                 >
                   {this.state.open ? this.renderCode() : null}
-                </DrawerContainer>
+                </Drawer>
               ) : null}
               {this.renderSchema()}
             </div>

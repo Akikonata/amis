@@ -14,41 +14,56 @@ order: 54
 
 ```schema: scope="body"
 {
-  "type": "form",
-  "debug": "true",
-  "data": {
-    "table": [
+  "type": "page",
+  "body": {
+    "type": "form",
+    "debug": "true",
+    "data": {
+      "table": [
         {
-            "a": "a1",
-            "b": "b1"
-        },
-        {
-            "a": "a2",
-            "b": "b2"
-        },
-        {
-            "a": "a3",
-            "b": "b3"
+          "a": "a1",
+          "b": "b1",
+          "c": {
+            "c1": "123",
+            "c2": "222"
+          }
         }
-    ]
-  },
-  "api": "/api/mock2/form/saveForm",
-  "body": [
-    {
-    "type":"input-table",
-    "name":"table",
-    "columns":[
-        {
-          "name": "a",
-          "label": "A"
-        },
-        {
-          "name": "b",
-          "label": "B"
-        }
+      ]
+    },
+    "api": "/api/mock2/form/saveForm",
+    "body": [
+      {
+        "type": "input-table",
+        "name": "table",
+        "columns": [
+          {
+            "name": "a",
+            "label": "A"
+          },
+          {
+            "name": "b",
+            "label": "B"
+          },
+          {
+            "type": "combo",
+            "name": "c",
+            "multiLine": true,
+            "multiple": false,
+            "items": [
+              {
+                "type": "input-text",
+                "name": "c1"
+              },
+              {
+                "type": "input-text",
+                "name": "c2"
+              }
+            ]
+          }
+        ]
+      }
     ]
   }
-  ]
 }
 ```
 
@@ -246,10 +261,10 @@ order: 54
       ]
     },
     {
-        "type": "button",
-        "label": "Table新增一行",
-        "target": "table",
-        "actionType": "add"
+      "type": "button",
+      "label": "Table新增一行",
+      "target": "table",
+      "actionType": "add"
     }
   ]
 }
@@ -257,11 +272,63 @@ order: 54
 
 当表格上配置了`addApi`时，会请求该 `api`，并将返回数据添加到目标表格。
 
+另外还可以配置`payload`，直接将数据添加到目标表格。
+
+```schema: scope="body"
+{
+  "type": "form",
+  "data": {
+    "table": [
+      {
+        "a": "a1",
+        "b": "b1"
+      },
+      {
+        "a": "a2",
+        "b": "b2"
+      },
+      {
+        "a": "a3",
+        "b": "b3"
+      }
+    ]
+  },
+  "api": "/api/mock2/form/saveForm",
+  "body": [
+    {
+      "type": "input-table",
+      "name": "table",
+      "label": "Table",
+      "columns": [
+        {
+          "label": "A",
+          "name": "a"
+        },
+        {
+          "label": "B",
+          "name": "b"
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "label": "Table新增一行",
+      "target": "table",
+      "actionType": "add",
+      "payload": {
+        "a": "a4",
+        "b": "b4"
+      }
+    }
+  ]
+}
+```
+
 ## 可编辑内容
 
 > 这是 1.2.3 新增的合并写法，1.2.2 之前请用后面提到的 quickEdit
 
-每一列的都可以通过 type 来将其改造成可编辑的列，比如下面的例子（建议配合 `"needConfirm": false` 来改成非确认模式）
+每一列的都可以通过 type 来将其改造成可编辑的列，比如下面的例子（建议配合 `"needConfirm": false` 来改成[非确认模式](#非确认模式)）
 
 ```schema: scope="body"
 {
@@ -456,9 +523,111 @@ order: 54
 }
 ```
 
+## 限制个数
+
+可以配置`minLength`和`maxLength`配置 InputTable 可添加的条数
+
+```schema: scope="body"
+{
+  "type": "form",
+  "data": {
+    "table": [
+      {
+        "a": "a1",
+        "b": "b1"
+      },
+      {
+        "a": "a2",
+        "b": "b2"
+      },
+      {
+        "a": "a3",
+        "b": "b3"
+      }
+    ]
+  },
+  "api": "/api/mock2/form/saveForm",
+  "body": [
+    {
+      "type": "input-table",
+      "name": "table",
+      "label": "Table",
+      "minLength": 1,
+      "maxLength": 5,
+      "needConfirm": false,
+      "addable": true,
+      "removable": true,
+      "columns": [
+        {
+          "label": "A",
+          "name": "a",
+          "quickEdit": false
+        },
+        {
+          "label": "B",
+          "name": "b"
+        }
+      ]
+    }
+  ]
+}
+```
+
+也可以使用变量配置`minLength`和`maxLength`
+
+> 2.4.1 及以上版本
+
+```schema: scope="body"
+{
+  "type": "form",
+  "data": {
+    "table": [
+      {
+        "a": "a1",
+        "b": "b1"
+      },
+      {
+        "a": "a2",
+        "b": "b2"
+      },
+      {
+        "a": "a3",
+        "b": "b3"
+      }
+    ],
+    "minLength": 2,
+    "maxLength": 4
+  },
+  "api": "/api/mock2/form/saveForm",
+  "body": [
+    {
+      "type": "input-table",
+      "name": "table",
+      "label": "Table",
+      "minLength": "${minLength}",
+      "maxLength": "${maxLength}",
+      "needConfirm": false,
+      "addable": true,
+      "removable": true,
+      "columns": [
+        {
+          "label": "A",
+          "name": "a",
+          "quickEdit": false
+        },
+        {
+          "label": "B",
+          "name": "b"
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## 非确认模式
 
-配置`"needConfirm": false`，不需要确认，那么就是一直就是处于编辑形态。
+配置`"needConfirm": false`，以实现新增**单行数据**时不需要确认即可提交到数据域。
 
 ```schema: scope="body"
 {
@@ -591,6 +760,34 @@ order: 54
 }
 ```
 
+## 高亮行
+
+> 1.8.0 及以上版本
+
+通过 `rowClassNameExpr` 来添加类，比如下面的例子中，如果输入的内容是 `a` 则背景色为绿色`
+
+```schema: scope="body"
+{
+    "type": "form",
+    "api": "/api/mock2/form/saveForm",
+    "body": [
+      {
+        "type": "input-table",
+        "name": "table",
+        "addable": true,
+        "editable": true,
+        "rowClassNameExpr": "<%= data.a === 'a' ? 'bg-success' : '' %>",
+        "columns": [
+          {
+            "name": "a",
+            "label": "A"
+          }
+        ]
+      }
+    ]
+  }
+```
+
 ## 属性表
 
 | 属性名                       | 类型                           | 默认值     | 说明                                                                                                 |
@@ -618,6 +815,8 @@ order: 54
 | needConfirm                  | `boolean`                      | `true`     | 是否需要确认操作，，可用来控控制表格的操作交互                                                       |
 | canAccessSuperData           | `boolean`                      | `false`    | 是否可以访问父级数据，也就是表单中的同级数据，通常需要跟 strictMode 搭配使用                         |
 | strictMode                   | `boolean`                      | `true`     | 为了性能，默认其他表单项项值变化不会让当前表格更新，有时候为了同步获取其他表单项字段，需要开启这个。 |
+| minLength                    | `number`                       | `0`        | 最小行数, `2.4.1`版本后支持变量                                                                      |
+| maxLength                    | `number`                       | `Infinity` | 最大行数, `2.4.1`版本后支持变量                                                                      |
 | columns                      | `array`                        | []         | 列信息                                                                                               |
 | columns[x].quickEdit         | `boolean` 或者 `object`        | -          | 配合 editable 为 true 一起使用                                                                       |
 | columns[x].quickEditOnUpdate | `boolean` 或者 `object`        | -          | 可以用来区分新建模式和更新模式的编辑配置                                                             |

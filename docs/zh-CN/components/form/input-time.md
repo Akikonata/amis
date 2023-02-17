@@ -13,6 +13,7 @@ order: 58
 ```schema: scope="body"
 {
     "type": "form",
+    "debug": true,
     "api": "/api/mock2/form/saveForm",
     "body": [
         {
@@ -163,6 +164,63 @@ order: 58
 - `minute`或`minutes`: 分
 - `second`或`seconds`: 秒
 
+## 控制输入范围
+
+通过 `timeConstraints` 属性可以控制输入范围
+
+默认值是
+
+```json
+{
+  "hours": {
+    "min": 0,
+    "max": 23,
+    "step": 1
+  },
+  "minutes": {
+    "min": 0,
+    "max": 59,
+    "step": 1
+  },
+  "seconds": {
+    "min": 0,
+    "max": 59,
+    "step": 1
+  },
+  "milliseconds": {
+    "min": 0,
+    "max": 999,
+    "step": 1
+  }
+}
+```
+
+可以只修改其中的部分值，比如下面的示例将分钟每次加减改成了 15，小时的范围限制在 9 到 17
+
+```schema: scope="body"
+{
+    "type": "form",
+    "debug": true,
+    "api": "/api/mock2/form/saveForm",
+    "body": [
+        {
+            "type": "input-time",
+            "name": "time",
+            "label": "时间",
+            "timeConstraints": {
+                "hours": {
+                    "min": 9,
+                    "max": 17
+                },
+                "minutes": {
+                    "step": 15
+                }
+            }
+        }
+    ]
+}
+```
+
 ## 原生时间组件
 
 原生时间组件将直接使用浏览器的实现，最终展现效果和浏览器有关，而且只支持 `min`、`max`、`step` 这几个属性设置。
@@ -193,4 +251,26 @@ order: 58
 | inputFormat     | `string`  | `HH:mm`        | 时间选择器显示格式，即时间戳格式，更多格式类型请参考 [moment](http://momentjs.com/) |
 | placeholder     | `string`  | `"请选择时间"` | 占位文本                                                                            |
 | clearable       | `boolean` | `true`         | 是否可清除                                                                          |
-| timeConstraints | `object`  | `true`         | 请参考： [react-datetime](https://github.com/YouCanBookMe/react-datetime)           |
+| timeConstraints | `object`  | `true`         |                                                                                     |
+
+## 事件表
+
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`来获取事件产生的数据（`< 2.3.2 及以下版本 为 ${event.data.[事件参数名]}`），详细请查看[事件动作](../../docs/concepts/event-action)。
+
+> `[name]`表示当前组件绑定的名称，即`name`属性，如果没有配置`name`属性，则通过`value`取值。
+
+| 事件名称 | 事件参数                  | 说明                             |
+| -------- | ------------------------- | -------------------------------- |
+| change   | `[name]: string` 组件的值 | 时间值变化时触发                 |
+| focus    | `[name]: string` 组件的值 | 输入框获取焦点(非内嵌模式)时触发 |
+| blur     | `[name]: string` 组件的值 | 输入框失去焦点(非内嵌模式)时触发 |
+
+## 动作表
+
+当前组件对外暴露以下特性动作，其他组件可以通过指定`actionType: 动作名称`、`componentId: 该组件id`来触发这些动作，动作配置可以通过`args: {动作配置项名称: xxx}`来配置具体的参数，详细请查看[事件动作](../../docs/concepts/event-action#触发其他组件的动作)。
+
+| 动作名称 | 动作配置                     | 说明                                                   |
+| -------- | ---------------------------- | ------------------------------------------------------ |
+| clear    | -                            | 清空                                                   |
+| reset    | -                            | 将值重置为`resetValue`，若没有配置`resetValue`，则清空 |
+| setValue | `value: string` 更新的时间值 | 更新数据，依赖格式`format`，例如：'1648746120'         |

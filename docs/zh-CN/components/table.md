@@ -50,6 +50,34 @@ order: 67
 ]
 ```
 
+## 空状态展示
+
+```schema: scope="body"
+{
+    "type": "service",
+    "api": "/api/mock2/sample?perPage=5",
+    "body": [
+        {
+            "type": "table",
+            "title": "表格1",
+            "source": [],
+            "columns": [
+                {
+                    "name": "engine",
+                    "label": "Engine"
+                },
+
+                {
+                    "name": "version",
+                    "label": "Version"
+                }
+            ],
+            "placeholder": "您还没有创建任何实例"
+        }
+    ]
+}
+```
+
 ## 列配置
 
 `columns`内，除了简单的配置`label`和`name`展示数据以外，还支持一些额外的配置项，可以帮助更好的展示数据。
@@ -474,6 +502,96 @@ order: 67
 }
 ```
 
+### 背景色阶
+
+> 1.8.0 及以上版本
+
+`backgroundScale` 可以用来根据数据控制自动分配色阶
+
+```schema: scope="body"
+{
+    "type": "service",
+    "data": {
+        "rows": [
+            {
+                "engine": "Trident",
+                "version": "1",
+                "grade": "A"
+            },
+            {
+                "engine": "Trident",
+                "version": "7",
+                "grade": "B"
+            },
+            {
+                "engine": "Trident",
+                "version": "4",
+                "grade": "C"
+            },
+            {
+                "engine": "Trident",
+                "version": "3",
+                "grade": "A"
+            },
+            {
+                "engine": "Trident",
+                "version": "4",
+                "grade": "A"
+            },
+            {
+                "engine": "Gecko",
+                "version": "6",
+                "grade": "A"
+            },
+            {
+                "engine": "Gecko",
+                "version": "2",
+                "grade": "A"
+            },
+            {
+                "engine": "Gecko",
+                "version": "5",
+                "grade": "B"
+            },
+            {
+                "engine": "Gecko",
+                "version": "10",
+                "grade": "D"
+            }
+        ]
+    },
+    "body": [
+        {
+            "type": "table",
+            "source": "$rows",
+            "columns": [
+                {
+                    "name": "engine",
+                    "label": "Engine"
+                },
+                {
+                    "name": "version",
+                    "label": "Version",
+                    backgroundScale: {
+                        min: 0,
+                        max: 10,
+                        colors: ['#FFEF9C', '#FF7127']
+                    }
+                },
+                {
+                    "name": "grade",
+                    "label": "Grade"
+                }
+            ]
+        }
+    ]
+}
+```
+
+`min` 和 `max` 都支持变量，如果为设置会自动计算当前列的最大和最小值。
+
+默认会从当前列的 `name` 属性来获取数据，也可以通过 `backgroundScale.source` 使用变量及公式来获取数据。
+
 ### 默认是否显示
 
 默认 `columnsTogglable` 配置为 `auto`，当列超过 5 列后，就会在工具栏多渲染出来一个列展示与否的开关。你可以设置成 `true` 或者 `false` 来强制开或者关。在列配置中可以通过配置 `toggled` 为 `false` 默认不展示这列，比如下面这个例子中 ID 这一栏。
@@ -532,44 +650,50 @@ order: 67
 {
     "type": "service",
     "api": "/api/mock2/sample?perPage=5",
-    "className": "w-xxl",
+    "className": "flex justify-center",
     "body": [
         {
-            "type": "table",
-            "source": "$rows",
-            "className": "m-b-none",
-            "columnsTogglable": false,
-            "columns": [
+            "type": "wrapper",
+            "className": "w-xxl border-2 border-solid border-indigo-400",
+            "body": [
                 {
-                    "name": "engine",
-                    "label": "Engine",
-                    "fixed": "left"
-                },
-
-                {
-                    "name": "grade",
-                    "label": "Grade"
-                },
-
-                {
-                    "name": "version",
-                    "label": "Version"
-                },
-
-                {
-                    "name": "browser",
-                    "label": "Browser"
-                },
-
-                {
-                    "name": "id",
-                    "label": "ID"
-                },
-
-                {
-                    "name": "platform",
-                    "label": "Platform",
-                    "fixed": "right"
+                    "type": "table",
+                    "source": "$rows",
+                    "className": "m-b-none",
+                    "columnsTogglable": false,
+                    "columns": [
+                        {
+                            "name": "id",
+                            "label": "ID",
+                            "fixed": "left"
+                        },
+                        {
+                            "name": "engine",
+                            "label": "Engine",
+                            "groupName": 'Group-1',
+                            "fixed": "left"
+                        },
+                        {
+                            "name": "grade",
+                            "label": "Grade",
+                        },
+                        {
+                            "name": "version",
+                            "label": "Version"
+                        },
+                        {
+                            "name": "browser",
+                            "label": "Browser",
+                            "groupName": 'Group-2',
+                            "fixed": "right"
+                        },
+                        {
+                            "name": "platform",
+                            "label": "Platform",
+                            "groupName": 'Group-2',
+                            "fixed": "right"
+                        }
+                    ]
                 }
             ]
         }
@@ -623,129 +747,60 @@ order: 67
 
 ### 弹出框（popOver）
 
-可以给列上配置`popOver`属性，会在该列的内容区里，渲染一个图标，点击会显示弹出框，用于展示内容
+可以给列上配置 `popOver` 属性，会在该列的内容区里，渲染一个图标，点击会显示弹出框，用于展示内容
 
-```schema: scope="body"
+```schema
 {
-    "type": "crud",
-    "api": "/api/mock2/sample?waitSeconds=1",
-    "columns": [
-        {
-            "name": "id",
-            "label": "ID"
-        },
-        {
-            "name": "engine",
-            "label": "Rendering engine",
-            "popOver": {
-                "body": {
-                    "type": "tpl",
-                    "tpl": "${engine}"
-                }
-            }
-        }
-    ]
-}
-```
-
-可以结合 truncate 用来优化表格中的长内容展示，比如默认只展示 20 个字符，剩下的点击查看更多出现。
-
-```schema: scope="body"
-{
-    "type": "crud",
-    "api": "/api/mock2/sample?waitSeconds=1",
-    "columns": [
-        {
-            "name": "id",
-            "label": "ID"
-        },
-        {
-            "type": "tpl",
-            "name": "engine",
-            "label": "Rendering engine",
-            "tpl": "${engine|truncate:2}",
-            "popOver": {
-                "trigger": "hover",
-                "position": "left-top",
-                "showIcon": false,
-                "body": {
-                    "type": "tpl",
-                    "tpl": "${engine}"
-                }
-            }
-        }
-    ]
-}
-```
-
-> 示例内容没那么长，直接配置成 2 个字符了。
-
-可以给列上配置`popOverEnableOn`属性，该属性为[表达式](../../docs/concepts/expression)，通过[表达式](../../docs/concepts/expression)配置当前行是否启动`popOver`功能
-
-```schema: scope="body"
-{
-    "type": "crud",
-    "api": "/api/mock2/sample?waitSeconds=1",
-    "columns": [
-        {
-            "name": "id",
-            "label": "ID",
-            "popOver": {
-                "body": {
-                    "type": "tpl",
-                    "tpl": "${id}"
-                }
+    "type": "page",
+    "data": {
+        "table": [
+            {
+                "id": 1,
+                "text": "The longest word in any of the major English language dictionaries is pneumonoultramicroscopicsilicovolcanoconiosis, a word that refers to a lung disease contracted from the inhalation of very fine silica particles, specifically from a volcano; medically, it is the same as silicosis."
             },
-            "popOverEnableOn": "this.id == 1"
-        },
-        {
-            "name": "engine",
-            "label": "Rendering engine",
-            "popOver": {
-                "body": {
-                    "type": "tpl",
-                    "tpl": "${engine}"
-                }
+            {
+                "id": 2,
+                "text": "The longest word in any of the major English language dictionaries is pneumonoultramicroscopicsilicovolcanoconiosis, a word that refers to a lung disease contracted from the inhalation of very fine silica particles, specifically from a volcano; medically, it is the same as silicosis."
             }
+        ]
+    },
+    "body": [
+        {
+            "type": "crud",
+            "source": "${table}",
+            "columns": [
+                {
+                    "name": "id",
+                    "label": "ID"
+                },
+                {
+                    "type": "container",
+                    "style": {
+                        "display": "inline-block"
+                    },
+                    "body": {
+                        "type": "tpl",
+                        "name": "text",
+                        "label": "long text",
+                        "className": "text-ellipsis",
+                        "style": {
+                            "max-width": "300px"
+                        },
+                    },
+                    "popOver": {
+                        "body": {
+                            "type": "tpl",
+                            "tpl": "${text}"
+                        }
+                    }
+                }
+            ]
         }
     ]
 }
 ```
 
-`popOver` 配置详情：
-
-- `mode` 可配置成 `popOver`、`dialog` 或者 `drawer`。 默认为 `popOver`。
-- `size` 当配置成 `dialog` 或者 `drawer` 的时候有用。
-- `position` 配置弹出位置，只有 `popOver` 模式有用。
-  可选参数：
-
-  - `center`
-
-  - `left-top`
-  - `right-top`
-  - `left-bottom`
-  - `right-bottom`
-
-  atX-atY-myX-myY
-  即：对齐目标的位置-对齐自己的位置
-
-  - `left-top-right-bottom` 在目标位置的左上角显示。
-  - `left-center-right-center` 在目标的左侧显示，垂直对齐。
-  - ...
-
-  固定位置
-
-  - `fixed-center`
-  - `fixed-left-top`
-  - `fixed-right-top`
-  - `fixed-left-bottom`
-  - `fixed-right-bottom`。
-
-- `offset` 默认 `{top: 0, left: 0}`，如果要来一定的偏移请设置这个。
-- `trigger` 触发弹出的条件。可配置为 `click` 或者 `hover`。默认为 `click`。
-- `showIcon` 是否显示图标。默认会有个放大形状的图标出现在列里面。如果配置成 false，则触发事件出现在列上就会触发弹出。
-- `title` 弹出框的标题。
-- `body` 弹出框的内容。
+popOver 的其它配置请参考 [popover](./popover)
 
 ### 表头样式
 
@@ -1366,7 +1421,7 @@ order: 67
         {
             "type": "table",
             "source": "$rows",
-            "rowClassNameExpr": "<%= data.id % 2 ? 'bg-success' : '' %>",
+            "rowClassNameExpr": "<%= data.id % 2 ? 'bg-success' : 'bg-blue-50' %>",
             "columns": [
                 {
                     "name": "engine",
@@ -1426,6 +1481,45 @@ order: 67
                     "label": "Version"
                 }
             ],
+            "affixRow":[
+                {
+                    "type": "text",
+                    "text": "总计"
+                },
+                {
+                    "type": "tpl",
+                    "tpl": "${rows|pick:version|sum}"
+                }
+            ]
+        }
+    ]
+}
+```
+
+> 1.8.1 及以上版本
+
+新增 `affixRowClassNameExpr`、`affixRowClassName`、`prefixRowClassNameExpr`、`prefixRowClassName` 来控制总结行样式，比如下面的例子
+
+```schema: scope="body"
+{
+    "type": "service",
+    "api": "/api/mock2/sample?perPage=10",
+    "body": [
+        {
+            "type": "table",
+            "source": "$rows",
+            "columns": [
+                {
+                    "name": "browser",
+                    "label": "Browser"
+                },
+
+                {
+                    "name": "version",
+                    "label": "Version"
+                }
+            ],
+            "affixRowClassNameExpr": "${SUM(ARRAYMAP(rows, item => item.version)) > 30 ? 'text-success' : ''}",
             "affixRow":[
                 {
                     "type": "text",
@@ -1636,14 +1730,7 @@ order: 67
     "columns": [
         {
             "name": "id",
-            "label": "ID",
-            "searchable": {
-              "type": "input-text",
-              "name": "id",
-              "label": "主键",
-              "placeholder": "输入id",
-              "size": "sm",
-            }
+            "label": "ID"
         },
         {
             "name": "engine",
@@ -1651,28 +1738,7 @@ order: 67
         },
         {
             "name": "browser",
-            "label": "Browser",
-            "searchable": {
-              "type": "select",
-              "name": "browser",
-              "label": "浏览器",
-              "placeholder": "选择浏览器",
-              "size": "sm",
-              "options": [
-                {
-                  "label": "Internet Explorer ",
-                  "value": "ie"
-                },
-                {
-                  "label": "AOL browser",
-                  "value": "aol"
-                },
-                {
-                  "label": "Firefox",
-                  "value": "firefox"
-                }
-              ]
-            }
+            "label": "Browser"
         },
         {
             "name": "platform",
@@ -1680,15 +1746,7 @@ order: 67
         },
         {
             "name": "version",
-            "label": "Engine version",
-            "searchable": {
-              "type": "input-number",
-              "name": "version",
-              "label": "版本号",
-              "placeholder": "输入版本号",
-              "size": "sm",
-              "mode": "horizontal"
-            }
+            "label": "Engine version"
         },
         {
             "name": "grade",
@@ -1766,7 +1824,7 @@ order: 67
 | source           | `string`                                 | `${items}`                | 数据源, 绑定当前环境变量                                                  |
 | affixHeader      | `boolean`                                | `true`                    | 是否固定表头                                                              |
 | columnsTogglable | `auto` 或者 `boolean`                    | `auto`                    | 展示列显示开关, 自动即：列数量大于或等于 5 个时自动开启                   |
-| placeholder      | string                                   | `暂无数据`                | 当没数据的时候的文字提示                                                  |
+| placeholder      | `string` 或者 `SchemaTpl`                | `暂无数据`                | 当没数据的时候的文字提示                                                  |
 | className        | `string`                                 | `panel-default`           | 外层 CSS 类名                                                             |
 | tableClassName   | `string`                                 | `table-db table-striped`  | 表格 CSS 类名                                                             |
 | headerClassName  | `string`                                 | `Action.md-table-header`  | 顶部外层 CSS 类名                                                         |
@@ -1783,19 +1841,56 @@ order: 67
 | prefixRow        | `Array`                                  |                           | 顶部总结行                                                                |
 | affixRow         | `Array`                                  |                           | 底部总结行                                                                |
 | itemBadge        | [`BadgeSchema`](./badge)                 |                           | 行角标配置                                                                |
-| autoFillHeight   | `boolean`                                |                           | 内容区域自适应高度                                                        |
+| autoFillHeight   | `boolean` 丨 `{height: number}`          |                           | 内容区域自适应高度                                                        |
+| resizable        | `boolean`                                | `true`                    | 列宽度是否支持调整                                                        |
+| selectable       | `boolean`                                | `false`                   | 支持勾选                                                                  |
+| multiple         | `boolean`                                | `false`                   | 勾选 icon 是否为多选样式`checkbox`， 默认为`radio`                        |
 
-## 列配置属性表
+### 列配置属性表
 
-| 属性名     | 类型                                          | 默认值  | 说明             |
-| ---------- | --------------------------------------------- | ------- | ---------------- |
-| label      | [模板](../../docs/concepts/template)          |         | 表头文本内容     |
-| name       | `string`                                      |         | 通过名称关联数据 |
-| fixed      | `left` \| `right` \| `none`                   |         | 是否固定当前列   |
-| popOver    |                                               |         | 弹出框           |
-| quickEdit  |                                               |         | 快速编辑         |
-| copyable   | `boolean` 或 `{icon: string, content:string}` |         | 是否可复制       |
-| sortable   | `boolean`                                     | `false` | 是否可排序       |
-| searchable | `boolean` \| `Schema`                         | `false` | 是否可快速搜索   |
-| width      | `number` \| `string`                          | 列宽    |
-| remark     |                                               |         | 提示信息         |
+| 属性名   | 类型                                          | 默认值 | 说明             |
+| -------- | --------------------------------------------- | ------ | ---------------- |
+| label    | [模板](../../docs/concepts/template)          |        | 表头文本内容     |
+| name     | `string`                                      |        | 通过名称关联数据 |
+| width    | `number` \| `string`                          |        | 列宽             |
+| remark   |                                               |        | 提示信息         |
+| fixed    | `left` \| `right` \| `none`                   |        | 是否固定当前列   |
+| popOver  |                                               |        | 弹出框           |
+| copyable | `boolean` 或 `{icon: string, content:string}` |        | 是否可复制       |
+
+## 事件表
+
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，详细查看[事件动作](../../docs/concepts/event-action)。
+
+| 事件名称       | 事件参数                                                                | 说明                 |
+| -------------- | ----------------------------------------------------------------------- | -------------------- |
+| selectedChange | `selectedItems: item[]` 已选择行<br/>`unSelectedItems: item[]` 未选择行 | 手动选择表格项时触发 |
+| columnSort     | `orderBy: string` 列排序列名<br/>`orderDir: string` 列排序值            | 点击列排序时触发     |
+| columnFilter   | `filterName: string` 列筛选列名<br/>`filterValue: string` 列筛选值      | 点击列筛选时触发     |
+| columnSearch   | `searchName: string` 列搜索列名<br/>`searchValue: string` 列搜索数据    | 点击列搜索时触发     |
+| orderChange    | `movedItems: item[]` 已排序数据                                         | 手动拖拽行排序时触发 |
+| columnToggled  | `columns: item[]` 当前显示的列配置数据                                  | 点击自定义列时触发   |
+| rowClick       | `rowItem: object` 行点击数据                                            | 点击整行时触发       |
+
+### 列配置事件表
+
+> 2.6.1 及以上版本
+
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，详细查看[事件动作](../../docs/concepts/event-action)。
+
+| 事件名称   | 事件参数                                                                       | 说明                                           |
+| ---------- | ------------------------------------------------------------------------------ | ---------------------------------------------- |
+| click      | `nativeEvent: MouseEvent` 鼠标事件对象<br/>`[columnName]: string` 对应列名的值 | 监听表格列点击事件，表格数据点击时触发         |
+| mouseenter | `nativeEvent: MouseEvent` 鼠标事件对象<br/>`[columnName]: string` 对应列名的值 | 监听表格列鼠标移入事件，表格数据鼠标移入时触发 |
+| mouseleave | `nativeEvent: MouseEvent` 鼠标事件对象<br/>`[columnName]: string` 对应列名的值 | 监听表格列鼠标移出事件，表格数据鼠标移出时触发 |
+
+## 动作表
+
+当前组件对外暴露以下特性动作，其他组件可以通过指定`actionType: 动作名称`、`componentId: 该组件id`来触发这些动作，动作配置可以通过`args: {动作配置项名称: xxx}`来配置具体的参数，详细请查看[事件动作](../../docs/concepts/event-action#触发其他组件的动作)。
+
+| 动作名称  | 动作配置                                                                                                         | 说明                 |
+| --------- | ---------------------------------------------------------------------------------------------------------------- | -------------------- |
+| select    | `selected: string` 条件表达式，表达式中可以访问变量`record:行数据`和`rowIndex:行索引`，例如: data.rowIndex === 1 | 设置表格的选中项     |
+| selectAll | -                                                                                                                | 设置表格全部项选中   |
+| clearAll  | -                                                                                                                | 清空表格所有选中项   |
+| initDrag  | -                                                                                                                | 开启表格拖拽排序功能 |

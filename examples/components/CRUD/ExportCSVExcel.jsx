@@ -14,21 +14,23 @@ export default {
           grade: 'A',
           engine: {
             name: 'Trident',
-            version: '4'
-          }
+            version: '4/2'
+          },
+          date: '1591326307',
+          city: '310100'
         },
         {
           link: 'https://www.microsoft.com/',
           icon: __uri('../../static/ie.png'),
           browser: 'Internet Explorer 4.2',
           platform: 'Win 95+',
-
           engine: {
             name: 'Trident',
             version: '4'
           },
           notExport: '1',
-          grade: 'B'
+          grade: 'B',
+          date: '1591322307'
         },
         {
           link: 'https://www.microsoft.com/',
@@ -40,7 +42,8 @@ export default {
             version: '4'
           },
           notExport: '1',
-          grade: 'C'
+          grade: 'C',
+          date: '1591322307'
         },
         {
           link: 'https://www.microsoft.com/',
@@ -52,7 +55,8 @@ export default {
           browser: 'AOL browser (AOL desktop)',
           platform: 'Win 98',
           notExport: '1',
-          grade: 'A'
+          grade: 'A',
+          date: '1591322307'
         },
         {
           link: 'https://www.microsoft.com/',
@@ -64,7 +68,8 @@ export default {
           browser: 'AOL browser (AOL desktop)',
           platform: 'Win 98',
           notExport: '1',
-          grade: 'A'
+          grade: 'A',
+          date: '1591322307'
         },
         {
           icon: __uri('../../static/firefox.png'),
@@ -76,7 +81,8 @@ export default {
             version: '4'
           },
           notExport: '1',
-          grade: 'A'
+          grade: 'A',
+          date: '1591322307'
         },
         {
           icon: __uri('../../static/firefox.png'),
@@ -88,7 +94,8 @@ export default {
             version: '5'
           },
           notExport: '1',
-          grade: 'A'
+          grade: 'A',
+          date: '1591322307'
         },
         {
           icon: __uri('../../static/firefox.png'),
@@ -100,7 +107,8 @@ export default {
           browser: 'Firefox 2.0',
           platform: 'Win 98+ / OSX.2+',
           notExport: '1',
-          grade: 'B'
+          grade: 'B',
+          date: '1591322307'
         },
         {
           icon: __uri('../../static/firefox.png'),
@@ -112,7 +120,8 @@ export default {
           browser: 'Firefox 2.0',
           platform: 'Win 98+ / OSX.2+',
           notExport: '1',
-          grade: 'C'
+          grade: 'C',
+          date: '1591322307'
         },
         {
           icon: __uri('../../static/firefox.png'),
@@ -139,6 +148,13 @@ export default {
         name: 'link',
         label: '官网',
         type: 'link'
+      },
+      {
+        name: 'link',
+        label: '浏览器地址',
+        type: 'link',
+        href: 'http://www.browser.com/?q=${browser}',
+        body: '${browser}'
       },
       {
         name: 'engine.name',
@@ -168,6 +184,16 @@ export default {
           C: '差',
           D: '极差'
         }
+      },
+      {
+        name: 'date',
+        label: 'Date',
+        type: 'date'
+      },
+      {
+        name: 'city',
+        label: 'city',
+        type: 'input-city'
       }
     ]
   }

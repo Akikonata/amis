@@ -13,6 +13,7 @@ order: 13
 ```schema: scope="body"
 {
     "type": "form",
+    "debug": true,
     "api": "/api/mock2/form/saveForm",
     "body": [
         {
@@ -142,6 +143,28 @@ order: 13
 - `month`或`months`: 月
 - `year`或`years`: 年
 
+### 通过公式配置默认值
+
+> 1.7.0 及以上版本
+
+可以通过日期公式来动态计算。
+
+```schema: scope="body"
+{
+    "type": "form",
+    "debug": true,
+    "api": "/api/mock2/form/saveForm",
+    "body": [
+        {
+            "type": "input-date",
+            "name": "date",
+            "label": "日期",
+            "value": "${DATEMODIFY(NOW(), 2, 'days')}"
+        }
+    ]
+}
+```
+
 ## 限制范围
 
 可以通过配置`maxDate`和`minDate`显示可选范围
@@ -174,7 +197,7 @@ order: 13
 
 ### 支持相对值
 
-范围限制也支持设置 [相对值](./date#%E7%9B%B8%E5%AF%B9%E5%80%BC)。
+范围限制也支持设置 [相对值](./input-date#%E7%9B%B8%E5%AF%B9%E5%80%BC)。
 
 ```schema: scope="body"
 {
@@ -224,6 +247,7 @@ order: 13
 ## 快捷键
 
 你也可以配置`shortcuts`属性支持快捷选择日期
+注：移动端 picker 的形式不支持快捷键
 
 ```schema: scope="body"
 {
@@ -256,7 +280,7 @@ order: 13
 - `endofthisweek`: 本周日
 - `endofthismonth`:本月底
 - `endoflastmonth`:上月底
-- `{n}daysago` : n 天前，例如：`1daysago`，下面用法相同
+- `{n}daysago` : n 天前，例如：`2daysago`，下面用法相同
 - `{n}dayslater`: n 天后
 - `{n}weeksago`: n 周前
 - `{n}weekslater`: n 周后
@@ -334,17 +358,38 @@ order: 13
 
 除了支持 [普通表单项属性表](./formitem#%E5%B1%9E%E6%80%A7%E8%A1%A8) 中的配置以外，还支持下面一些配置
 
-| 属性名          | 类型      | 默认值         | 说明                                                                                                        |
-| --------------- | --------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
-| value           | `string`  |                | [默认值](./date#%E9%BB%98%E8%AE%A4%E5%80%BC)                                                                |
-| format          | `string`  | `X`            | 日期选择器值格式，更多格式类型请参考 [文档](https://momentjs.com/docs/#/displaying/format/)                 |
-| inputFormat     | `string`  | `YYYY-DD-MM`   | 日期选择器显示格式，即时间戳格式，更多格式类型请参考 [文档](https://momentjs.com/docs/#/displaying/format/) |
-| closeOnSelect   | `boolean` | `false`        | 点选日期后，是否马上关闭选择框                                                                              |
-| placeholder     | `string`  | `"请选择日期"` | 占位文本                                                                                                    |
-| shortcuts       | `string`  |                | 日期快捷键                                                                                                  |
-| minDate         | `string`  |                | 限制最小日期                                                                                                |
-| maxDate         | `string`  |                | 限制最大日期                                                                                                |
-| utc             | `boolean` | `false`        | 保存 utc 值                                                                                                 |
-| clearable       | `boolean` | `true`         | 是否可清除                                                                                                  |
-| embed           | `boolean` | `false`        | 是否内联模式                                                                                                |
-| timeConstraints | `object`  | `true`         | 请参考： [react-datetime](https://github.com/YouCanBookMe/react-datetime)                                   |
+| 属性名        | 类型      | 默认值         | 说明                                                                                                        |
+| ------------- | --------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
+| value         | `string`  |                | [默认值](./date#%E9%BB%98%E8%AE%A4%E5%80%BC)                                                                |
+| format        | `string`  | `X`            | 日期选择器值格式，更多格式类型请参考 [文档](https://momentjs.com/docs/#/displaying/format/)                 |
+| inputFormat   | `string`  | `YYYY-MM-DD`   | 日期选择器显示格式，即时间戳格式，更多格式类型请参考 [文档](https://momentjs.com/docs/#/displaying/format/) |
+| closeOnSelect | `boolean` | `false`        | 点选日期后，是否马上关闭选择框                                                                              |
+| placeholder   | `string`  | `"请选择日期"` | 占位文本                                                                                                    |
+| shortcuts     | `string`  |                | 日期快捷键                                                                                                  |
+| minDate       | `string`  |                | 限制最小日期                                                                                                |
+| maxDate       | `string`  |                | 限制最大日期                                                                                                |
+| utc           | `boolean` | `false`        | 保存 utc 值                                                                                                 |
+| clearable     | `boolean` | `true`         | 是否可清除                                                                                                  |
+| embed         | `boolean` | `false`        | 是否内联模式                                                                                                |
+
+## 事件表
+
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`来获取事件产生的数据（`< 2.3.2 及以下版本 为 ${event.data.[事件参数名]}`），详细请查看[事件动作](../../docs/concepts/event-action)。
+
+> `[name]`表示当前组件绑定的名称，即`name`属性，如果没有配置`name`属性，则通过`value`取值。
+
+| 事件名称 | 事件参数                  | 说明                             |
+| -------- | ------------------------- | -------------------------------- |
+| change   | `[name]: string` 组件的值 | 时间值变化时触发                 |
+| focus    | `[name]: string` 组件的值 | 输入框获取焦点(非内嵌模式)时触发 |
+| blur     | `[name]: string` 组件的值 | 输入框失去焦点(非内嵌模式)时触发 |
+
+## 动作表
+
+当前组件对外暴露以下特性动作，其他组件可以通过指定`actionType: 动作名称`、`componentId: 该组件id`来触发这些动作，动作配置可以通过`args: {动作配置项名称: xxx}`来配置具体的参数，详细请查看[事件动作](../../docs/concepts/event-action#触发其他组件的动作)。
+
+| 动作名称 | 动作配置                     | 说明                                                   |
+| -------- | ---------------------------- | ------------------------------------------------------ |
+| clear    | -                            | 清空                                                   |
+| reset    | -                            | 将值重置为`resetValue`，若没有配置`resetValue`，则清空 |
+| setValue | `value: string` 更新的时间值 | 更新数据，依赖格式`format`，例如：'1650556800'         |

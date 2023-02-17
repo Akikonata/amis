@@ -13,6 +13,7 @@ import ReactionFormSchema from './Form/Reaction';
 import ValidationFormSchema from './Form/Validation';
 import FullFormSchema from './Form/Full';
 import StaticFormSchema from './Form/Static';
+import SwitchFormDisplay from './Form/SwitchDisplay';
 import HintFormSchema from './Form/Hint';
 import FieldSetInTabsFormSchema from './Form/FieldSetInTabs';
 import ComboFormSchema from './Form/Combo';
@@ -30,6 +31,8 @@ import CustomFormSchema from './Form/Custom';
 import FormLayoutTestSchema from './Form/layoutTest';
 import Definitions from './Form/Definitions';
 import AnchorNav from './Form/AnchorNav';
+import InputKVSSchema from './Form/InputKVS';
+import Tree from './Form/Tree';
 
 import TableCrudSchema from './CRUD/Table';
 import TableAutoFillSchema from './CRUD/TableAutoFill';
@@ -66,7 +69,41 @@ import CRUDLinkPageSchema from './Linkage/CRUD';
 import OptionsPageSchema from './Linkage/Options';
 import OptionsLocalPageSchema from './Linkage/OptionsLocal';
 import FormSubmitSchema from './Linkage/FormSubmit';
-import EventsSchema from './Linkage/Event';
+import InputEventSchema from './EventAction/cmpt-event-action/InputEvent';
+import DateEventSchema from './EventAction/cmpt-event-action/DateEvent';
+import SwitchEventSchema from './EventAction/cmpt-event-action/SwitchEvent';
+import TabsEventSchema from './EventAction/cmpt-event-action/TabsEvent';
+import UploadEventSchema from './EventAction/cmpt-event-action/UploadEvent';
+import SelectEventActionSchema from './EventAction/cmpt-event-action/SelectEvent';
+import ButtonEventActionSchema from './EventAction/cmpt-event-action/ButtonEvent';
+import InputRatingEventSchema from './EventAction/cmpt-event-action/InputRatingEvent';
+import ExcelEventSchema from './EventAction/cmpt-event-action/ExcelEvent';
+import WizardEventSchema from './EventAction/cmpt-event-action/WizardEvent';
+import InputTreeEventSchema from './EventAction/cmpt-event-action/InputTreeEvent';
+import treeSelectEventSchema from './EventAction/cmpt-event-action/treeSelectEvent';
+import FormEventActionSchema from './EventAction/cmpt-event-action/FormEvent';
+import TransferEventSchema from './EventAction/cmpt-event-action/TransferEvent';
+import ServiceEventSchema from './EventAction/cmpt-event-action/ServiceEvent';
+import CarouselEventSchema from './EventAction/cmpt-event-action/CarouselEvent';
+import TableEventSchema from './EventAction/cmpt-event-action/TableEvent';
+import ListEventSchema from './EventAction/cmpt-event-action/ListEvent';
+import ChartEventSchema from './EventAction/cmpt-event-action/ChartEvent';
+import SearchBoxEventSchema from './EventAction/cmpt-event-action/SearchBoxEvent';
+import ReloadFormActionSchema from './EventAction/reload-action/ReloadForm';
+import ReloadSelectActionSchema from './EventAction/reload-action/ReloadSelect';
+import ReloadChartActionSchema from './EventAction/reload-action/ReloadChart';
+import UpdateFormActionSchema from './EventAction/update-data/UpdateForm';
+import UpdateDialogActionSchema from './EventAction/update-data/UpdateDialog';
+import UpdateWizardActionSchema from './EventAction/update-data/UpdateWizard';
+import UpdateChartActionSchema from './EventAction/update-data/UpdateChart';
+import UpdateInputActionSchema from './EventAction/update-data/UpdateInput';
+import UpdateSelectActionSchema from './EventAction/update-data/UpdateSelect';
+import UpdateButtonGroupSelectActionSchema from './EventAction/update-data/UpdateButtonGroupSelect';
+import UpdateComboActionSchema from './EventAction/update-data/UpdateCombo';
+import SyncUpdateActionSchema from './EventAction/update-data/SyncUpdate';
+import DataAutoFillActionSchema from './EventAction/update-data/DataAutoFill';
+import SetVariable from './EventAction/update-data/SetVariable';
+import PreventFormActionSchema from './EventAction/prevent-defalut/PreventForm';
 import WizardSchema from './Wizard';
 import ChartSchema from './Chart';
 import EChartsEditorSchema from './ECharts';
@@ -79,16 +116,18 @@ import ServicesDataSchema from './Services/Data';
 import ServicesSchemaSchema from './Services/Schema';
 import ServicesFormSchema from './Services/Form';
 import IFrameSchema from './IFrame';
-
+import ThemeSchema from './Theme';
 import NormalTabSchema from './Tabs/Normal';
 import FormTabSchema from './Tabs/Form';
 import DynamicTabSchema from './Tabs/Dynamic';
 import Tab1Schema from './Tabs/Tab1';
 import Tab2Schema from './Tabs/Tab2';
 import Tab3Schema from './Tabs/Tab3';
-import TestComponent from './Test';
+import Loading from './Loading';
+import CodeSchema from './Code';
 
-import {normalizeLink} from '../../src/utils/normalizeLink';
+import {Switch} from 'react-router-dom';
+import {navigations2route} from './App';
 
 export const examples = [
   {
@@ -139,6 +178,12 @@ export const examples = [
             label: '静态展示',
             path: '/examples/form/static',
             component: makeSchemaRenderer(StaticFormSchema)
+          },
+
+          {
+            label: '输入态、展示态切换',
+            path: '/examples/form/switchDisplay',
+            component: makeSchemaRenderer(SwitchFormDisplay)
           },
 
           {
@@ -264,6 +309,18 @@ export const examples = [
             label: '锚点导航',
             path: '/examples/form/anchor-nav',
             component: makeSchemaRenderer(AnchorNav)
+          },
+
+          {
+            label: '复杂嵌套数据',
+            path: '/examples/form/input-kvs',
+            component: makeSchemaRenderer(InputKVSSchema)
+          },
+
+          {
+            label: '树形结构',
+            path: '/examples/form/tree',
+            component: makeSchemaRenderer(Tree)
           }
 
           // {
@@ -496,11 +553,215 @@ export const examples = [
             label: '表单和列表联动',
             path: '/examples/linkpage/crud',
             component: makeSchemaRenderer(CRUDLinkPageSchema)
+          }
+        ]
+      },
+
+      {
+        label: '事件动作机制',
+        icon: 'fa fa-bullhorn',
+        children: [
+          {
+            label: '刷新',
+            children: [
+              {
+                label: '刷新表单',
+                path: '/examples/action/reload/form',
+                component: makeSchemaRenderer(ReloadFormActionSchema)
+              },
+              {
+                label: '刷新图表',
+                path: '/examples/action/reload/chart',
+                component: makeSchemaRenderer(ReloadChartActionSchema)
+              },
+              {
+                label: '刷新下拉框',
+                path: '/examples/action/reload/select',
+                component: makeSchemaRenderer(ReloadSelectActionSchema)
+              }
+            ]
           },
           {
-            label: '广播事件机制',
-            path: '/examples/linkpage/event',
-            component: makeSchemaRenderer(EventsSchema)
+            label: '更新数据',
+            children: [
+              {
+                label: '更新表单数据',
+                path: '/examples/action/setdata/form',
+                component: makeSchemaRenderer(UpdateFormActionSchema)
+              },
+              {
+                label: '更新弹窗数据',
+                path: '/examples/action/setdata/dialog',
+                component: makeSchemaRenderer(UpdateDialogActionSchema)
+              },
+              {
+                label: '更新向导数据',
+                path: '/examples/action/setdata/wizard',
+                component: makeSchemaRenderer(UpdateWizardActionSchema)
+              },
+              {
+                label: '更新图表数据',
+                path: '/examples/action/setdata/chart',
+                component: makeSchemaRenderer(UpdateChartActionSchema)
+              },
+              {
+                label: '更新输入框的值',
+                path: '/examples/action/setdata/input',
+                component: makeSchemaRenderer(UpdateInputActionSchema)
+              },
+              {
+                label: '更新下拉框的值',
+                path: '/examples/action/setdata/select',
+                component: makeSchemaRenderer(UpdateSelectActionSchema)
+              },
+              {
+                label: '更新点选按钮的值',
+                path: '/examples/action/setdata/button-group-select',
+                component: makeSchemaRenderer(
+                  UpdateButtonGroupSelectActionSchema
+                )
+              },
+              {
+                label: '更新输入组合的值',
+                path: '/examples/action/setdata/combo',
+                component: makeSchemaRenderer(UpdateComboActionSchema)
+              },
+              {
+                label: '联动更新',
+                path: '/examples/action/setdata/sync',
+                component: makeSchemaRenderer(SyncUpdateActionSchema)
+              },
+              {
+                label: '数据回填',
+                path: '/examples/action/setdata/autofill',
+                component: makeSchemaRenderer(DataAutoFillActionSchema)
+              },
+              {
+                label: '更新全局变量数据',
+                path: '/examples/action/setdata/variable',
+                component: makeSchemaRenderer(
+                  SetVariable.schema,
+                  SetVariable.props ?? {},
+                  true,
+                  SetVariable.env
+                )
+              }
+            ]
+          },
+          {
+            label: '执行其他组件动作',
+            children: [
+              {
+                label: '按钮类组件',
+                path: '/examples/event/button',
+                component: makeSchemaRenderer(ButtonEventActionSchema)
+              },
+              {
+                label: '输入类组件',
+                path: '/examples/event/input',
+                component: makeSchemaRenderer(InputEventSchema)
+              },
+              {
+                label: '上传类组件',
+                path: '/examples/event/upload',
+                component: makeSchemaRenderer(UploadEventSchema)
+              },
+              {
+                label: '下拉选择类',
+                path: '/examples/event/select',
+                component: makeSchemaRenderer(SelectEventActionSchema)
+              },
+              {
+                label: '时间类组件',
+                path: 'examples/event/date',
+                component: makeSchemaRenderer(DateEventSchema)
+              },
+              {
+                label: '开关组件',
+                path: 'examples/event/switch',
+                component: makeSchemaRenderer(SwitchEventSchema)
+              },
+              {
+                label: '选项卡组件',
+                path: 'examples/event/tabs',
+                component: makeSchemaRenderer(TabsEventSchema)
+              },
+              {
+                label: '评分组件',
+                path: 'examples/event/input-rating',
+                component: makeSchemaRenderer(InputRatingEventSchema)
+              },
+              {
+                label: 'excel',
+                path: 'examples/event/excel',
+                component: makeSchemaRenderer(ExcelEventSchema)
+              },
+              {
+                label: '向导组件',
+                path: 'examples/event/wizard',
+                component: makeSchemaRenderer(WizardEventSchema)
+              },
+              {
+                label: '树形选择框',
+                path: 'examples/event/input-tree',
+                component: makeSchemaRenderer(InputTreeEventSchema)
+              },
+              {
+                label: '树形选择器',
+                path: 'examples/event/tree-select',
+                component: makeSchemaRenderer(treeSelectEventSchema)
+              },
+              {
+                label: 'form表单',
+                path: 'examples/event/form',
+                component: makeSchemaRenderer(FormEventActionSchema)
+              },
+              {
+                label: '穿梭框类组件',
+                path: 'examples/event/transfer',
+                component: makeSchemaRenderer(TransferEventSchema)
+              },
+              {
+                label: '轮播图组件',
+                path: 'examples/event/carousel',
+                component: makeSchemaRenderer(CarouselEventSchema)
+              },
+              {
+                label: 'Service组件',
+                path: 'examples/event/service',
+                component: makeSchemaRenderer(ServiceEventSchema)
+              },
+              {
+                label: '表格组件',
+                path: 'examples/event/table',
+                component: makeSchemaRenderer(TableEventSchema)
+              },
+              {
+                label: '列表展示类组件',
+                path: 'examples/event/list',
+                component: makeSchemaRenderer(ListEventSchema)
+              },
+              {
+                label: 'chart组件',
+                path: 'examples/event/chart',
+                component: makeSchemaRenderer(ChartEventSchema)
+              },
+              {
+                label: 'SearchBox组件',
+                path: 'examples/event/searchbox',
+                component: makeSchemaRenderer(SearchBoxEventSchema)
+              }
+            ]
+          },
+          {
+            label: '阻止组件默认行为',
+            children: [
+              {
+                label: '阻止表单默认行为',
+                path: '/examples/action/prevent/form',
+                component: makeSchemaRenderer(PreventFormActionSchema)
+              }
+            ]
           }
         ]
       },
@@ -525,6 +786,20 @@ export const examples = [
             component: makeSchemaRenderer(ServicesFormSchema)
           }
         ]
+      },
+
+      {
+        label: '主题编辑器',
+        icon: 'fa fa-glasses',
+        path: '/examples/theme',
+        component: makeSchemaRenderer(ThemeSchema)
+      },
+
+      {
+        label: '代码高亮',
+        icon: 'fa fa-code',
+        path: '/examples/code',
+        component: makeSchemaRenderer(CodeSchema)
       },
 
       {
@@ -593,9 +868,16 @@ export const examples = [
       },
 
       {
+        label: '多 loading',
+        icon: 'fa fa-spinner',
+        path: '/examples/loading',
+        component: makeSchemaRenderer(Loading)
+      },
+
+      {
         label: 'APP 多页应用',
         icon: 'fa fa-cubes',
-        path: '/app/',
+        path: '/examples/app/',
         component: () => {
           // 如果在 gh-pages 里面
           if (/^\/amis/.test(window.location.pathname)) {
@@ -629,16 +911,23 @@ export default class Example extends React.PureComponent {
 
   render() {
     return (
-      <>
-        {React.cloneElement(this.props.children, {
+      <Switch>
+        {/* {React.cloneElement(this.props.children, {
           ...this.props.children.props,
           theme: this.props.theme,
           classPrefix: this.props.classPrefix,
           locale: this.props.locale,
           viewMode: this.props.viewMode,
           offScreen: this.props.offScreen
+        })} */}
+        {navigations2route(examples, {
+          theme: this.props.theme,
+          classPrefix: this.props.classPrefix,
+          locale: this.props.locale,
+          viewMode: this.props.viewMode,
+          offScreen: this.props.offScreen
         })}
-      </>
+      </Switch>
     );
   }
 }

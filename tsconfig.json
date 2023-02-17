@@ -1,13 +1,12 @@
 {
   "compilerOptions": {
-    "outDir": "output/",
+    "outDir": "lib",
+    "rootDir": "./",
     "module": "commonjs",
     "target": "es5",
     "lib": ["ES6", "DOM", "ES2015", "ES2021"],
-    "sourceMap": true,
     "jsx": "react",
     "moduleResolution": "node",
-    "rootDir": "",
     "importHelpers": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -18,10 +17,25 @@
     "strictNullChecks": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "typeRoots": ["./node_modules/@types", "./types"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "composite": true,
+    "baseUrl": "./",
+    "paths": {
+      "amis-core": ["./packages/amis-core/src/index.tsx"],
+      "amis-formula": ["./packages/amis-formula/src/index.ts"],
+      "amis-ui": ["./packages/amis-ui/src/index.tsx"],
+      "amis": ["./packages/amis/src/index.tsx"]
+    }
   },
-  "include": ["src/**/*", "examples/**/*"],
-  "exclude": ["node_modules", "acceptance-tests", "webpack", "jest"],
-  "types": ["node", "typePatches"]
+  "types": ["typePatches"],
+  "references": [],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.jsx",
+    "scripts/fis3plugin.ts",
+    "scripts/markdownPlugin.ts",
+    "scripts/mockApiPlugin.ts",
+    "packages/amis-ui/src/custom.d.ts"
+  ]
 }

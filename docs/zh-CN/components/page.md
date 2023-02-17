@@ -127,6 +127,46 @@ Page 默认将页面分为几个区域，分别是**内容区（`body`）**、**
 }
 ```
 
+## 下拉刷新
+
+通过配置`pullRefresh`，可以设置下拉刷新功能（仅用于移动端）。
+
+```schema
+{
+  "type": "page",
+  "initApi": "/api/mock2/page/initData",
+  "pullRefresh": {
+    "disabled": false
+  },
+  "body": [
+    {
+      "type": "tpl",
+      "tpl": "当前时间是：${date}"
+    }
+  ]
+}
+```
+
+配置下拉刷新文案
+
+```schema
+{
+  "type": "page",
+  "initApi": "/api/mock2/page/initData",
+  "pullRefresh": {
+    "disabled": false,
+    "pullingText": "继续下拉",
+    "loosingText": "可以释放了"
+  },
+  "body": [
+    {
+      "type": "tpl",
+      "tpl": "当前时间是：${date}"
+    }
+  ]
+}
+```
+
 ## CSS 变量
 
 通过设置 CSS 变量几乎可以修改 amis 中任意组件的展现，具体细节请参考[样式](../../../style)。
@@ -172,6 +212,16 @@ Page 默认将页面分为几个区域，分别是**内容区（`body`）**、**
 }
 ```
 
+上面的配置会自动创建一个 `<style>` 标签，其中内容就是：
+
+```css
+.myClass {
+  color: blue;
+}
+```
+
+配置写法和编写普通 css 的体验是一致的，可以使用任意 css 选择符及属性。
+
 ## aside 可调整宽度
 
 通过配置 `asideResizor`，可以让侧边栏支持动态调整宽度，同时可以通过 `asideMinWidth`、`asideMaxWidth` 设置 aside 最大最小宽度。
@@ -197,15 +247,9 @@ Page 默认将页面分为几个区域，分别是**内容区（`body`）**、**
 }
 ```
 
-上面的配置会自动创建一个 `<style>` 标签，其中内容就是：
+## aside 位置固定
 
-```css
-.myClass {
-  color: blue;
-}
-```
-
-配置写法和编写普通 css 的体验是一致的，可以使用任意 css 选择符及属性。
+通过配置 `asideSticky` 来开关，默认是开启状态。
 
 ## 属性表
 
@@ -219,10 +263,11 @@ Page 默认将页面分为几个区域，分别是**内容区（`body`）**、**
 | asideResizor        | `boolean`                                 |                                            | 页面的边栏区域宽度是否可调整                                                          |
 | asideMinWidth       | `number`                                  |                                            | 页面边栏区域的最小宽度                                                                |
 | asideMaxWidth       | `number`                                  |                                            | 页面边栏区域的最大宽度                                                                |
+| asideSticky         | `boolean`                                 | true                                       | 用来控制边栏固定与否                                                                  |
 | toolbar             | [SchemaNode](../../docs/types/schemanode) |                                            | 往页面的右上角加内容，需要注意的是，当有 title 时，该区域在右上角，没有时该区域在顶部 |
 | body                | [SchemaNode](../../docs/types/schemanode) |                                            | 往页面的内容区域加内容                                                                |
 | className           | `string`                                  |                                            | 外层 dom 类名                                                                         |
-| cssVars             | `object`                                  |                                            | 自定义 CSS 变量，请参考[样式](../../../style)                                         |
+| cssVars             | `object`                                  |                                            | 自定义 CSS 变量，请参考[样式](../style)                                               |
 | toolbarClassName    | `string`                                  | `v-middle wrapper text-right bg-light b-b` | Toolbar dom 类名                                                                      |
 | bodyClassName       | `string`                                  | `wrapper`                                  | Body dom 类名                                                                         |
 | asideClassName      | `string`                                  | `w page-aside-region bg-auto`              | Aside dom 类名                                                                        |
@@ -233,3 +278,25 @@ Page 默认将页面分为几个区域，分别是**内容区（`body`）**、**
 | interval            | `number`                                  | `3000`                                     | 刷新时间(最小 1000)                                                                   |
 | silentPolling       | `boolean`                                 | `false`                                    | 配置刷新时是否显示加载动画                                                            |
 | stopAutoRefreshWhen | [表达式](../../docs/concepts/expression)  | `""`                                       | 通过表达式来配置停止刷新的条件                                                        |
+| pullRefresh         | `object`                                  | `{disabled: true}`                         | 下拉刷新配置（仅用于移动端）                                                          |
+
+## 事件表
+
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`来获取事件产生的数据，详细请查看[事件动作](../../docs/concepts/event-action)。
+
+> `[name]`为当前数据域中的字段名，例如：当前数据域为 {username: 'amis'}，则可以通过${username}获取对应的值。
+
+| 事件名称    | 事件参数                                                                                 | 说明                                                |
+| ----------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| init        | -                                                                                        | 组件实例被创建并插入 DOM 中时触发。2.4.1 及以上版本 |
+| inited      | `event.data` initApi 远程请求返回的初始化数据<br/>`[name]: any` 当前数据域中指定字段的值 | 远程初始化接口请求成功时触发                        |
+| pullRefresh | -                                                                                        | 开启下拉刷新后，下拉释放后触发（仅用于移动端）      |
+
+## 动作表
+
+当前组件对外暴露以下特性动作，其他组件可以通过指定`actionType: 动作名称`、`componentId: 该组件id`来触发这些动作，动作配置可以通过`args: {动作配置项名称: xxx}`来配置具体的参数，详细请查看[事件动作](../../docs/concepts/event-action#触发其他组件的动作)。
+
+| 动作名称 | 动作配置                   | 说明                                     |
+| -------- | -------------------------- | ---------------------------------------- |
+| reload   | -                          | 重新加载，调用 `intiApi`，刷新数据域数据 |
+| setValue | `value: object` 更新的数据 | 更新数据                                 |

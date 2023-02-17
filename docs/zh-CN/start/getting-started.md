@@ -87,7 +87,7 @@ SDK 版本适合对前端或 React 不了解的开发者，它不依赖 npm 及 
 
 ### 切换主题
 
-jssdk 版本默认使用 `sdk.css` 即云舍主题，如果你想用使用仿 Antd，请将 css 引用改成 `.antd.css`。同时 js 渲染地方第四个参数传入 `theme` 属性。如：
+jssdk 版本默认使用 `sdk.css` 即云舍主题，如果你想使用仿 Antd，请将 css 引用改成 `antd.css`。同时 js 渲染地方第四个参数传入 `theme` 属性。如：
 
 ```js
 amis.embed(
@@ -98,16 +98,13 @@ amis.embed(
   {
     // 这里是初始 props
   },
+  // 注意是第四个参数
   {
     theme: 'antd'
   }
 );
-
-// 或者
-amisScoped.updateProps({
-  theme: 'antd'
-});
 ```
+
 > 如果想使用 amis 1.2.2 之前的默认主题，名字是 ang
 
 ### 初始值
@@ -144,7 +141,7 @@ let amisScoped = amis.embed(
   },
   {
     // 下面是一些可选的外部控制函数
-    // 在 skd 中可以不传，用来实现 ajax 请求，但在 npm 中这是必须提供的
+    // 在 sdk 中可以不传，用来实现 ajax 请求，但在 npm 中这是必须提供的
     // fetcher: (url, method, data, config) => {},
     // 全局 api 请求适配器
     // 另外在 amis 配置项中的 api 也可以配置适配器，针对某个特定接口单独处理。
@@ -155,8 +152,8 @@ let amisScoped = amis.embed(
     //
     // 全局 api 适配器。
     // 另外在 amis 配置项中的 api 也可以配置适配器，针对某个特定接口单独处理。
-    // responseAdaptor(api, response, query, request) {
-    //   return response;
+    // responseAdaptor(api, payload, query, request, response) {
+    //   return payload;
     // }
     //
     // 用来接管页面跳转，比如用 location.href 或 window.open，或者自己实现 amis 配置更新
@@ -185,6 +182,9 @@ let amisScoped = amis.embed(
     //
     // 用来实现用户行为跟踪，详细请查看左侧高级中的说明
     // tracker: (eventTracker) => {},
+    //
+    // Toast提示弹出位置，默认为'top-center'
+    // toastPosition: 'top-right' | 'top-center' | 'top-left' | 'bottom-center' | 'bottom-left' | 'bottom-right' | 'center'
   }
 );
 ```
@@ -234,9 +234,9 @@ amisScoped.updateProps(
 
 ### Hash 路由
 
-默认 JSSDK 不是 hash 路由，如果你想改成 hash 路由模式，请查看此处代码实现。只需要修改 env.isCurrentUrl、env.jumpTo 和 env.updateLocation 这几个方法即可。
+默认 JSSDK 不是 hash 路由，如果你想改成 hash 路由模式，请查看此处代码实现。只需要修改 `env.isCurrentUrl`、`env.jumpTo` 和 `env.updateLocation` 这几个方法，并在路由切换的时候，通过 amisScoped 对象的 `updateProps` 方法，更新 `location` 属性即可。
 
-参考：https://github.com/baidu/amis/blob/master/examples/components/Example.jsx#L551-L575
+参考：https://github.com/baidu/amis/blob/master/examples/app/index.jsx
 
 ### 销毁
 
@@ -250,7 +250,9 @@ amisScoped.unmount();
 
 初始项目请参考 <https://github.com/aisuda/amis-react-starter>。
 
-如果在已有项目中，React 版本需要是 `^16.8.6`，mobx 需要 `^4.5.0`。
+如果在已有项目中，React 版本需要是 `>=16.8.6`，mobx 需要 `^4.5.0`。
+
+amis 1.6.5 及以上版本支持 React 17。
 
 ### 安装
 
@@ -326,7 +328,7 @@ module.exports = {
 
 ### 主题样式
 
-目前主要支持两个主题：`cxd（云舍）` 和 `angt（仿 Antd）`
+目前主要支持两个主题：`cxd（云舍）` 和 `antd（仿 Antd）`
 
 1. 引入样式文件：
 
@@ -342,13 +344,14 @@ html 中引入：
 js 中引入：
 
 ```js
-import './node_modules/amis/lib/themes/cxd.css';
-import './node_modules/amis/lib/helper.css';
-import './node_modules/amis/sdk/iconfont.css';
-// 或 import './node_modules/amis/lib/themes/antd.css';
+import 'amis/lib/themes/cxd.css';
+import 'amis/lib/helper.css';
+import 'amis/sdk/iconfont.css';
+// 或 import 'amis/lib/themes/antd.css';
 ```
 
 > 上面只是示例，请根据自己的项目结构调整引用路径
+> 如果要支持 IE 11 请引入 amis/sdk/cxd-ie11.css，但这样就没法支持 CSS 变量了
 
 2. 渲染器使用配置主题
 
@@ -388,21 +391,26 @@ import * as React from 'react';
 import axios from 'axios';
 import copy from 'copy-to-clipboard';
 
-import {render as renderAmis, ToastComponent, AlertComponent} from 'amis';
-import {alert, confirm} from 'amis/lib/components/Alert';
-import {toast} from 'amis/lib/components/Toast';
+import {render as renderAmis} from 'amis';
+import {ToastComponent, AlertComponent, alert, confirm, toast} from 'amis-ui';
 
 class MyComponent extends React.Component<any, any> {
   render() {
     let amisScoped;
     let theme = 'cxd';
+    let locale = 'zh-CN';
 
     // 请勿使用 React.StrictMode，目前还不支持
     return (
       <div>
         <p>通过 amis 渲染页面</p>
-        <ToastComponent theme={theme} key="toast" position={'top-right'} />
-        <AlertComponent theme={theme} key="alert" />
+        <ToastComponent
+          theme={theme}
+          key="toast"
+          position={'top-right'}
+          locale={locale}
+        />
+        <AlertComponent theme={theme} key="alert" locale={locale} />
         {renderAmis(
           {
             // 这里是 amis 的 Json 配置。
@@ -588,7 +596,7 @@ render 有三个参数，后面会详细说明这三个参数内的属性
 #### confirm
 
 ```ts
-(msg: string) => boolean | Promise<boolean>
+(msg: string) => boolean | Promise<boolean>;
 ```
 
 用来实现确认框。返回 boolean 值
@@ -656,7 +664,7 @@ render 有三个参数，后面会详细说明这三个参数内的属性
 #### loadRenderer
 
 ```ts
-(schema: any, path: string) => Promise<Function>
+(schema: any, path: string) => Promise<Function>;
 ```
 
 可以通过它懒加载自定义组件，比如： https://github.com/baidu/amis/blob/master/__tests__/factory.test.tsx#L64-L91。
@@ -716,3 +724,12 @@ type, name, mode, target, reload
 ```
 
 如果发现有字段被意外替换了，可以通过设置这个属性来避免
+
+#### toastPosition
+
+Toast 提示弹出位置，默认为`'top-center'`。
+支持的属性值有：
+
+```
+'top-right' | 'top-center' | 'top-left' | 'bottom-center' | 'bottom-left' | 'bottom-right' | 'center'
+```

@@ -59,6 +59,20 @@ export default {
           type: 'divider'
         },
         {
+          type: 'input-number',
+          name: 'number',
+          label: '数字禁用',
+          placeholder: '',
+          disabled: true,
+          inline: true,
+          value: 5,
+          min: 1,
+          max: 10
+        },
+        {
+          type: 'divider'
+        },
+        {
           type: 'input-tag',
           name: 'tag',
           label: '标签',
@@ -231,6 +245,30 @@ export default {
             {
               label: '选项3',
               disabled: true,
+              value: 3
+            }
+          ]
+        },
+        {
+          type: 'divider'
+        },
+        {
+          type: 'radios',
+          name: 'radios',
+          label: '单选禁用',
+          value: 3,
+          disabled: true,
+          options: [
+            {
+              label: '选项1',
+              value: 1
+            },
+            {
+              label: '选项2',
+              value: 2
+            },
+            {
+              label: '选项3',
               value: 3
             }
           ]
@@ -555,6 +593,28 @@ export default {
           label: '开关禁用'
         },
         {
+          type: 'switch',
+          name: 'switch4',
+          value: true,
+          onText: '开启',
+          offText: '关闭',
+          label: '开关文字'
+        },
+        {
+          type: 'switch',
+          name: 'switch5',
+          value: true,
+          onText: {
+            type: 'icon',
+            icon: 'fa fa-check-circle'
+          },
+          offText: {
+            type: 'icon',
+            icon: 'fa fa-times-circle'
+          },
+          label: '开关icon'
+        },
+        {
           type: 'divider'
         },
         {
@@ -569,7 +629,31 @@ export default {
         {
           type: 'select',
           name: 'type',
-          label: '单选',
+          label: '下拉单选',
+          inline: true,
+          options: [
+            {
+              label: '选项1',
+              value: 1
+            },
+            {
+              label: '选项2',
+              value: 2
+            },
+            {
+              label: '内容很长很长的选项，内容很长很长的选项',
+              value: 3
+            }
+          ]
+        },
+        {
+          type: 'divider'
+        },
+        {
+          type: 'select',
+          name: 'type',
+          label: '下拉单选禁用',
+          disabled: true,
           inline: true,
           options: [
             {
@@ -846,6 +930,27 @@ export default {
           name: 'kv'
         },
         {
+          type: 'input-kvs',
+          name: 'kvs',
+          label: 'kvs',
+          keyItem: {
+            label: '字段名'
+          },
+          valueItems: [
+            {
+              type: 'switch',
+              name: 'primary',
+              label: '是否是主键'
+            },
+            {
+              type: 'select',
+              name: 'type',
+              label: '字段类型',
+              options: ['text', 'int', 'number']
+            }
+          ]
+        },
+        {
           type: 'divider'
         },
         {
@@ -894,6 +999,15 @@ export default {
           type: 'textarea',
           name: 'textarea',
           label: '多行文本'
+        },
+        {
+          type: 'divider'
+        },
+        {
+          type: 'textarea',
+          name: 'textarea',
+          disabled: true,
+          label: '多行文本禁用'
         },
         {
           type: 'divider'
