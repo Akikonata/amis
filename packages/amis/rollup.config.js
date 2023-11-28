@@ -15,9 +15,13 @@ import {
 } from './package.json';
 import path from 'path';
 import svgr from '@svgr/rollup';
+import moment from 'moment';
 
 const settings = {
-  globals: {}
+  globals: {},
+  commonConfig: {
+    footer: `window.amisVersionInfo={version:'${version}',buildTime:'${moment().format("YYYY-MM-DD")}'};`,
+  }
 };
 
 const external = id => {
@@ -61,6 +65,7 @@ export default [
     output: [
       {
         ...settings,
+        ...settings.commonConfig,
         dir: path.dirname(main),
         format: 'cjs',
         exports: 'named',
@@ -78,6 +83,7 @@ export default [
     output: [
       {
         ...settings,
+        ...settings.commonConfig,
         dir: path.dirname(module),
         format: 'esm',
         exports: 'named',
@@ -114,8 +120,44 @@ function transpileDynamicImportForCJS(options) {
   };
 }
 
+// 参考：https://github.com/theKashey/jsx-compress-loader/blob/master/src/index.js
+function transpileReactCreateElement() {
+  return {
+    name: 'transpile-react-create-element',
+    enforce: 'post',
+    transform: (code, id) => {
+      if (
+        /\.(?:tsx|jsx|svg)$/.test(id) &&
+        code.indexOf('React.createElement') !== -1
+      ) {
+        const separator = '\n\n;';
+        const appendText =
+          `\n` +
+          `var __react_jsx__ = require('react');\n` +
+          `var _J$X_ = (__react_jsx__["default"] || __react_jsx__).createElement;\n` +
+          `var _J$F_ = (__react_jsx__["default"] || __react_jsx__).Fragment;\n`;
+
+        const newSource = code
+          .replace(/React\.createElement\(/g, '_J$X_(')
+          .replace(/React\.createElement\(/g, '_J$F_(');
+
+        code = [appendText, newSource].join(separator);
+      }
+
+      return {
+        code
+      };
+    }
+  };
+}
+
 function getPlugins(format = 'esm') {
-  const overridePaths = ['amis-formula', 'amis-core', 'amis-ui'].reduce(
+  const overridePaths = [
+    'amis-formula',
+    'amis-core',
+    'amis-ui',
+    'office-viewer'
+  ].reduce(
     (prev, current) => ({
       ...prev,
       [current]: [getCompiledEntryPath(current, format)]
@@ -164,11 +206,13 @@ function getPlugins(format = 'esm') {
     commonjs({
       sourceMap: false
     }),
+    format === 'esm' ? null : transpileReactCreateElement(),
     license({
       banner: `
         ${name} v${version}
+        build time: <%=moment().format('YYYY-MM-DD')%>
         Copyright 2018<%= moment().format('YYYY') > 2018 ? '-' + moment().format('YYYY') : null %> ${author}
       `
     })
-  ];
+  ].filter(item => item);
 }

@@ -1,6 +1,7 @@
 // 多语言支持
 import React from 'react';
 import hoistNonReactStatic from 'hoist-non-react-statics';
+import moment from 'moment';
 import {resolveVariable} from './utils/tpl-builtin';
 
 export type TranslateFn<T = any> = (str: T, data?: object) => T;
@@ -11,6 +12,12 @@ interface LocaleConfig {
 
 let defaultLocale: string = 'zh-CN';
 
+const momentLocaleMap: Record<string, string> = {
+  'zh-CN': 'zh-cn',
+  'en-US': 'en',
+  'de-DE': 'de'
+};
+
 const locales: {
   [propName: string]: LocaleConfig;
 } = {};
@@ -20,11 +27,23 @@ export function register(name: string, config: LocaleConfig) {
   extendLocale(name, config);
 }
 
-export function extendLocale(name: string, config: LocaleConfig) {
-  locales[name] = {
-    ...(locales[name] || {}),
-    ...config
-  };
+export function extendLocale(
+  name: string,
+  config: LocaleConfig,
+  cover: boolean = true
+) {
+  if (cover) {
+    // 覆盖式扩展语料
+    locales[name] = {
+      ...(locales[name] || {}),
+      ...config
+    };
+  } else {
+    locales[name] = {
+      ...config,
+      ...(locales[name] || {})
+    };
+  }
 }
 
 /** 删除语料数据 */
@@ -80,8 +99,8 @@ export function getDefaultLocale() {
   return defaultLocale;
 }
 
-export function setDefaultLocale(loacle: string) {
-  defaultLocale = loacle;
+export function setDefaultLocale(locale: string) {
+  defaultLocale = locale;
 }
 
 export interface LocaleProps {
@@ -133,7 +152,7 @@ export function localeable<
 
       render() {
         const locale: string =
-          this.props.locale || this.context || defaultLocale;
+          this.props.locale || (this.context as string) || defaultLocale;
         const translate = this.props.translate || makeTranslator(locale);
         const injectedProps: {
           locale: string;
@@ -142,6 +161,7 @@ export function localeable<
           locale,
           translate: translate!
         };
+        moment.locale(momentLocaleMap?.[locale] ?? locale);
         const refConfig = ComposedComponent.prototype?.isReactComponent
           ? {ref: this.childRef}
           : {forwardedRef: this.childRef};

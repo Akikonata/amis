@@ -16,7 +16,7 @@ import {
 } from 'amis-core';
 import type {RendererEnv} from 'amis-core';
 import {isPureVariable, resolveVariableAndFilter, tokenize} from 'amis-core';
-import {reaction} from 'mobx';
+import {reaction, comparer} from 'mobx';
 import {createObject, findTreeIndex, isObject} from 'amis-core';
 import {Api, ApiObject, Payload} from 'amis-core';
 
@@ -106,6 +106,7 @@ export interface OutterProps {
       | {
           loadConfig: (ctx?: any) => Promise<any> | void;
           setConfig: (value: any) => void;
+          syncConfig: () => void;
         }
       | undefined
   ) => void;
@@ -223,7 +224,8 @@ export function withRemoteConfig<P = any>(
           }
 
           componentDidMount() {
-            const env: RendererEnv = this.props.env || this.context;
+            const env: RendererEnv =
+              this.props.env || (this.context as RendererEnv);
             const {store, data} = this.props;
             const source = (this.props as any)[config.sourceField || 'source'];
 
@@ -236,7 +238,11 @@ export function withRemoteConfig<P = any>(
                       store.data,
                       '| raw'
                     ),
-                  () => this.syncConfig()
+                  () => this.syncConfig(),
+                  // 当nav配置source: "${amisStore.app.portalNavs}"时，切换页面就会触发source更新
+                  // 因此这里增加这个配置 数据源完全不相等情况下再执行loadConfig
+                  // 否则数据源重置 保存不了展开状态 就会始终是手风琴模式了
+                  {equals: comparer.structural}
                 )
               );
             } else if (env && isEffectiveApi(source, data)) {
@@ -275,17 +281,27 @@ export function withRemoteConfig<P = any>(
           }
 
           async loadConfig(ctx = this.props.data) {
-            const env: RendererEnv = this.props.env || this.context;
-            const {store} = this.props;
-            const source = (this.props as any)[config.sourceField || 'source'];
-
+            const env: RendererEnv =
+              this.props.env || (this.context as RendererEnv);
+            const {store, data} = this.props;
+            let source = (this.props as any)[config.sourceField || 'source'];
+            // source: ${nav}、source: ${online ? '/api/v1' : '/api/v2'}
+            // 如果是配置source: ${nav} isEffectiveApi也会认为是api 发出一个无效请求
+            if (isPureVariable(source)) {
+              source = resolveVariableAndFilter(
+                source as string,
+                data,
+                '| raw'
+              );
+            }
             if (env && isEffectiveApi(source, ctx)) {
               await store.load(env, source, ctx, config);
             }
           }
 
           loadAutoComplete(input: string) {
-            const env: RendererEnv = this.props.env || this.context;
+            const env: RendererEnv =
+              this.props.env || (this.context as RendererEnv);
             const {autoComplete, data, store} = this.props;
 
             if (!env || !env.fetcher) {
@@ -313,14 +329,16 @@ export function withRemoteConfig<P = any>(
 
           syncConfig() {
             const {store, data} = this.props;
-            const source = (this.props as any)[config.sourceField || 'source'];
+            let source = (this.props as any)[config.sourceField || 'source'];
 
             if (isPureVariable(source)) {
-              store.setConfig(
-                resolveVariableAndFilter(source as string, data, '| raw') || [],
-                config,
-                'syncConfig'
-              );
+              source =
+                resolveVariableAndFilter(source as string, data, '| raw') || [];
+              if (isEffectiveApi(source, data)) {
+                this.loadConfig();
+              } else {
+                store.setConfig(source, config, 'syncConfig');
+              }
             } else if (isObject(source) && !isEffectiveApi(source, data)) {
               store.setConfig(source, config, 'syncConfig');
             }
@@ -329,7 +347,8 @@ export function withRemoteConfig<P = any>(
           async deferLoadConfig(item: any) {
             const {store, data, deferApi} = this.props;
             const source = (this.props as any)[config.sourceField || 'source'];
-            const env: RendererEnv = this.props.env || this.context;
+            const env: RendererEnv =
+              this.props.env || (this.context as RendererEnv);
             const indexes = findTreeIndex(store.config, a => a === item)!;
 
             const ret = config.beforeDeferLoad?.(
@@ -370,7 +389,8 @@ export function withRemoteConfig<P = any>(
 
           render() {
             const store = this.props.store;
-            const env: RendererEnv = this.props.env || this.context;
+            const env: RendererEnv =
+              this.props.env || (this.context as RendererEnv);
             const injectedProps: RemoteOptionsProps<P> = {
               config: store.config,
               loading: store.fetching,

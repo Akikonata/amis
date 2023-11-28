@@ -38,6 +38,8 @@ interface MapPickerProps {
     city?: string;
   };
   onChange?: (value: any) => void;
+  autoSelectCurrentLoc?: boolean;
+  onlySelectCurrentLoc?: boolean;
 }
 
 interface LocationItem {
@@ -101,7 +103,7 @@ export class BaiduMapPicker extends React.Component<
 
   componentWillUnmount() {
     this.ac?.dispose?.();
-    document.body.removeChild(this.placeholderInput!);
+    this.placeholderInput && document.body.removeChild(this.placeholderInput!);
 
     delete this.placeholderInput;
     delete this.map;
@@ -109,6 +111,7 @@ export class BaiduMapPicker extends React.Component<
 
   @autobind
   async initMap() {
+    const autoSelectCurrentLoc = this.props.autoSelectCurrentLoc ?? false;
     const map = new BMap.Map(this.mapRef.current, {
       enableMapClick: false
     });
@@ -137,11 +140,14 @@ export class BaiduMapPicker extends React.Component<
 
     const geolocationControl = new BMap.GeolocationControl();
     geolocationControl.addEventListener('locationSuccess', (e: any) => {
-      this.getLocations(e.point);
+      this.getLocations(e.point, autoSelectCurrentLoc);
     });
     map.addControl(geolocationControl);
 
     map.addEventListener('click', (e: any) => {
+      if (this.props.onlySelectCurrentLoc) {
+        return;
+      }
       this.getLocations(e.point, true);
     });
 
@@ -165,15 +171,17 @@ export class BaiduMapPicker extends React.Component<
         if (poiLength) {
           for (let i = 0; i < poiLength; i++) {
             const poi = result.getPoi(i);
-            sugs.push(
-              [
-                poi.province,
-                poi.city,
-                poi.district,
-                poi.street,
-                poi.business
-              ].join(' ')
-            );
+            if (poi) {
+              sugs.push(
+                [
+                  poi.province,
+                  poi.city,
+                  poi.district,
+                  poi.street,
+                  poi.business
+                ].join(' ')
+              );
+            }
           }
           this.setState({
             sugs
@@ -185,7 +193,8 @@ export class BaiduMapPicker extends React.Component<
     value ? this.getLocations(point) : geolocationControl.location();
   }
 
-  getLocations(point: any, select?: boolean) {
+  @autobind
+  getLocations(point: any, selectCurrentLoc?: boolean) {
     const map = this.map;
 
     map.clearOverlays();
@@ -229,7 +238,7 @@ export class BaiduMapPicker extends React.Component<
           locs
         },
         () => {
-          if (!select) {
+          if (!selectCurrentLoc) {
             return;
           }
 
@@ -288,21 +297,23 @@ export class BaiduMapPicker extends React.Component<
     if (this.props.coordinatesType == 'gcj02') {
       this.covertPoint(point, COORDINATES_BD09, COORDINATES_GCJ02).then(
         (convertedPoint: any) => {
-          (typeof this.props?.onChange === 'function') && this.props.onChange({
-            address: loc.address.trim() || loc.title,
-            lat: convertedPoint.lat,
-            lng: convertedPoint.lng,
-            city: loc.city
-          });
+          typeof this.props?.onChange === 'function' &&
+            this.props.onChange({
+              address: loc.address.trim() || loc.title,
+              lat: convertedPoint.lat,
+              lng: convertedPoint.lng,
+              city: loc.city
+            });
         }
       );
     } else {
-      (typeof this.props?.onChange === 'function') && this.props?.onChange({
-        address: loc.address.trim() || loc.title,
-        lat: loc.lat,
-        lng: loc.lng,
-        city: loc.city
-      });
+      typeof this.props?.onChange === 'function' &&
+        this.props?.onChange({
+          address: loc.address.trim() || loc.title,
+          lat: loc.lat,
+          lng: loc.lng,
+          city: loc.city
+        });
     }
   }
 
@@ -314,15 +325,15 @@ export class BaiduMapPicker extends React.Component<
     });
 
     var local = new BMap.LocalSearch(this.map, {
-      //智能搜索
+      // 智能搜索
       onSearchComplete: () => {
         const results = local.getResults();
         const poi = results.getPoi(0);
         this.setState({
-          inputValue: poi.title,
+          inputValue: poi?.title,
           sugs: []
         });
-        this.getLocations(poi.point, true);
+        this.getLocations(poi?.point, true);
       }
     });
     local.search(value);
@@ -330,20 +341,23 @@ export class BaiduMapPicker extends React.Component<
 
   render() {
     const {classnames: cx} = this.props;
+    const onlySelectCurrentLoc = this.props.onlySelectCurrentLoc ?? false;
     const {locIndex, locs, inputValue, sugs} = this.state;
     const hasSug = Array.isArray(sugs) && sugs.length;
 
     return (
       <div className={cx('MapPicker')}>
-        <div className={cx('MapPicker-search TextControl-control')}>
-          <div className={cx('TextControl-input')}>
-            <input
-              onChange={this.handleChange}
-              value={inputValue}
-              placeholder="搜索地点"
-            />
+        {!onlySelectCurrentLoc && (
+          <div className={cx('MapPicker-search TextControl-control')}>
+            <div className={cx('TextControl-input')}>
+              <input
+                onChange={this.handleChange}
+                value={inputValue}
+                placeholder="搜索地点"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <div
           ref={this.mapRef}
@@ -357,23 +371,36 @@ export class BaiduMapPicker extends React.Component<
             invisible: hasSug
           })}
         >
-          {locs.map((item, index) => (
+          {!onlySelectCurrentLoc &&
+            locs.map((item, index) => (
+              <div
+                onClick={this.handleSelect}
+                key={index}
+                data-index={index}
+                className={cx('MapPicker-item')}
+              >
+                <div className={cx('MapPicker-itemTitle')}>{item.title}</div>
+                <div className={cx('MapPicker-itemDesc')}>{item.address}</div>
+                {locIndex === index ? (
+                  <Icon icon="success" className="icon" />
+                ) : null}
+              </div>
+            ))}
+          {onlySelectCurrentLoc && locs.length > 0 && (
             <div
               onClick={this.handleSelect}
-              key={index}
-              data-index={index}
+              key="locs-current"
+              data-index={0}
               className={cx('MapPicker-item')}
             >
-              <div className={cx('MapPicker-itemTitle')}>{item.title}</div>
-              <div className={cx('MapPicker-itemDesc')}>{item.address}</div>
-              {locIndex === index ? (
-                <Icon icon="success" className="icon" />
-              ) : null}
+              <div className={cx('MapPicker-itemTitle')}>{locs[0].title}</div>
+              <div className={cx('MapPicker-itemDesc')}>{locs[0].address}</div>
+              {locIndex === 0 ? <Icon icon="success" className="icon" /> : null}
             </div>
-          ))}
+          )}
         </div>
 
-        {hasSug ? (
+        {hasSug && !onlySelectCurrentLoc ? (
           <div className={cx('MapPicker-sug')}>
             {sugs.map(item => (
               <div

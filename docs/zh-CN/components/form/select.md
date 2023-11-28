@@ -10,7 +10,7 @@ order: 48
 
 ## 基本用法
 
-参考 [Options](options)
+参考 [Options 选择器表单项](options)
 
 ## 自定义菜单
 
@@ -42,6 +42,7 @@ order: 48
 }
 ```
 
+## 展示模式
 ### 分组展示模式
 
 _单选_
@@ -55,6 +56,7 @@ _单选_
       "label": "分组",
       "type": "select",
       "name": "a",
+      "searchable": true,
       "selectMode": "group",
       "options": [
         {
@@ -114,6 +116,7 @@ _多选_
       "type": "select",
       "name": "a",
       "multiple": true,
+      "searchable": true,
       "selectMode": "group",
       "options": [
         {
@@ -176,6 +179,7 @@ _单选_
       "label": "表格形式",
       "type": "select",
       "name": "a",
+      "searchable": true,
       "selectMode": "table",
       "columns": [
         {
@@ -235,6 +239,7 @@ _多选_
       "label": "表格形式",
       "type": "select",
       "name": "a",
+      "searchable": true,
       "selectMode": "table",
       "multiple": true,
       "columns": [
@@ -297,6 +302,7 @@ _单选_
       "label": "树型展示",
       "type": "select",
       "name": "a",
+      "searchable": true,
       "selectMode": "tree",
       "options": [
         {
@@ -355,6 +361,7 @@ _多选_
       "label": "树型展示",
       "type": "select",
       "name": "a",
+      "searchable": true,
       "multiple": true,
       "selectMode": "tree",
       "options": [
@@ -418,6 +425,7 @@ _单选_
       "label": "级联选择",
       "type": "select",
       "name": "a",
+      "searchable": true,
       "selectMode": "chained",
       "options": [
         {
@@ -476,6 +484,7 @@ _多选_
       "label": "级联选择",
       "type": "select",
       "name": "a",
+      "searchable": true,
       "selectMode": "chained",
       "multiple": true,
       "options": [
@@ -524,7 +533,7 @@ _多选_
 }
 ```
 
-### 支持搜索
+## 支持搜索
 
 ```schema: scope="body"
 {
@@ -585,7 +594,101 @@ _多选_
 }
 ```
 
-### 延时加载
+### 自定义搜索函数
+
+默认通过[match-sorter](https://github.com/kentcdodds/match-sorter)搜索过滤 value,label 中的值
+
+可通过`filterOption`自定义搜索过滤函数
+
+```schema: scope="body"
+{
+  "type": "form",
+  "api": "/api/mock2/form/saveForm",
+  "body": [
+    {
+      "label": "带搜索",
+      "type": "select",
+      "name": "a",
+      "selectMode": "chained",
+      "searchable": true,
+      "filterOption": "return options.filter(({value, label, weapon}) => value?.includes(inputValue) || label?.includes(inputValue) || weapon?.includes(inputValue));",
+      "sortable": true,
+      "multiple": true,
+      "options": [
+        {
+          "label": "诸葛亮",
+          "value": "zhugeliang",
+          "weapon": "翡翠仙扇"
+        },
+        {
+          "label": "曹操",
+          "value": "caocao",
+          "weapon": "幻影双刃"
+        },
+        {
+          "label": "钟无艳",
+          "value": "zhongwuyan",
+          "weapon": "破岳震天锤"
+        },
+
+        {
+          "label": "李白",
+          "value": "libai",
+          "weapon": "青丝缠月剑"
+        },
+        {
+          "label": "韩信",
+          "value": "hanxin",
+          "weapon": "龙吟穿云枪"
+        },
+        {
+          "label": "云中君",
+          "value": "yunzhongjun",
+          "weapon": "飘渺云影剑"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### searchApi
+
+**发送**
+
+默认 GET，携带 term 变量，值为搜索框输入的文字，可从上下文中取数据设置进去。
+
+**响应**
+
+格式要求如下：
+
+```json
+{
+  "status": 0,
+  "msg": "",
+  "data": {
+    "options": [
+      {
+        "label": "描述",
+        "value": "值" // ,
+        // "children": [] // 可以嵌套
+      },
+
+      {
+        "label": "描述2",
+        "value": "值2"
+      }
+    ],
+
+    "value": "值" // 默认值，可以获取列表的同时设置默认值。
+  }
+}
+```
+
+适用于需选择的数据/信息源较多时，用户可直观的知道自己所选择的数据/信息的场景，一般左侧框为数据/信息源，右侧为已选数据/信息，被选中信息同时存在于 2 个框内。
+
+
+## 延时加载
 
 选型设置 defer: true，结合配置组件层的 `deferApi` 来实现。
 
@@ -638,7 +741,7 @@ _多选_
 }
 ```
 
-### 关联选择模式
+## 关联选择模式
 
 分为左右两部分，左边点选后关联出现右边。左右都可以配置展示模式。
 
@@ -958,40 +1061,163 @@ leftOptions 动态加载，默认 source 接口是返回 options 部分，而 le
 }
 ```
 
-## searchApi
+## 自定义下拉区域宽度与对齐方式
 
-**发送**
+> 2.8.0 以上版本
 
-默认 GET，携带 term 变量，值为搜索框输入的文字，可从上下文中取数据设置进去。
+使用字符串或数字，使用数字时单位为`px`；支持单位: `%`、`px`、`rem`、`em`、`vw`。
 
-**响应**
-
-格式要求如下：
-
-```json
+```schema: scope="body"
 {
-  "status": 0,
-  "msg": "",
-  "data": {
-    "options": [
+  "type": "page",
+  "body": {
+    "type": "form",
+    "body": [
       {
-        "label": "描述",
-        "value": "值" // ,
-        // "children": [] // 可以嵌套
+        "label": "80% 宽度靠右对齐",
+        "type": "select",
+        "name": "select",
+        "menuTpl": "<div>${label} 值：${value}, 当前是否选中: ${checked}</div>",
+        "overlay": {
+          "width": "80%",
+          "align": "right"
+        },
+        "options": [
+          {
+            "label": "A",
+            "value": "a"
+          },
+          {
+            "label": "B",
+            "value": "b"
+          },
+          {
+            "label": "C",
+            "value": "c"
+          }
+        ]
       },
-
       {
-        "label": "描述2",
-        "value": "值2"
+        "label": "300px 宽度中间对齐",
+        "type": "select",
+        "name": "select",
+        "menuTpl": "<div>${label} 值：${value}, 当前是否选中: ${checked}</div>",
+        "overlay": {
+          "width": 300,
+          "align": "center"
+        },
+        "options": [
+          {
+            "label": "A",
+            "value": "a"
+          },
+          {
+            "label": "B",
+            "value": "b"
+          },
+          {
+            "label": "C",
+            "value": "c"
+          }
+        ]
       }
-    ],
-
-    "value": "值" // 默认值，可以获取列表的同时设置默认值。
+    ]
   }
 }
 ```
 
-适用于需选择的数据/信息源较多时，用户可直观的知道自己所选择的数据/信息的场景，一般左侧框为数据/信息源，右侧为已选数据/信息，被选中信息同时存在于 2 个框内。
+使用相对数值，如：`-20px` 相当于 `100% - 20px`；`+10vw` 相当于 `100% + 10vw`。支持如上相同单位。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "form",
+    "body": [
+      {
+        "label": "相对窄 100px 向左对齐",
+        "type": "select",
+        "name": "select",
+        "overlay": {
+          "width": "-100px",
+          "align": "left"
+        },
+        "popOverContainerSelector": "body",
+        "options": [
+          {
+            "label": "A",
+            "value": "a"
+          },
+          {
+            "label": "B",
+            "value": "b"
+          },
+          {
+            "label": "C",
+            "value": "c"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## 多选全选
+
+开启全选后，默认开启`"checkAllBySearch": true`，检索状态下全选内容为当前过滤项。如果设置了`"checkAllBySearch": false`，则无论是否在检索状态下，全选都会选择全部数据源。
+
+> 2.8.1 及以上版本`checkAllBySearch`默认开启
+
+```schema: scope="body"
+{
+    "type": "form",
+    "body": [
+        {
+            "label": "多选",
+            "type": "select",
+            "name": "select2",
+            "searchable": true,
+            "checkAll": true,
+            "multiple": true,
+            "clearable": true,
+            "source": "/api/mock2/form/getOptions"
+        }
+    ]
+}
+```
+
+## 自动补全 autoComplete
+
+可以在`autoComplete`配置中，用数据映射，获取变量`term`，为当前输入的关键字。
+
+```schema: scope="body"
+{
+    "type": "form",
+    "body": [
+        {
+            "name": "select1",
+            "type": "select",
+            "label": "选项自动补全（单选）",
+            "autoComplete": "/api/mock2/options/autoComplete?term=${term}",
+            "placeholder": "请输入",
+            "clearable": true
+        },
+        {
+            "name": "select2",
+            "type": "select",
+            "label": "选项自动补全（多选）",
+            "autoComplete": "/api/mock2/options/autoComplete?labelField=name&valueField=id&term=${term}",
+            "placeholder": "请输入",
+            "labelField": "name",
+            "valueField": "id",
+            "clearable": true,
+            "multiple": true,
+            "maxTagCount": 2
+        }
+    ]
+}
+```
 
 ## 属性表
 
@@ -1009,11 +1235,12 @@ leftOptions 动态加载，默认 source 接口是返回 options 部分，而 le
 | extractValue             | `boolean`                                                                         | `false`                                                                            | [提取值](./options#%E6%8F%90%E5%8F%96%E5%A4%9A%E9%80%89%E5%80%BC-extractvalue)                                                                                                                               |
 | checkAll                 | `boolean`                                                                         | `false`                                                                            | 是否支持全选                                                                                                                                                                                                 |
 | checkAllLabel            | `string`                                                                          | `全选`                                                                             | 全选的文字                                                                                                                                                                                                   |
-| checkAllBySearch         | `boolean`                                                                         | `false`                                                                            | 有检索时只全选检索命中的项                                                                                                                                                                                   |
+| checkAllBySearch         | `boolean`                                                                         | `true`                                                                             | 有检索时只全选检索命中的项                                                                                                                                                                                   |
 | defaultCheckAll          | `boolean`                                                                         | `false`                                                                            | 默认是否全选                                                                                                                                                                                                 |
 | creatable                | `boolean`                                                                         | `false`                                                                            | [新增选项](./options#%E5%89%8D%E7%AB%AF%E6%96%B0%E5%A2%9E-creatable)                                                                                                                                         |
 | multiple                 | `boolean`                                                                         | `false`                                                                            | [多选](./options#多选-multiple)                                                                                                                                                                              |
 | searchable               | `boolean`                                                                         | `false`                                                                            | [检索](./options#检索-searchable)                                                                                                                                                                            |
+| filterOption             | `string`                                                                          | `(options: Option[], inputValue: string, option: {keys: string[]}) => Option[]`    |                                                                                                                                                                                                              |
 | createBtnLabel           | `string`                                                                          | `"新增选项"`                                                                       | [新增选项](./options#%E6%96%B0%E5%A2%9E%E9%80%89%E9%A1%B9)                                                                                                                                                   |
 | addControls              | Array<[表单项](./formitem)>                                                       |                                                                                    | [自定义新增表单项](./options#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%96%B0%E5%A2%9E%E8%A1%A8%E5%8D%95%E9%A1%B9-addcontrols)                                                                                           |
 | addApi                   | [API](../../docs/types/api)                                                       |                                                                                    | [配置新增选项接口](./options#%E9%85%8D%E7%BD%AE%E6%96%B0%E5%A2%9E%E6%8E%A5%E5%8F%A3-addapi)                                                                                                                  |
@@ -1037,11 +1264,13 @@ leftOptions 动态加载，默认 source 接口是返回 options 部分，而 le
 | overflowTagPopover       | `TooltipObject`                                                                   | `{"placement": "top", "trigger": "hover", "showArrow": false, "offset": [0, -10]}` | 收纳浮层的配置属性，详细配置参考[Tooltip](../tooltip#属性表)                                                                                                                                                 |
 | optionClassName          | `string`                                                                          |                                                                                    | 选项 CSS 类名                                                                                                                                                                                                |
 | popOverContainerSelector | `string`                                                                          |                                                                                    | 弹层挂载位置选择器，会通过`querySelector`获取                                                                                                                                                                |
-| clearable                | `boolean`                                                                         | 是否展示清空图标 ｜                                                                |
+| clearable                | `boolean`                                                                         |                                                                                    | 是否展示清空图标                                                                                                                                                                                             |
+| overlay                  | `{ width: string \| number, align: "left" \| "center" \| "right" }`               |                                                                                    | 弹层宽度与对齐方式 `2.8.0 以上版本`                                                                                                                                                                          |
+| showInvalidMatch         | `boolean`                                                                         | `false`                                                                            | 选项值与选项组不匹配时选项值是否飘红                                                                                                                                                                         |
 
 ## 事件表
 
-当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`来获取事件产生的数据（`< 2.3.2 及以下版本 为 ${event.data.[事件参数名]}`），详细请查看[事件动作](../../docs/concepts/event-action)。
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`或`${event.data.[事件参数名]}`来获取事件产生的数据，详细请查看[事件动作](../../docs/concepts/event-action)。
 
 > `[name]`表示当前组件绑定的名称，即`name`属性，如果没有配置`name`属性，则通过`value`取值。
 
@@ -1064,3 +1293,70 @@ leftOptions 动态加载，默认 source 接口是返回 options 部分，而 le
 | reset    | -                                      | 将值重置为`resetValue`，若没有配置`resetValue`，则清空                                  |
 | reload   | -                                      | 重新加载，调用 `source`，刷新数据域数据刷新（重新加载）                                 |
 | setValue | `value: string` \| `string[]` 更新的值 | 更新数据，开启`multiple`支持设置多项，开启`joinValues`时，多值用`,`分隔，否则多值用数组 |
+
+
+### 刷新数据源 reload
+
+```schema: scope="body"
+{
+    "type": "form",
+    "body": [
+        {
+          "type": "control",
+          "label": "点击刷新",
+          "mode": "horizontal",
+          "body": [
+            {
+              "type": "action",
+              "label": "点击刷新Select数据源",
+              "level": "primary",
+              "className": "mb-2",
+              "onEvent": {
+                "click": {
+                  "actions": [
+                    {
+                      "componentId": "select_reload",
+                      "actionType": "reload",
+                    }
+                  ],
+                  "debounce": {
+                    "wait": 200
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+            "name": "watchField",
+            "type": "input-text",
+            "label": "监听字段刷新",
+            "mode": "horizontal",
+            "placeholder": "输入内容刷新Select数据源",
+            "onEvent": {
+            "change": {
+              "actions": [
+                {
+                  "componentId": "select_reload",
+                  "actionType": "reload",
+                }
+              ],
+              "debounce": {
+                "wait": 250
+              }
+            }
+          }
+        },
+        {
+            "label": "Select",
+            "type": "select",
+            "name": "select",
+            "id": "select_reload",
+            "mode": "horizontal",
+            "source": "/api/mock2/form/getOptions?waitSeconds=3",
+            "multiple": true,
+            "clearable": true
+        }
+    ]
+}
+```

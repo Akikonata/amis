@@ -1,9 +1,9 @@
 import React from 'react';
-import {Renderer, RendererProps} from 'amis-core';
-import {SchemaNode, ActionObject} from 'amis-core';
-import {getScrollParent, autobind} from 'amis-core';
-import {findDOMNode} from 'react-dom';
-import {resizeSensor} from 'amis-core';
+import {
+  RENDERER_TRANSMISSION_OMIT_PROPS,
+  Renderer,
+  RendererProps
+} from 'amis-core';
 import {
   BaseSchema,
   SchemaClassName,
@@ -12,10 +12,11 @@ import {
 } from '../Schema';
 import {ActionSchema} from './Action';
 import {FormHorizontal} from 'amis-core';
+import omit from 'lodash/omit';
 
 /**
  * Panel渲染器。
- * 文档：https://baidu.gitee.io/amis/docs/components/panel
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/panel
  */
 export interface PanelSchema extends BaseSchema {
   /**
@@ -114,67 +115,6 @@ export default class Panel extends React.Component<PanelProps> {
     // bodyClassName: 'Panel-body'
   };
 
-  parentNode?: any;
-  unSensor: Function;
-  affixDom: React.RefObject<HTMLDivElement> = React.createRef();
-  footerDom: React.RefObject<HTMLDivElement> = React.createRef();
-  timer: ReturnType<typeof setTimeout>;
-
-  componentDidMount() {
-    const dom = findDOMNode(this) as HTMLElement;
-    let parent: HTMLElement | Window | null = dom ? getScrollParent(dom) : null;
-    if (!parent || parent === document.body) {
-      parent = window;
-    }
-    this.parentNode = parent;
-    parent.addEventListener('scroll', this.affixDetect);
-    this.unSensor = resizeSensor(dom as HTMLElement, this.affixDetect);
-    this.affixDetect();
-  }
-
-  componentWillUnmount() {
-    const parent = this.parentNode;
-    parent && parent.removeEventListener('scroll', this.affixDetect);
-    this.unSensor && this.unSensor();
-    clearTimeout(this.timer);
-  }
-
-  @autobind
-  affixDetect() {
-    if (
-      !this.props.affixFooter ||
-      !this.affixDom.current ||
-      !this.footerDom.current
-    ) {
-      return;
-    }
-
-    const affixDom = this.affixDom.current;
-    const footerDom = this.footerDom.current;
-    const offsetBottom =
-      this.props.affixOffsetBottom ?? this.props.env.affixOffsetBottom ?? 0;
-    let affixed = false;
-
-    if (footerDom.offsetWidth) {
-      affixDom.style.cssText = `bottom: ${offsetBottom}px;width: ${footerDom.offsetWidth}px`;
-    } else {
-      this.timer = setTimeout(this.affixDetect, 250);
-      return;
-    }
-
-    if (this.props.affixFooter === 'always') {
-      affixed = true;
-      footerDom.classList.add('invisible2');
-    } else {
-      const clip = footerDom.getBoundingClientRect();
-      const clientHeight = window.innerHeight;
-      // affixed = clip.top + clip.height / 2 > clientHeight;
-      affixed = clip.bottom > clientHeight - offsetBottom;
-    }
-
-    affixed ? affixDom.classList.add('in') : affixDom.classList.remove('in');
-  }
-
   renderBody(): JSX.Element | null {
     const {
       type,
@@ -198,16 +138,12 @@ export default class Panel extends React.Component<PanelProps> {
       subFormMode,
       subFormHorizontal,
       id,
-      // 不应该将 label、renderLabel 传递下去，否则内部的表单项组件会受到影响
-      label,
-      renderLabel,
-      inputOnly,
       ...rest
     } = this.props;
 
     const subProps = {
       data,
-      ...rest,
+      ...omit(rest, RENDERER_TRANSMISSION_OMIT_PROPS),
       formMode: subFormMode || formMode,
       formHorizontal: subFormHorizontal || formHorizontal
     };
@@ -286,8 +222,11 @@ export default class Panel extends React.Component<PanelProps> {
 
     let footerDom = footerDoms.length ? (
       <div
-        className={cx('Panel-footerWrap', footerWrapClassName)}
-        ref={this.footerDom}
+        className={cx(
+          'Panel-footerWrap',
+          footerWrapClassName,
+          affixFooter ? 'Panel-fixedBottom' : ''
+        )}
       >
         {footerDoms}
       </div>
@@ -312,18 +251,6 @@ export default class Panel extends React.Component<PanelProps> {
         </div>
 
         {footerDom}
-
-        {affixFooter && footerDoms.length ? (
-          <div
-            ref={this.affixDom}
-            className={cx(
-              'Panel-fixedBottom Panel-footerWrap',
-              footerWrapClassName
-            )}
-          >
-            {footerDoms}
-          </div>
-        ) : null}
       </div>
     );
   }

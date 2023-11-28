@@ -94,7 +94,7 @@ test('Renderer:listSelect with multiple & clearable', async () => {
   });
 
   expect(container).toMatchSnapshot();
-});
+}, 10000);
 
 test('Renderer:listSelect with image option & listClassName', async () => {
   const {container, getByText} = render(
@@ -135,4 +135,78 @@ test('Renderer:listSelect with image option & listClassName', async () => {
   expect(container.querySelector('.cxd-ListControl-items')).toHaveClass(
     'items-wrapper'
   );
+});
+
+test('Renderer:listSelect with custom list style', async () => {
+  const {container, getByText} = render(
+    amisRender({
+      type: 'form',
+      body: {
+        type: 'list-select',
+        name: 'select',
+        label: '单选',
+        listClassName: 'items-wrapper',
+        value: 'b',
+        options: [
+          {
+            label: 'OptionA',
+            value: 'a',
+            image:
+              'https://ss0.bdstatic.com/70cFvHSh_Q1YnxGkpoWK1HF6hhy/it/u=3893101144,2877209892&fm=23&gp=0.jpg'
+          },
+          {
+            label: 'OptionB',
+            value: 'b',
+            image:
+              'https://ss0.bdstatic.com/70cFvHSh_Q1YnxGkpoWK1HF6hhy/it/u=3893101144,2877209892&fm=23&gp=0.jpg'
+          }
+        ],
+        itemSchema: {
+          type: 'container',
+          className: 'item-default',
+          body: [
+            {
+              type: 'tpl',
+              tpl: '${label}',
+              inline: true,
+              wrapperComponent: ''
+            }
+          ],
+          style: {
+            position: 'static',
+            display: 'block'
+          },
+          themeCss: {
+            baseControlClassName: {
+              'background:default': '#e06d6d'
+            }
+          }
+        },
+        activeItemSchema: {
+          type: 'container',
+          className: 'item-active',
+          body: [
+            {
+              type: 'tpl',
+              tpl: '${label}',
+              inline: true,
+              wrapperComponent: ''
+            }
+          ],
+          style: {
+            position: 'static',
+            display: 'block'
+          },
+          themeCss: {
+            baseControlClassName: {
+              'background:default': '#38f9d4'
+            }
+          }
+        }
+      }
+    })
+  );
+
+  expect(container.querySelector('.item-default')).toBeInTheDocument();
+  expect(container.querySelector('.item-active')).toBeInTheDocument();
 });

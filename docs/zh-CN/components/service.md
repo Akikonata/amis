@@ -677,6 +677,45 @@ ws.on('connection', function connection(ws) {
 }
 ```
 
+## 隐藏错误信息
+
+> 2.8.1 及以上版本
+
+默认会将接口返回的错误信息展示在 Service 的顶部区域，可以通过设置`"showErrorMsg": false`隐藏错误提示。
+
+```schema: scope="body"
+{
+  "type": "service",
+  "api": "/api/mock2/page/initDataError",
+  "body": [
+    {
+      "type": "tpl",
+      "tpl": "展示错误信息"
+    },
+    {
+      "type": "icon",
+      "icon": "fa-solid fa-arrow-up"
+    }
+  ]
+}
+```
+
+设置`"showErrorMsg": false`隐藏错误提示，仅保留 toast 提示
+
+```schema: scope="body"
+{
+  "type": "service",
+  "api": "/api/mock2/page/initDataError",
+  "showErrorMsg": false,
+  "body": [
+    {
+      "type": "tpl",
+      "tpl": "不展示错误信息"
+    }
+  ]
+}
+```
+
 ## 属性表
 
 | 属性名                | 类型                                                                                            | 默认值         | 说明                                                                          | 版本                                                                                    |
@@ -696,18 +735,102 @@ ws.on('connection', function connection(ws) {
 | interval              | `number`                                                                                        |                | 轮询时间间隔，单位 ms(最低 1000)                                              |
 | silentPolling         | `boolean`                                                                                       | `false`        | 配置轮询时是否显示加载动画                                                    |
 | stopAutoRefreshWhen   | [表达式](../../docs/concepts/expression)                                                        |                | 配置停止轮询的条件                                                            |
+| showErrorMsg          | `boolean`                                                                                       | `true`         | 是否以 Alert 的形式显示 api 接口响应的错误信息，默认展示                      | `2.8.1`                                                                                 |
 
 ## 事件表
 
-当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`来获取事件产生的数据，详细请查看[事件动作](../../docs/concepts/event-action)。
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`或`${event.data.[事件参数名]}`来获取事件产生的数据，详细请查看[事件动作](../../docs/concepts/event-action)。
 
 > `[name]`为当前数据域中的字段名，例如：当前数据域为 {username: 'amis'}，则可以通过${username}获取对应的值。
 
-| 事件名称          | 事件参数                                                                                                                                                                               | 说明                                                |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| init              | -                                                                                                                                                                                      | 组件实例被创建并插入 DOM 中时触发。2.4.1 及以上版本 |
-| fetchInited       | `event.data` api 远程请求返回的初始化数据<br/>`[name]: any` 当前数据域中指定字段的值</br>`__response: {msg: string; error: boolean}`接口元数据, `msg`为消息体, `error`表示接口是否成功 | 远程初始化接口请求成功时触发                        |
-| fetchSchemaInited | `event.data` schemaApi 远程请求返回的 UI 内容<br/>`[name]: any` 当前数据域中指定字段的值`__response: {msg: string; error: boolean}`接口元数据, `msg`为消息体, `error`表示接口是否成功  | 远程 schemaApi UI 内容接口请求成功                  |
+| 事件名称          | 事件参数                                                                                                                                                                                   | 说明                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| init              | -                                                                                                                                                                                          | 组件实例被创建并插入 DOM 中时触发。2.4.1 及以上版本 |
+| fetchInited       | `responseData: any` 请求的响应数据</br>`responseStatus: number` 响应状态，0 表示成功</br>`responseMsg: string`响应消息, `error`表示接口是否成功<br/>`[name]: any` 当前数据域中指定字段的值 | api 接口请求完成时触发                              |
+| fetchSchemaInited | `responseData: any` 请求的响应数据</br>`responseStatus: number` 响应状态，0 表示成功</br>`responseMsg: string`响应消息, `error`表示接口是否成功<br/>`[name]: any` 当前数据域中指定字段的值 | schemaApi 接口请求完成时触发                        |
+
+### init
+
+开始初始化。
+
+```schema: scope="body"
+{
+  "type": "service",
+  "api": "/api/mock2/page/initData",
+  "body": {
+    "type": "panel",
+    "title": "$title",
+    "body": "现在是：${date}"
+  },
+  "onEvent": {
+    "init": {
+      "actions": [
+        {
+          "actionType": "toast",
+          "args": {
+            "msg": "init"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+### fetchInited
+
+api 接口请求完成。
+
+```schema: scope="body"
+{
+  "type": "service",
+  "api": "/api/mock2/page/initData",
+  "body": [
+    {
+      "type": "panel",
+      "title": "$title",
+      "body": "现在是：${date}"
+    }
+  ],
+  "onEvent": {
+    "fetchInited": {
+      "actions": [
+        {
+          "actionType": "toast",
+          "args": {
+            "msg": "title:${event.data.responseData.title}，date:${date}，status:${event.data.responseStatus}"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+### fetchSchemaInited
+
+schemaApi 接口请求完成。
+
+```schema: scope="body"
+[
+  {
+    "type": "service",
+    "schemaApi": "/api/mock2/service/schema?type=tabs",
+    "onEvent": {
+      "fetchSchemaInited": {
+        "actions": [
+          {
+            "actionType": "toast",
+            "args": {
+              "msg": "type:${event.data.responseData.type}，status:${event.data.responseStatus}"
+            }
+          }
+        ]
+      }
+    }
+  }
+]
+```
 
 ## 动作表
 
@@ -718,3 +841,248 @@ ws.on('connection', function connection(ws) {
 | reload   | -        | 重新加载，调用 `api`，刷新数据域数据              |
 | rebuild  | -        | 重新构建，调用 `schemaApi`，重新构建容器内 Schema |
 | setValue | -        | 更新数据域数据                                    |
+
+### reload
+
+#### 只做刷新
+
+重新发送`api`请求，刷新 Page 时，只配置`componentId`目标组件 ID 即可。
+
+```schema: scope="body"
+[
+  {
+    "type": "button",
+    "label": "刷新请求",
+    "onEvent": {
+      "click": {
+        "actions": [
+          {
+            "componentId": "service-reload",
+            "actionType": "reload"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "service",
+    "id": "service-reload",
+    "name": "service-reload",
+    "api": "/api/mock2/number/random",
+    "body": "现在是：${random}"
+  }
+]
+```
+
+#### 发送数据并刷新
+
+刷新 Service 组件时，如果配置了`data`，将发送`data`给目标组件，并将该数据合并到目标组件的数据域中（如果配置`"dataMergeMode": "override"`将覆盖目标组件的数据），然后重新请求数据。
+
+```schema: scope="body"
+[
+  {
+    "type": "button",
+    "label": "刷新请求",
+    "onEvent": {
+      "click": {
+        "actions": [
+          {
+            "componentId": "service-reload",
+            "actionType": "reload",
+            "data": {
+              "date": "${NOW()}"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "service",
+    "id": "service-reload",
+    "name": "service-reload",
+    "api": "/api/mock2/number/random",
+    "body": "现在是：${random}, 当前时间：${date}"
+  }
+]
+```
+
+### rebuild
+
+重新构建，基于 args 传参和 schemaApi 绑定变量，让 service 获取不同的 schema。
+
+```schema: scope="body"
+[
+  {
+    "type": "alert",
+    "body": "请选择一种构建方式生成组件",
+    "level": "info",
+    "showIcon": true,
+    "className": "mb-3",
+    "visibleOn": "this.schemaType == null"
+  },
+  {
+    "type": "button-group",
+    "tiled": true,
+    "className": "mb-3",
+    "buttons": [
+      {
+        "type": "action",
+        "label": "构建form",
+        "icon": "fa fa-hammer",
+        "onEvent": {
+          "click": {
+            "actions": [
+              {
+                "actionType": "rebuild",
+                "componentId": "service-rebuild",
+                "args": {
+                  "schemaType": "form"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "action",
+        "label": "构建tabs",
+        "icon": "fa fa-hammer",
+        "onEvent": {
+          "click": {
+            "actions": [
+              {
+                "actionType": "rebuild",
+                "componentId": "service-rebuild",
+                "args": {
+                  "schemaType": "tabs"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "action",
+        "label": "构建crud",
+        "icon": "fa fa-hammer",
+        "onEvent": {
+          "click": {
+            "actions": [
+              {
+                "actionType": "rebuild",
+                "componentId": "service-rebuild",
+                "args": {
+                  "schemaType": "crud"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "type": "service",
+    "id": "service-rebuild",
+    "name": "service-rebuild",
+    "schemaApi": {
+      "url": "/api/mock2/service/schema?type=${schemaType}",
+      "method": "post",
+      "sendOn": "this.schemaType != null"
+    }
+  }
+]
+```
+
+### setValue
+
+通过`setValue`更新指定 Service 的数据。
+
+#### 合并数据
+
+默认`setValue`会将新数据与目标组件数据进行合并。
+
+```schema: scope="body"
+[
+    {
+      "type": "button",
+      "label": "更新数据",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "actionType": "setValue",
+              "componentId": "service-setvalue",
+              "args": {
+                "value": {
+                  "name": "aisuda",
+                  "email": "aisuda@baidu.com"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "service",
+      "id": "service-setvalue",
+      "name": "service-setvalue",
+      "data": {
+        "name": "amis",
+        "email": "amis@baidu.com"
+      },
+      "body": [
+        {
+          "type": "tpl",
+          "tpl": "名字：${name|default:'-'}，邮箱：${email|default:'-'}"
+        }
+      ]
+    }
+]
+```
+
+#### 覆盖数据
+
+可以通过`"dataMergeMode": "override"`来覆盖目标组件数据。
+
+```schema: scope="body"
+[
+    {
+      "type": "button",
+      "label": "更新数据",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "actionType": "setValue",
+              "componentId": "service-setvalue",
+              "args": {
+                "value": {
+                  "name": "aisuda"
+                }
+              },
+              "dataMergeMode": "override"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "service",
+      "id": "service-setvalue",
+      "name": "service-setvalue",
+      "data": {
+        "name": "amis",
+        "email": "amis@baidu.com"
+      },
+      "body": [
+        {
+          "type": "tpl",
+          "tpl": "名字：${name|default:'-'}，邮箱：${email|default:'-'}"
+        }
+      ]
+    }
+]
+```

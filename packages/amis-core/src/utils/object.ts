@@ -30,6 +30,49 @@ export function createObject(
   return obj;
 }
 
+export function extractObjectChain(value: any) {
+  const result: Array<object> = value ? [value] : [];
+  while (value?.__super) {
+    result.unshift(value.__super);
+    value = value.__super;
+  }
+  return result;
+}
+
+export function createObjectFromChain(chain: Array<object>) {
+  return chain
+    .filter(item => item)
+    .reduce((proto, value) => {
+      proto = proto || Object.prototype;
+      if (Object.isFrozen(proto)) {
+        proto = cloneObject(proto);
+      }
+
+      return Object.assign(
+        Object.create(proto, {
+          __super: {
+            value: proto,
+            writable: false,
+            enumerable: false
+          }
+        }),
+        value
+      );
+    });
+}
+
+/**
+ * 向最近一层插入新链
+ * @param obj
+ * @param value
+ * @returns
+ */
+export function injectObjectChain(obj: any, value: any) {
+  const chain = extractObjectChain(obj);
+  chain.splice(chain.length - 1, 0, value);
+  return createObjectFromChain(chain);
+}
+
 export function cloneObject(target: any, persistOwnProps: boolean = true) {
   const obj =
     target && target.__super
@@ -84,8 +127,13 @@ export function setVariable(
 
   const parts = convertKeyToPath !== false ? keyToPath(key) : [key];
   const last = parts.pop() as string;
+  const stack: Array<{
+    host: Record<string, any>;
+    key: string;
+  }> = [];
 
   while (parts.length) {
+    let host = data;
     let key = parts.shift() as string;
     if (isPlainObject(data[key])) {
       data = data[key] = {
@@ -100,9 +148,25 @@ export function setVariable(
       data[key] = {};
       data = data[key];
     } else {
+      // 如果是数字，那么就是数组
+      if (/^\d+$/.test(key) && stack.length) {
+        const prev = stack[stack.length - 1];
+        if (
+          !Array.isArray(prev.host[prev.key]) &&
+          !Object.keys(prev.host[prev.key]).length
+        ) {
+          host = data = prev.host[prev.key] = [];
+        }
+      }
+
       data[key] = {};
       data = data[key];
     }
+
+    stack.push({
+      host,
+      key
+    });
   }
 
   data[last] = value;

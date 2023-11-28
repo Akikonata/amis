@@ -16,7 +16,7 @@ export interface InputBoxProps
   hasError?: boolean;
   placeholder?: string;
   prefix?: JSX.Element;
-  children?: JSX.Element;
+  children?: React.ReactNode | Array<React.ReactNode>;
   borderMode?: 'full' | 'half' | 'none';
 }
 
@@ -83,6 +83,7 @@ export class InputBox extends React.Component<InputBoxProps, InputBoxState> {
       children,
       borderMode,
       onClick,
+      mobileUI,
       ...rest
     } = this.props;
     const isFocused = this.state.isFocused;
@@ -90,6 +91,7 @@ export class InputBox extends React.Component<InputBoxProps, InputBoxState> {
     return (
       <div
         className={cx('InputBox', className, {
+          'is-mobile': mobileUI,
           'is-focused': isFocused,
           'is-disabled': disabled,
           'is-error': hasError,
@@ -115,7 +117,7 @@ export class InputBox extends React.Component<InputBoxProps, InputBoxState> {
 
         {clearable && !disabled && value ? (
           <a onClick={this.clearValue} className={cx('InputBox-clear')}>
-            <Icon icon="close" className="icon" />
+            <Icon icon="input-clear" className="icon" />
           </a>
         ) : null}
       </div>

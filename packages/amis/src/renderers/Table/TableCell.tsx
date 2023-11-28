@@ -11,11 +11,12 @@ import {ColorScale} from 'amis-core';
 import {isPureVariable, resolveVariableAndFilter} from 'amis-core';
 
 export interface TableCellProps extends RendererProps {
-  wrapperComponent?: React.ReactType;
-  column: object;
+  wrapperComponent?: React.ElementType;
+  column: any;
+  contentsOnly?: boolean;
 }
 
-export class TableCell extends React.Component<RendererProps> {
+export class TableCell extends React.Component<TableCellProps> {
   static defaultProps = {
     wrapperComponent: 'td'
   };
@@ -27,8 +28,11 @@ export class TableCell extends React.Component<RendererProps> {
     'body',
     'tpl',
     'rowSpan',
-    'remark'
+    'remark',
+    'contentsOnly'
   ];
+
+  readonly propsNeedRemove: string[] = [];
 
   render() {
     let {
@@ -38,6 +42,7 @@ export class TableCell extends React.Component<RendererProps> {
       render,
       style = {},
       wrapperComponent: Component,
+      contentsOnly,
       column,
       value,
       data,
@@ -52,8 +57,8 @@ export class TableCell extends React.Component<RendererProps> {
       body: _body,
       tpl,
       remark,
-      prefix,
-      affix,
+      cellPrefix,
+      cellAffix,
       isHead,
       colIndex,
       row,
@@ -61,12 +66,20 @@ export class TableCell extends React.Component<RendererProps> {
       itemBadge,
       ...rest
     } = this.props;
+
+    if (isHead) {
+      Component = 'th';
+    } else {
+      Component = Component || 'td';
+    }
+    const isTableCell = Component === 'td' || Component === 'th';
+
     const schema = {
       ...column,
+      style: column.innerStyle, // column的innerStyle配置 作为内部组件的style 覆盖column的style
       className: innerClassName,
       type: (column && column.type) || 'plain'
     };
-    const canAccessSuperData = schema?.canAccessSuperData !== false;
 
     // 如果本来就是 type 为 button，不要删除，其他情况下都应该删除。
     if (schema.type !== 'button' && schema.type !== 'dropdown-button') {
@@ -76,32 +89,21 @@ export class TableCell extends React.Component<RendererProps> {
     let body = children
       ? children
       : render('field', schema, {
-          ...omit(rest, Object.keys(schema)),
+          ...omit(rest, Object.keys(schema), this.propsNeedRemove),
           // inputOnly 属性不能传递给子组件，在 SchemaRenderer.renderChild 中处理掉了
           inputOnly: true,
-          /** value没有返回值时设置默认值，避免错误获取到父级数据域的值 */
-          value: canAccessSuperData ? value : value ?? '',
+          value: value,
           data
         });
 
-    if (width) {
+    if (isTableCell) {
+      // table Cell 会用 colGroup 来设置宽度，这里不需要再设置
+      style.width && (style = omit(style, ['width']));
+    } else if (width) {
       style = {
         ...style,
         width: (style && style.width) || width
       };
-
-      if (!/%$/.test(String(style.width))) {
-        body = (
-          <div style={{width: style.width}}>
-            {prefix}
-            {body}
-            {affix}
-          </div>
-        );
-        prefix = null;
-        affix = null;
-        // delete style.width;
-      }
     }
 
     if (align) {
@@ -144,12 +146,8 @@ export class TableCell extends React.Component<RendererProps> {
       style.background = color;
     }
 
-    if (!Component) {
+    if (contentsOnly) {
       return body as JSX.Element;
-    }
-
-    if (isHead) {
-      Component = 'th';
     }
 
     return (
@@ -173,9 +171,9 @@ export class TableCell extends React.Component<RendererProps> {
             data={row.data}
           />
         ) : null}
-        {prefix}
+        {cellPrefix}
         {body}
-        {affix}
+        {cellAffix}
       </Component>
     );
   }

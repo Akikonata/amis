@@ -5,18 +5,13 @@
 
 import React from 'react';
 
-import {
-  themeable,
-  ThemeProps,
-  LocaleProps,
-  localeable,
-  ClassNamesFn
-} from 'amis-core';
+import {ThemeProps, ClassNamesFn} from 'amis-core';
+
 import {ColumnProps} from './index';
 
 const zIndex = 1;
 
-export interface Props extends ThemeProps, LocaleProps {
+export interface Props extends ThemeProps {
   fixed?: string | boolean; // left | right
   rowSpan?: number | any;
   colSpan?: number | any;
@@ -27,12 +22,13 @@ export interface Props extends ThemeProps, LocaleProps {
   style?: Object;
   column?: ColumnProps;
   wrapperComponent: any;
-  groupId?: string; // 表头分组随机生成的id
   depth?: number; // 表头分组
+  col?: string;
+  index?: number;
   classnames: ClassNamesFn;
 }
 
-export class BodyCell extends React.Component<Props> {
+export default class BodyCell extends React.PureComponent<Props> {
   static defaultProps = {
     fixed: '',
     wrapperComponent: 'td',
@@ -45,20 +41,18 @@ export class BodyCell extends React.Component<Props> {
       fixed,
       rowSpan,
       colSpan,
-      key,
       children,
       className,
       column,
       style,
-      groupId,
       depth,
+      col,
       wrapperComponent: Component,
       classnames: cx
     } = this.props;
 
     return (
       <Component
-        key={key || null}
         rowSpan={rowSpan && rowSpan > 1 ? rowSpan : null}
         colSpan={colSpan && colSpan > 1 ? colSpan : null}
         className={cx('Table-cell', className, {
@@ -66,13 +60,11 @@ export class BodyCell extends React.Component<Props> {
           [`text-${column?.align}`]: column?.align
         })}
         style={fixed ? {position: 'sticky', zIndex, ...style} : {...style}}
-        data-group-id={groupId || null}
         data-depth={depth || null}
+        data-col={col}
       >
         {children}
       </Component>
     );
   }
 }
-
-export default themeable(localeable(BodyCell));

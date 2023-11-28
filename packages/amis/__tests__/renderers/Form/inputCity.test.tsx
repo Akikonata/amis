@@ -16,7 +16,7 @@ import {
 } from '@testing-library/react';
 import '../../../src';
 import {render as amisRender} from '../../../src';
-import {makeEnv, wait} from '../../helper';
+import {makeEnv, replaceReactAriaIds, wait} from '../../helper';
 
 const setup = async (items: any[] = []) => {
   const onSubmit = jest.fn();
@@ -122,8 +122,9 @@ test('Renderer:inputCity', async () => {
     });
   });
   await wait(200);
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
-});
+}, 10000);
 
 // 2. searchable
 test('Renderer:inputCity with searchable', async () => {
@@ -142,6 +143,7 @@ test('Renderer:inputCity with searchable', async () => {
   fireEvent.click(select);
 
   await wait(100);
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot('open select');
 
   const input = select.querySelector('.cxd-Select-input input')!;

@@ -1,22 +1,20 @@
 import {
   FieldTypes,
-  OperatorType,
   ConditionBuilderFuncs,
   ConditionBuilderFields,
   ConditionBuilderType
 } from './types';
+import type {OperatorType} from 'amis-core';
 
 export interface BaseFieldConfig {
   operations: Array<OperatorType>;
 }
 
 export interface ConditionBuilderConfig {
-  valueTypes?: Array<'value' | 'field' | 'func' | 'formula'>;
+  valueTypes?: Array<'value' | 'field' | 'func'>;
   fields?: ConditionBuilderFields;
   funcs?: ConditionBuilderFuncs;
   maxLevel?: number; // 还没实现
-
-  // todo 起码需要支持 formula 组件可以自定义。
 
   // todo 很多还不能配置。
   types: {
@@ -63,6 +61,7 @@ const defaultConfig: ConditionBuilderConfig = {
       ]
     },
     number: {
+      defaultOp: 'equal',
       operators: [
         'equal',
         'not_equal',
@@ -77,6 +76,7 @@ const defaultConfig: ConditionBuilderConfig = {
       ]
     },
     date: {
+      defaultOp: 'equal',
       operators: [
         'equal',
         'not_equal',
@@ -92,6 +92,7 @@ const defaultConfig: ConditionBuilderConfig = {
     },
 
     time: {
+      defaultOp: 'equal',
       operators: [
         'equal',
         'not_equal',
@@ -107,6 +108,7 @@ const defaultConfig: ConditionBuilderConfig = {
     },
 
     datetime: {
+      defaultOp: 'equal',
       operators: [
         'equal',
         'not_equal',
@@ -122,6 +124,7 @@ const defaultConfig: ConditionBuilderConfig = {
     },
 
     select: {
+      defaultOp: 'select_equals',
       operators: [
         'select_equals',
         'select_not_equals',
@@ -132,6 +135,7 @@ const defaultConfig: ConditionBuilderConfig = {
     },
 
     boolean: {
+      defaultOp: 'equal',
       operators: ['equal', 'not_equal']
     }
   }

@@ -1,8 +1,8 @@
 /**
  * 组件名称：InputDatetimeRange 日期时间范围
- * 
+ *
  * 备注：InputDatetimeRange 与 dateRange 等日期范围使用的是同一个组件，所以只测试不同的地方即可
- * 
+ *
  * 单测内容：
  1. 默认值
  2. timeFormat 控制可以选择秒
@@ -91,12 +91,12 @@ test('Renderer:datetimeRange with default', async () => {
 });
 
 // 2. timeFormat 控制可以选择秒
-test('Renderer:datetimeRange with timeFormat', async () => {
+test('Renderer:datetimeRange with displayFormat', async () => {
   const {container, start, end}: any = await setup([
     {
       type: 'input-datetime-range',
       name: 'select',
-      timeFormat: 'HH:mm:ss',
+      displayFormat: 'YYYY-MM-DD HH:mm:ss',
       label: '日期时间范围',
       value: '1668115260,1668722939'
     }
@@ -120,7 +120,6 @@ test('Renderer:datetimeRange with timeFormat', async () => {
     {
       type: 'input-datetime-range',
       name: 'select',
-      timeFormat: 'HH:mm:ss',
       inputFormat: 'YYYY-MM-DD HH:mm:ss',
       label: '日期时间范围',
       value: '1667404800,1669270456'
@@ -132,13 +131,13 @@ test('Renderer:datetimeRange with timeFormat', async () => {
 });
 
 // 4. 快捷键
-test('Renderer:datetimeRange with ranges', async () => {
+test('Renderer:datetimeRange with shortcuts', async () => {
   const {container, start, end, getByText}: any = await setup([
     {
       type: 'input-datetime-range',
       name: 'a',
       label: '日期时间范围',
-      ranges: ['1hoursago', '2hourslater']
+      shortcuts: ['1hoursago', '2hourslater']
     }
   ]);
 

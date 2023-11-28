@@ -1,19 +1,32 @@
 import React from 'react';
 import {Renderer, RendererProps} from 'amis-core';
 
-import JsonView, {InteractionProps} from 'react-json-view';
+import type {InteractionProps} from 'react-json-view';
 import {autobind, getPropValue, noop} from 'amis-core';
 import {BaseSchema} from '../Schema';
-import {resolveVariableAndFilter, isPureVariable} from 'amis-core';
+import {
+  resolveVariableAndFilter,
+  isPureVariable,
+  importLazyComponent
+} from 'amis-core';
+
+export const JsonView = React.lazy(() =>
+  import('react-json-view').then(importLazyComponent)
+);
 /**
  * JSON 数据展示控件。
- * 文档：https://baidu.gitee.io/amis/docs/components/json
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/json
  */
 export interface JsonSchema extends BaseSchema {
   /**
    * 指定为Json展示类型
    */
   type: 'json' | 'static-json';
+
+  /**
+   * 要展示的 JSON 数据
+   */
+  value?: Record<string, any> | any[];
 
   /**
    * 默认展开的级别
@@ -158,21 +171,23 @@ export class JSONField extends React.Component<JSONProps, object> {
         {typeof data === 'undefined' || data === null ? (
           placeholder
         ) : (
-          <JsonView
-            name={false}
-            src={data}
-            theme={(jsonThemeValue as any) ?? 'rjv-default'}
-            shouldCollapse={this.shouldExpandNode}
-            enableClipboard={enableClipboard}
-            displayDataTypes={displayDataTypes}
-            collapseStringsAfterLength={ellipsisThreshold}
-            iconStyle={iconStyle}
-            quotesOnKeys={quotesOnKeys}
-            sortKeys={sortKeys}
-            onEdit={name && mutable ? this.emitChange : false}
-            onDelete={name && mutable ? this.emitChange : false}
-            onAdd={name && mutable ? this.emitChange : false}
-          />
+          <React.Suspense fallback={<div>...</div>}>
+            <JsonView
+              name={false}
+              src={data}
+              theme={(jsonThemeValue as any) ?? 'rjv-default'}
+              shouldCollapse={this.shouldExpandNode}
+              enableClipboard={enableClipboard}
+              displayDataTypes={displayDataTypes}
+              collapseStringsAfterLength={ellipsisThreshold}
+              iconStyle={iconStyle}
+              quotesOnKeys={quotesOnKeys}
+              sortKeys={sortKeys}
+              onEdit={name && mutable ? this.emitChange : false}
+              onDelete={name && mutable ? this.emitChange : false}
+              onAdd={name && mutable ? this.emitChange : false}
+            />
+          </React.Suspense>
         )}
       </div>
     );

@@ -4,7 +4,10 @@ import {
   FormItem,
   FormControlProps,
   FormBaseControl,
-  resolveEventData
+  resolveEventData,
+  CustomStyle,
+  formatInputThemeCss,
+  setThemeClassName
 } from 'amis-core';
 import cx from 'classnames';
 import {NumberInput, Select} from 'amis-ui';
@@ -12,6 +15,8 @@ import {
   filter,
   autobind,
   createObject,
+  numberFormatter,
+  safeSub,
   normalizeOptions,
   Option,
   PlainObject,
@@ -22,7 +27,7 @@ import {supportStatic} from './StaticHoc';
 
 /**
  * 数字输入框
- * 文档：https://baidu.gitee.io/amis/docs/components/form/number
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/input-number
  */
 export interface NumberControlSchema extends FormBaseControlSchema {
   type: 'input-number';
@@ -48,17 +53,20 @@ export interface NumberControlSchema extends FormBaseControlSchema {
   precision?: number;
 
   /**
-   * 默认当然是
+   * 是否显示上下点击按钮
    */
   showSteps?: boolean;
+
   /**
    * 边框模式，全边框，还是半边框，或者没边框。
    */
   borderMode?: 'full' | 'half' | 'none';
+
   /**
    * 前缀
    */
   prefix?: string;
+
   /**
    * 后缀
    */
@@ -95,49 +103,61 @@ export interface NumberControlSchema extends FormBaseControlSchema {
   displayMode?: 'base' | 'enhance';
 }
 
-const numberFormatter = new Intl.NumberFormat();
-
 export interface NumberProps extends FormControlProps {
   placeholder?: string;
   max?: number | string;
   min?: number | string;
   step?: number;
+
   /**
    *  精度
    */
   precision?: number;
+
   /**
    * 边框模式，全边框，还是半边框，或者没边框。
    */
   borderMode?: 'full' | 'half' | 'none';
+
   /**
    * 前缀
    */
   prefix?: string;
+
   /**
    * 后缀
    */
   suffix?: string;
+
   /**
    * 是否千分分隔
    */
   kilobitSeparator?: boolean;
+
   /**
    * 只读
    */
   readOnly?: boolean;
+
   /**
    * 启用键盘行为，即通过上下方向键控制是否生效
    */
   keyboard?: boolean;
+
   /**
    * 输入框为基础输入框还是加强输入框
    */
   displayMode?: 'base' | 'enhance';
+
   /**
    * 是否是大数，如果是的话输入输出都将是字符串
    */
   big?: boolean;
+
+  /**
+   * 是否在清空内容时从数据域中删除该表单项对应的值
+   */
+  clearValueOnEmpty?: boolean;
 }
 
 interface NumberState {
@@ -156,7 +176,8 @@ export default class NumberControl extends React.Component<
   input?: HTMLInputElement;
   static defaultProps: Partial<NumberProps> = {
     step: 1,
-    resetValue: ''
+    resetValue: '',
+    clearValueOnEmpty: false
   };
 
   constructor(props: NumberProps) {
@@ -199,10 +220,19 @@ export default class NumberControl extends React.Component<
    */
   doAction(action: ActionObject, args: any) {
     const actionType = action?.actionType as string;
-    const {min, max, precision, step, resetValue, big, onChange} = this.props;
+    const {
+      min,
+      max,
+      precision,
+      step,
+      resetValue,
+      big,
+      onChange,
+      clearValueOnEmpty
+    } = this.props;
 
     if (actionType === 'clear') {
-      onChange?.('');
+      onChange?.(clearValueOnEmpty ? undefined : '');
     } else if (actionType === 'reset') {
       const finalPrecision = NumberInput.normalizePrecision(
         this.filterNum(precision),
@@ -214,10 +244,11 @@ export default class NumberControl extends React.Component<
         this.filterNum(max, big),
         finalPrecision,
         resetValue ?? '',
+        clearValueOnEmpty,
         big
       );
 
-      onChange?.(value);
+      onChange?.(clearValueOnEmpty && value === '' ? undefined : value);
     }
   }
 
@@ -260,7 +291,7 @@ export default class NumberControl extends React.Component<
     }
 
     if (inputValue !== null && unitOptions && this.state.unit) {
-      inputValue = inputValue + this.state.unit;
+      inputValue = inputValue + String(this.state.unit);
     }
     return inputValue === null ? resetValue ?? null : inputValue;
   }
@@ -270,23 +301,54 @@ export default class NumberControl extends React.Component<
   async dispatchEvent(eventName: string) {
     const {dispatchEvent, value} = this.props;
 
-    dispatchEvent(eventName, resolveEventData(this.props, {value}, 'value'));
+    dispatchEvent(eventName, resolveEventData(this.props, {value}));
   }
 
   async handleChange(inputValue: any) {
-    const {onChange, dispatchEvent} = this.props;
+    const {onChange, dispatchEvent, clearValueOnEmpty} = this.props;
     const value = this.getValue(inputValue);
+    const resultValue = clearValueOnEmpty && value === '' ? undefined : value;
     const rendererEvent = await dispatchEvent(
       'change',
-      resolveEventData(this.props, {value}, 'value')
+      resolveEventData(this.props, {value: resultValue})
     );
     if (rendererEvent?.prevented) {
       return;
     }
 
-    onChange(value);
+    onChange(resultValue);
+
+    setTimeout(() => {
+      this.changeCursorPos(+resultValue);
+    }, 0);
   }
 
+  // 取真实用户输入的值去改变光标的位置
+  @autobind
+  changeCursorPos(value: number) {
+    if (isNaN(value)) {
+      return;
+    }
+    const {kilobitSeparator, prefix} = this.props;
+    const integer = value > 0 ? Math.floor(value) : Math.ceil(value);
+    let pos = `${value}`.length;
+
+    if (prefix) {
+      pos += prefix.length;
+    }
+
+    if (kilobitSeparator) {
+      // 处理有千分符的情况 123,456,789
+      const ksLen = Math.floor((`${Math.abs(integer)}`.length - 1) / 3);
+      if (ksLen > 0) {
+        pos += ksLen;
+      }
+    }
+
+    if (this.input && (kilobitSeparator || prefix)) {
+      this.input.setSelectionRange?.(pos, pos);
+    }
+  }
   filterNum(value: number | string | undefined): number | undefined;
   filterNum(
     value: number | string | undefined,
@@ -340,27 +402,6 @@ export default class NumberControl extends React.Component<
     this.input.focus();
   }
 
-  renderStatic(displayValue = '-') {
-    let {value, kilobitSeparator, prefix, suffix} = this.props;
-    if (value == null) {
-      return displayValue;
-    }
-    const unit = this.state?.unit || '';
-    // 处理单位
-    let finalValue =
-      unit && value && typeof value === 'string'
-        ? value.replace(unit, '')
-        : value;
-
-    // 增加千分分隔
-    if (kilobitSeparator && finalValue) {
-      finalValue = numberFormatter.format(finalValue);
-    }
-    // 增加前后缀
-    finalValue = (prefix ? prefix : '') + finalValue + (suffix ? suffix : '');
-    return <>{finalValue + unit}</>;
-  }
-
   @supportStatic()
   render() {
     const {
@@ -384,18 +425,27 @@ export default class NumberControl extends React.Component<
       keyboard,
       displayMode,
       big,
-      resetValue
+      resetValue,
+      clearValueOnEmpty,
+      css,
+      themeCss,
+      inputControlClassName,
+      id,
+      env
     } = this.props;
+    const {unit} = this.state;
     const finalPrecision = this.filterNum(precision);
-    const unit = this.state?.unit;
     // 数据格式化
-    const formatter = (value: string | number) => {
-      // 增加千分分隔
-      if (kilobitSeparator && value) {
-        value = numberFormatter.format(value as number);
-      }
-      return (prefix ? prefix : '') + value + (suffix ? suffix : '');
-    };
+    const formatter =
+      kilobitSeparator || prefix || suffix
+        ? (value: string | number) => {
+            // 增加千分分隔
+            if (kilobitSeparator && value) {
+              value = numberFormatter(value, finalPrecision);
+            }
+            return `${prefix || ''}${value}${suffix || ''}`;
+          }
+        : undefined;
     // 将数字还原
     const parser = (value: string) => {
       if (value) {
@@ -422,6 +472,16 @@ export default class NumberControl extends React.Component<
         )}
       >
         <NumberInput
+          inputControlClassName={cx(
+            inputControlClassName,
+            setThemeClassName('inputControlClassName', id, themeCss || css),
+            setThemeClassName(
+              'inputControlClassName',
+              id,
+              themeCss || css,
+              'inner'
+            )
+          )}
           inputRef={this.inputRef}
           value={finalValue}
           resetValue={resetValue}
@@ -442,22 +502,87 @@ export default class NumberControl extends React.Component<
           keyboard={keyboard}
           displayMode={displayMode}
           big={big}
+          clearValueOnEmpty={clearValueOnEmpty}
         />
-        {unitOptions ? (
-          <Select
-            value={unit}
-            clearable={false}
-            options={this.state.unitOptions || []}
-            onChange={this.handleChangeUnit}
-          />
+        {Array.isArray(unitOptions) && unitOptions.length !== 0 ? (
+          unitOptions.length > 1 ? (
+            <Select
+              value={unit}
+              clearable={false}
+              options={this.state.unitOptions || []}
+              onChange={this.handleChangeUnit}
+              className={`${ns}NumberControl-unit`}
+              disabled={disabled}
+            />
+          ) : (
+            <div
+              className={cx(
+                `${ns}NumberControl-unit`,
+                `${ns}NumberControl-single-unit`,
+                `${ns}Select`
+              )}
+            >
+              {typeof unitOptions[0] === 'string'
+                ? unitOptions[0]
+                : unitOptions[0].label}
+            </div>
+          )
         ) : null}
+        <CustomStyle
+          config={{
+            themeCss: themeCss || css,
+            classNames: [
+              {
+                key: 'inputControlClassName',
+                weights: {
+                  active: {
+                    pre: `inputControlClassName-${id?.replace(
+                      'u:',
+                      ''
+                    )}.focused, `
+                  }
+                }
+              }
+            ],
+            id
+          }}
+          env={env}
+        />
+        <CustomStyle
+          config={{
+            themeCss: formatInputThemeCss(themeCss || css),
+            classNames: [
+              {
+                key: 'inputControlClassName',
+                weights: {
+                  default: {
+                    inner: 'input'
+                  },
+                  hover: {
+                    inner: 'input'
+                  },
+                  active: {
+                    pre: `inputControlClassName-${id?.replace(
+                      'u:',
+                      ''
+                    )}.focused, `,
+                    inner: 'input'
+                  }
+                }
+              }
+            ],
+            id: id && id + '-inner'
+          }}
+          env={env}
+        />
       </div>
     );
   }
 }
 
 @FormItem({
-  type: 'input-number'
+  type: 'input-number',
+  detectProps: ['unitOptions']
 })
 export class NumberControlRenderer extends NumberControl {
   static defaultProps: Partial<FormControlProps> = {

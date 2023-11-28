@@ -9,6 +9,25 @@
 
   &-selection {
     margin-bottom: var(--gap-base);
+
+    &-overflow {
+      &-wrapper {
+        display: flex;
+        flex-flow: column nowrap;
+        justify-content: flex-start;
+        align-items: flex-start;
+        overflow-x: hidden;
+        overflow-y: auto;
+        height: calc(
+          (var(--Picker-tag-height) + var(--Picker-tag-marginBottom) * 4) * 3
+        );
+        max-height: calc(
+          (var(--Picker-tag-height) + var(--Picker-tag-marginBottom)) * 5
+        );
+
+        @include tag-item(Crud);
+      }
+    }
   }
 
   &-selectionLabel {
@@ -17,45 +36,8 @@
     margin-top: var(--gap-xs);
   }
 
-  &-value {
-    cursor: pointer;
-    vertical-align: middle;
-    user-select: none;
-    line-height: calc(
-      var(--Form-input-lineHeight) * var(--Form-input-fontSize) - #{px2rem(2px)}
-    );
-    display: inline-block;
-    font-size: var(--Form-selectValue-fontSize);
-    color: var(--Form-selectValue-color);
-    background: var(--Form-selectValue-bg);
-    border: px2rem(1px) solid var(--Form-selectValue-borderColor);
-    border-radius: 2px;
-    margin-right: var(--gap-xs);
-    margin-top: var(--gap-xs);
-
-    &:hover {
-      background: var(--Form-selectValue-onHover-bg);
-    }
-
-    &.is-disabled {
-      pointer-events: none;
-      opacity: var(--Button-onDisabled-opacity);
-    }
-  }
-
-  &-valueIcon {
-    cursor: pointer;
-    border-right: px2rem(1px) solid var(--Form-selectValue-borderColor);
-    padding: 1px 5px;
-
-    &:hover {
-      background: var(--Form-selectValue-onHover-bg);
-    }
-  }
-
-  &-valueLabel {
-    padding: 0 var(--gap-xs);
-  }
+  /* tag 样式 */
+  @include tag-item(Crud);
 
   &-selectionClear {
     display: inline-block;
@@ -73,6 +55,10 @@
     vertical-align: middle;
     display: inline-flex;
     align-items: center;
+
+    &.is-mobile {
+      margin-top: 0;
+    }
 
     &--left:not(:first-child) {
       margin-left: var(--Crud-toolbar-gap);
@@ -120,6 +106,12 @@
 
   &-filter {
     margin-bottom: var(--gap-base);
+  }
+
+  &.is-mobile {
+    .#{$ns}Crud-toolbar {
+      flex: 1;
+    }
   }
 }
 

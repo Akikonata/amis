@@ -7,7 +7,6 @@ import {
 } from 'amis-core';
 import cx from 'classnames';
 import {filterDate, parseDuration} from 'amis-core';
-import 'moment/locale/zh-cn';
 import {DateRangePicker} from 'amis-ui';
 import {isMobile, createObject, autobind} from 'amis-core';
 import {ActionObject} from 'amis-core';
@@ -17,7 +16,7 @@ import {supportStatic} from './StaticHoc';
 
 /**
  * DateRange 日期范围控件
- * 文档：https://baidu.gitee.io/amis/docs/components/form/date-range
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/date-range
  */
 export interface DateRangeControlSchema extends FormBaseControlSchema {
   /**
@@ -37,9 +36,19 @@ export interface DateRangeControlSchema extends FormBaseControlSchema {
   format?: string;
 
   /**
+   * 用来提交的时间格式。更多格式类型请参考 moment.（新：同format）
+   */
+  valueFormat?: string;
+
+  /**
    * 默认 `YYYY-MM-DD` 用来配置显示的时间格式。
    */
   inputFormat?: string;
+
+  /**
+   * 用来配置显示的时间格式（新：同inputFormat）
+   */
+  displayFormat?: string;
 
   /**
    * 开启后将选中的选项 value 的值用连接符拼接起来，作为当前表单项的值。如： `value1,value2` 否则为 `[value1, value2]`
@@ -83,12 +92,20 @@ export interface DateRangeControlSchema extends FormBaseControlSchema {
 
   /**
    * 日期范围快捷键
+   * @deprecated 3.1.0及以后版本废弃，建议用 shortcuts 属性。
    */
   ranges?: string | Array<ShortCuts>;
+
+  /**
+   * 日期范围快捷键
+   */
+  shortcuts?: string | Array<ShortCuts>;
+
   /**
    * 日期范围开始时间-占位符
    */
   startPlaceholder?: string;
+
   /**
    * 日期范围结束时间-占位符
    */
@@ -98,6 +115,13 @@ export interface DateRangeControlSchema extends FormBaseControlSchema {
    * 是否启用游标动画，默认开启
    */
   animation?: boolean;
+
+  /**
+   * 日期数据处理函数，用来处理选择日期之后的的值
+   *
+   * (value: moment.Moment, config: {type: 'start' | 'end'; originValue: moment.Moment, timeFormat: string}, props: any, data: any, moment: moment) => moment.Moment;
+   */
+  transform?: string;
 }
 
 export interface DateRangeProps
@@ -108,6 +132,7 @@ export interface DateRangeProps
     > {
   delimiter: string;
   format: string;
+  valueFormat: string;
   joinValues: boolean;
 }
 
@@ -129,6 +154,7 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
       setPrinstineValue,
       delimiter,
       format,
+      valueFormat,
       data,
       value,
       joinValues,
@@ -143,16 +169,17 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
       setPrinstineValue(
         DateRangePicker.formatValue(
           {
-            startDate: filterDate(arr[0], data, format),
-            endDate: filterDate(arr[1], data, format)
+            startDate: filterDate(arr[0], data, valueFormat || format),
+            endDate: filterDate(arr[1], data, valueFormat || format)
           },
-          format,
+          valueFormat || format,
           joinValues,
           delimiter,
           utc
         )
       );
     }
+    // todo 支持值格式的自动纠正
   }
 
   componentDidUpdate(prevProps: DateRangeProps) {
@@ -163,9 +190,9 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
       setPrinstineValue,
       data,
       utc,
-      format
+      format,
+      valueFormat
     } = this.props;
-
     if (prevProps.defaultValue !== defaultValue) {
       let arr =
         typeof defaultValue === 'string'
@@ -176,10 +203,10 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
         arr
           ? DateRangePicker.formatValue(
               {
-                startDate: filterDate(arr[0], data, format),
-                endDate: filterDate(arr[1], data, format)
+                startDate: filterDate(arr[0], data, valueFormat || format),
+                endDate: filterDate(arr[1], data, valueFormat || format)
               },
-              format,
+              valueFormat || format,
               joinValues,
               delimiter,
               utc
@@ -202,7 +229,7 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
   dispatchEvent(eventName: string) {
     const {dispatchEvent, data, value} = this.props;
 
-    dispatchEvent(eventName, resolveEventData(this.props, {value}, 'value'));
+    dispatchEvent(eventName, resolveEventData(this.props, {value}));
   }
 
   // 动作
@@ -219,13 +246,34 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
     }
   }
 
+  setData(value: any) {
+    const {data, delimiter, valueFormat, format, joinValues, utc, onChange} =
+      this.props;
+
+    if (typeof value === 'string') {
+      let arr = typeof value === 'string' ? value.split(delimiter) : value;
+      value = DateRangePicker.formatValue(
+        {
+          startDate: filterDate(arr[0], data, valueFormat || format),
+          endDate: filterDate(arr[1], data, valueFormat || format)
+        },
+        valueFormat || format,
+        joinValues,
+        delimiter,
+        utc
+      );
+    }
+
+    onChange(value);
+  }
+
   // 值的变化
   @autobind
   async handleChange(nextValue: any) {
     const {dispatchEvent, data} = this.props;
     const dispatcher = dispatchEvent(
       'change',
-      resolveEventData(this.props, {value: nextValue}, 'value')
+      resolveEventData(this.props, {value: nextValue})
     );
     if (dispatcher?.prevented) {
       return;
@@ -247,11 +295,14 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
       maxDuration,
       data,
       format,
+      valueFormat,
+      inputFormat,
+      displayFormat,
       env,
-      useMobileUI,
+      mobileUI,
       ...rest
     } = this.props;
-    const mobileUI = useMobileUI && isMobile();
+
     const comptType = this.props?.type;
 
     return (
@@ -267,20 +318,29 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
       >
         <DateRangePicker
           {...rest}
-          useMobileUI={useMobileUI}
+          mobileUI={mobileUI}
           classPrefix={ns}
           popOverContainer={
-            mobileUI && env && env.getModalContainer
-              ? env.getModalContainer
-              : mobileUI
-              ? undefined
-              : rest.popOverContainer
+            mobileUI
+              ? env?.getModalContainer
+              : rest.popOverContainer || env.getModalContainer
           }
           onRef={this.getRef}
           data={data}
-          format={format}
-          minDate={minDate ? filterDate(minDate, data, format) : undefined}
-          maxDate={maxDate ? filterDate(maxDate, data, format) : undefined}
+          valueFormat={valueFormat || format}
+          displayFormat={displayFormat || inputFormat}
+          minDate={
+            minDate
+              ? filterDate(minDate, data, valueFormat || format)
+              : undefined
+          }
+          maxDate={
+            maxDate
+              ? filterDate(maxDate, data, valueFormat || format)
+              : undefined
+          }
+          minDateRaw={minDate}
+          maxDateRaw={maxDate}
           minDuration={minDuration ? parseDuration(minDuration) : undefined}
           maxDuration={maxDuration ? parseDuration(maxDuration) : undefined}
           onChange={this.handleChange}
@@ -297,8 +357,7 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
 })
 export class DateRangeControlRenderer extends DateRangeControl {
   static defaultProps = {
-    ...DateRangeControl.defaultProps,
-    timeFormat: ''
+    ...DateRangeControl.defaultProps
   };
 }
 
@@ -309,7 +368,6 @@ export class DateRangeControlRenderer extends DateRangeControl {
 export class DateTimeRangeControlRenderer extends DateRangeControl {
   static defaultProps = {
     ...DateRangeControl.defaultProps,
-    timeFormat: 'HH:mm',
     inputFormat: 'YYYY-MM-DD HH:mm'
   };
 }
@@ -322,9 +380,10 @@ export class TimeRangeControlRenderer extends DateRangeControl {
   static defaultProps = {
     ...DateRangeControl.defaultProps,
     format: 'HH:mm',
-    timeFormat: 'HH:mm',
     inputFormat: 'HH:mm',
     viewMode: 'time',
-    ranges: ''
+    /** shortcuts的兼容配置 */
+    ranges: '',
+    shortcuts: ''
   };
 }

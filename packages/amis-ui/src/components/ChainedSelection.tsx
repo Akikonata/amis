@@ -35,6 +35,7 @@ export class ChainedSelection extends BaseSelection<
   componentDidMount() {
     const defaultSelectedIndex = this.props.defaultSelectedIndex;
 
+    // todo 以后支持自动展开
     if (defaultSelectedIndex !== undefined) {
       this.setState({
         selected: [`${defaultSelectedIndex}`]
@@ -43,7 +44,7 @@ export class ChainedSelection extends BaseSelection<
   }
 
   selectOption(option: Option, depth: number, id: string) {
-    const {onDeferLoad} = this.props;
+    const {onDeferLoad, deferField = 'defer'} = this.props;
 
     const selected = this.state.selected.concat();
     selected.splice(depth, selected.length - depth);
@@ -53,7 +54,7 @@ export class ChainedSelection extends BaseSelection<
       {
         selected
       },
-      option.defer && onDeferLoad ? () => onDeferLoad(option) : undefined
+      option[deferField] && onDeferLoad ? () => onDeferLoad(option) : undefined
     );
   }
 
@@ -105,7 +106,8 @@ export class ChainedSelection extends BaseSelection<
             checked: !!~valueArray.indexOf(option),
             onChange: () => this.toggleOption(option),
             disabled: disabled || option.disabled,
-            labelField
+            labelField,
+            classnames: cx
           })}
         </div>
       </div>
@@ -127,11 +129,12 @@ export class ChainedSelection extends BaseSelection<
       itemRender,
       multiple,
       labelField,
+      deferField = 'defer',
       loadingConfig
     } = this.props;
     const valueArray = this.valueArray;
 
-    if (Array.isArray(option.children) || option.defer) {
+    if (Array.isArray(option.children) || option[deferField]) {
       return (
         <div
           style={styles}
@@ -152,11 +155,12 @@ export class ChainedSelection extends BaseSelection<
               checked: !!~this.state.selected.indexOf(id),
               onChange: () => this.selectOption(option, depth, id),
               disabled: disabled || option.disabled,
-              labelField
+              labelField,
+              classnames: cx
             })}
           </div>
 
-          {option.defer && option.loading ? (
+          {option[deferField] && option.loading ? (
             <Spinner loadingConfig={loadingConfig} size="sm" show />
           ) : null}
         </div>
@@ -164,6 +168,54 @@ export class ChainedSelection extends BaseSelection<
     }
 
     return this.renderItem(option, index, depth, id, styles);
+  }
+
+  renderCheckAll() {
+    const {
+      multiple,
+      checkAll,
+      checkAllLabel,
+      classnames: cx,
+      translate: __,
+      labelClassName,
+      itemClassName
+    } = this.props;
+
+    if (!multiple || !checkAll) {
+      return null;
+    }
+    const availableOptions = this.getAvailableOptions();
+
+    const valueArray = this.valueArray;
+
+    const checkedAll = availableOptions.every(
+      option => valueArray.indexOf(option) > -1
+    );
+    const checkedPartial = availableOptions.some(
+      option => valueArray.indexOf(option) > -1
+    );
+
+    return (
+      <div
+        className={cx(
+          'ChainedSelection-item',
+          'ChainedSelection-checkAll',
+          itemClassName
+        )}
+        onClick={this.toggleAll}
+      >
+        <Checkbox
+          checked={checkedPartial}
+          partial={checkedPartial && !checkedAll}
+          size="sm"
+          labelClassName={labelClassName}
+        />
+
+        <div className={cx('ChainedSelection-itemLabel')}>
+          <span>{__(checkAllLabel)}</span>
+        </div>
+      </div>
+    );
   }
 
   render() {
@@ -330,7 +382,10 @@ export class ChainedSelection extends BaseSelection<
     return (
       <div className={cx('ChainedSelection', className)}>
         {body && body.length ? (
-          body
+          <>
+            {this.renderCheckAll()}
+            {body}
+          </>
         ) : (
           <div className={cx('ChainedSelection-placeholder')}>
             {__(placeholder)}

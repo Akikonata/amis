@@ -5,11 +5,14 @@ import {
   ActionObject,
   Renderer,
   RendererProps,
-  loadScript
+  loadScript,
+  buildStyle,
+  CustomStyle,
+  setThemeClassName
 } from 'amis-core';
 import {ServiceStore, IServiceStore} from 'amis-core';
 
-import {filter, evalExpression} from 'amis-core';
+import {filter} from 'amis-core';
 import cx from 'classnames';
 import {LazyComponent} from 'amis-core';
 import {resizeSensor} from 'amis-core';
@@ -33,7 +36,7 @@ import {ActionSchema} from './Action';
 import {isAlive} from 'mobx-state-tree';
 import debounce from 'lodash/debounce';
 import pick from 'lodash/pick';
-import {ApiObject} from 'packages/amis-core/lib';
+import {ApiObject} from 'amis-core';
 
 const DEFAULT_EVENT_PARAMS = [
   'componentType',
@@ -50,7 +53,7 @@ const DEFAULT_EVENT_PARAMS = [
 
 /**
  * Chart 图表渲染器。
- * 文档：https://baidu.gitee.io/amis/docs/components/carousel
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/carousel
  */
 export interface ChartSchema extends BaseSchema {
   /**
@@ -93,12 +96,12 @@ export interface ChartSchema extends BaseSchema {
   /**
    * 宽度设置
    */
-  width?: number;
+  width?: number | string;
 
   /**
    * 高度设置
    */
-  height?: number;
+  height?: number | string;
 
   /**
    * 刷新时间
@@ -223,6 +226,7 @@ export class Chart extends React.Component<ChartProps> {
   timer: ReturnType<typeof setTimeout>;
   mounted: boolean;
   reloadCancel?: Function;
+  onChartMount?: ((chart: any, echarts: any) => void) | undefined;
 
   constructor(props: ChartProps) {
     super(props);
@@ -333,7 +337,7 @@ export class Chart extends React.Component<ChartProps> {
     } = this.props;
     let {mapURL, mapName} = this.props;
 
-    let onChartMount = this.props.onChartMount;
+    let onChartMount = this.props.onChartMount || this.onChartMount;
 
     if (ref) {
       Promise.all([
@@ -342,7 +346,9 @@ export class Chart extends React.Component<ChartProps> {
         // @ts-ignore 官方没提供 type
         import('echarts/extension/dataTool'),
         // @ts-ignore 官方没提供 type
-        import('echarts/extension/bmap/bmap')
+        import('echarts/extension/bmap/bmap'),
+        // @ts-ignore 官方没提供 type
+        import('echarts-wordcloud/dist/echarts-wordcloud')
       ]).then(async ([echarts, ecStat]) => {
         (window as any).echarts = echarts;
         (window as any).ecStat = ecStat?.default || ecStat;
@@ -378,13 +384,18 @@ export class Chart extends React.Component<ChartProps> {
         if (onChartWillMount) {
           await onChartWillMount(echarts);
         }
-        
-        if((ecStat as any).transform){
-          (echarts as any).registerTransform((ecStat as any).transform.regression);
-          (echarts as any).registerTransform((ecStat as any).transform.histogram);
-          (echarts as any).registerTransform((ecStat as any).transform.clustering);
+
+        if ((ecStat as any).transform) {
+          (echarts as any).registerTransform(
+            (ecStat as any).transform.regression
+          );
+          (echarts as any).registerTransform(
+            (ecStat as any).transform.histogram
+          );
+          (echarts as any).registerTransform(
+            (ecStat as any).transform.clustering
+          );
         }
-       
 
         if (env.loadChartExtends) {
           await env.loadChartExtends();
@@ -465,17 +476,19 @@ export class Chart extends React.Component<ChartProps> {
         isAlive(store) && store.markFetching(false);
 
         if (!result.ok) {
-          return env.notify(
-            'error',
-            (api as ApiObject)?.messages?.failed ??
-              (result.msg || __('fetchFailed')),
-            result.msgTimeout !== undefined
-              ? {
-                  closeButton: true,
-                  timeout: result.msgTimeout
-                }
-              : undefined
-          );
+          !(api as ApiObject)?.silent &&
+            env.notify(
+              'error',
+              (api as ApiObject)?.messages?.failed ??
+                (result.msg || __('fetchFailed')),
+              result.msgTimeout !== undefined
+                ? {
+                    closeButton: true,
+                    timeout: result.msgTimeout
+                  }
+                : undefined
+            );
+          return;
         }
         delete this.reloadCancel;
 
@@ -500,7 +513,7 @@ export class Chart extends React.Component<ChartProps> {
         }
 
         isAlive(store) && store.markFetching(false);
-        env.notify('error', reason);
+        !(api as ApiObject)?.silent && env.notify('error', reason);
         this.echarts?.hideLoading();
       });
   }
@@ -583,21 +596,48 @@ export class Chart extends React.Component<ChartProps> {
       width,
       height,
       classPrefix: ns,
-      unMountOnHidden
+      unMountOnHidden,
+      data,
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss,
+      baseControlClassName
     } = this.props;
     let style = this.props.style || {};
-
-    width && (style.width = width);
-    height && (style.height = height);
+    style.width = style.width || width || '100%';
+    style.height = style.height || height || '300px';
+    const styleVar = buildStyle(style, data);
 
     return (
-      <div className={cx(`${ns}Chart`, className)} style={style}>
+      <div
+        className={cx(
+          `${ns}Chart`,
+          className,
+          setThemeClassName('baseControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
+        style={styleVar}
+      >
         <LazyComponent
           unMountOnHidden={unMountOnHidden}
           placeholder="..." // 之前那个 spinner 会导致 sensor 失效
           component={() => (
             <div className={`${ns}Chart-content`} ref={this.refFn}></div>
           )}
+        />
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName'
+              }
+            ]
+          }}
+          env={env}
         />
       </div>
     );
@@ -628,7 +668,7 @@ export class ChartRenderer extends Chart {
     const {store} = this.props;
     store.updateData(values, undefined, replace);
     // 重新渲染
-    this.renderChart(this.props.config, values);
+    this.renderChart(this.props.config, store.data);
   }
 
   getData() {

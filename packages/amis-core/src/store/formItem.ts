@@ -7,30 +7,42 @@ import {
   Instance
 } from 'mobx-state-tree';
 import isEqualWith from 'lodash/isEqualWith';
+import uniqWith from 'lodash/uniqWith';
 import {FormStore, IFormStore} from './form';
 import {str2rules, validate as doValidate} from '../utils/validations';
 import {Api, Payload, fetchOptions, ApiObject} from '../types';
 import {ComboStore, IComboStore, IUniqueGroup} from './combo';
 import {evalExpression} from '../utils/tpl';
+import {resolveVariableAndFilter} from '../utils/tpl-builtin';
 import {buildApi, isEffectiveApi} from '../utils/api';
 import findIndex from 'lodash/findIndex';
 import {
+  isObject,
   isArrayChildrenModified,
   createObject,
   isObjectShallowModified,
   findTree,
   findTreeIndex,
   spliceTree,
-  filterTree
+  filterTree,
+  eachTree,
+  mapTree,
+  setVariable,
+  cloneObject
 } from '../utils/helper';
 import {flattenTree} from '../utils/helper';
 import find from 'lodash/find';
+import isEqual from 'lodash/isEqual';
 import isPlainObject from 'lodash/isPlainObject';
 import {SimpleMap} from '../utils/SimpleMap';
 import {StoreNode} from './node';
 import {getStoreById} from './manager';
 import {normalizeOptions} from '../utils/normalizeOptions';
-import {optionValueCompare} from '../utils/optionValueCompare';
+import {
+  getOptionValue,
+  getOptionValueBindField,
+  optionValueCompare
+} from '../utils/optionValueCompare';
 import {dataMapping} from '../utils/dataMapping';
 
 interface IOption {
@@ -48,9 +60,19 @@ const ErrorDetail = types.model('ErrorDetail', {
   rule: ''
 });
 
+// 用于缓存 getSelectedOptions 的计算结果
+// onChange 时很容易连续重复触发 getSelectedOptions （约4次）
+// 在大数据量时，可有效提高效率
+const getSelectedOptionsCache: any = {
+  value: null,
+  nodeValueArray: null,
+  res: null
+};
+
 export const FormItemStore = StoreNode.named('FormItemStore')
   .props({
     isFocused: false,
+    isControlled: false, // 是否是受控表单项，通常是用在别的组件里面
     type: '',
     label: '',
     unique: false,
@@ -60,10 +82,12 @@ export const FormItemStore = StoreNode.named('FormItemStore')
     isValueSchemaExp: types.optional(types.boolean, false),
     tmpValue: types.frozen(),
     emitedValue: types.frozen(),
+    changeMotivation: 'input',
     rules: types.optional(types.frozen(), {}),
     messages: types.optional(types.frozen(), {}),
     errorData: types.optional(types.array(ErrorDetail), []),
     name: types.string,
+    extraName: '',
     itemId: '', // 因为 name 可能会重名，所以加个 id 进来，如果有需要用来定位具体某一个
     unsetValueOnInvisible: false,
     itemsRef: types.optional(types.array(types.string), []),
@@ -76,6 +100,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
     joinValues: true,
     extractValue: false,
     options: types.optional(types.frozen<Array<any>>(), []),
+    optionsRaw: types.optional(types.frozen<Array<any>>(), []),
     expressionsInOptions: false,
     selectFirst: false,
     autoFill: types.frozen(),
@@ -87,7 +112,22 @@ export const FormItemStore = StoreNode.named('FormItemStore')
     dialogOpen: false,
     dialogData: types.frozen(),
     resetValue: types.optional(types.frozen(), ''),
-    validateOnChange: false
+    validateOnChange: false,
+    /** 当前表单项所属的InputGroup父元素, 用于收集InputGroup的子元素 */
+    inputGroupControl: types.optional(types.frozen(), {}),
+    colIndex: types.frozen(),
+    rowIndex: types.frozen(),
+    /** Transfer组件分页模式 */
+    pagination: types.optional(types.frozen(), {
+      enable: false,
+      /** 当前页数 */
+      page: 1,
+      /** 每页显示条数 */
+      perPage: 10,
+      /** 总条数 */
+      total: 0
+    }),
+    accumulatedOptions: types.optional(types.frozen<Array<any>>(), [])
   })
   .views(self => {
     function getForm(): any {
@@ -149,62 +189,126 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         return getLastOptionValue();
       },
 
+      /** 数据源接口数据是否开启分页 */
+      get enableSourcePagination(): boolean {
+        return !!self.pagination.enable;
+      },
+
+      /** 数据源接口开启分页时当前页码 */
+      get sourcePageNum(): number {
+        return self.pagination.page ?? 1;
+      },
+
+      /** 数据源接口开启分页时每页显示条数 */
+      get sourcePerPageNum(): number {
+        return self.pagination.perPage ?? 10;
+      },
+
+      /** 数据源接口开启分页时数据总条数 */
+      get sourceTotalNum(): number {
+        return self.pagination.total ?? 0;
+      },
+
       getSelectedOptions: (
         value: any = self.tmpValue,
         nodeValueArray?: any[] | undefined
       ) => {
+        // 查看是否命中缓存
+        if (
+          value != null &&
+          nodeValueArray != null &&
+          isEqual(value, getSelectedOptionsCache.value) &&
+          isEqual(nodeValueArray, getSelectedOptionsCache.nodeValueArray) &&
+          getSelectedOptionsCache.res
+        ) {
+          return getSelectedOptionsCache.res;
+        }
+
         if (typeof value === 'undefined') {
           return [];
         }
+
+        const filteredOptions = self.filteredOptions;
+        const {labelField, extractValue, multiple, delimiter} = self;
+        const valueField = self.valueField || 'value';
 
         const valueArray = nodeValueArray
           ? nodeValueArray
           : Array.isArray(value)
           ? value
-          : typeof value === 'string'
-          ? value.split(self.delimiter || ',')
+          : // 单选时不应该分割
+          typeof value === 'string' && multiple
+          ? // picker的value有可能value: "1, 2"，所以需要去掉一下空格
+            value.split(delimiter || ',').map((v: string) => v.trim())
           : [value];
+
         const selected = valueArray.map(item =>
-          item && item.hasOwnProperty(self.valueField || 'value')
-            ? item[self.valueField || 'value']
-            : item
+          item && item.hasOwnProperty(valueField) ? item[valueField] : item
         );
 
         const selectedOptions: Array<any> = [];
 
         selected.forEach((item, index) => {
           const matched = findTree(
-            self.filteredOptions,
-            optionValueCompare(item, self.valueField || 'value')
+            filteredOptions,
+            optionValueCompare(item, valueField),
+            {
+              resolve: getOptionValueBindField(valueField),
+              value: getOptionValue(item, valueField)
+            }
           );
 
           if (matched) {
             selectedOptions.push(matched);
-          } else {
-            let unMatched = (valueArray && valueArray[index]) || item;
-
-            if (
-              unMatched &&
-              (typeof unMatched === 'string' || typeof unMatched === 'number')
-            ) {
-              unMatched = {
-                [self.valueField || 'value']: item,
-                [self.labelField || 'label']: item,
-                __unmatched: true
-              };
-            } else if (unMatched && self.extractValue) {
-              unMatched = {
-                [self.valueField || 'value']: item,
-                [self.labelField || 'label']: 'UnKnown',
-                __unmatched: true
-              };
-            }
-
-            unMatched && selectedOptions.push(unMatched);
+            return;
           }
+
+          let unMatched = (valueArray && valueArray[index]) || item;
+
+          if (
+            unMatched &&
+            (typeof unMatched === 'string' || typeof unMatched === 'number')
+          ) {
+            unMatched = {
+              [valueField || 'value']: item,
+              [labelField || 'label']: item,
+              __unmatched: true
+            };
+          } else if (unMatched && extractValue) {
+            unMatched = {
+              [valueField || 'value']: item,
+              [labelField || 'label']: 'UnKnown',
+              __unmatched: true
+            };
+          }
+
+          unMatched && selectedOptions.push(unMatched);
         });
 
+        if (selectedOptions.length) {
+          getSelectedOptionsCache.value = value;
+          getSelectedOptionsCache.nodeValueArray = nodeValueArray;
+          getSelectedOptionsCache.res = selectedOptions;
+        }
+
         return selectedOptions;
+      },
+      splitExtraValue(value: any) {
+        const delimiter = self.delimiter || ',';
+        const values = Array.isArray(value)
+          ? value
+          : typeof value === 'string'
+          ? value.split(delimiter || ',').map((v: string) => v.trim())
+          : [];
+        return values;
+      },
+
+      getMergedData(data: any) {
+        const result = cloneObject(data);
+        setVariable(result, self.name, self.tmpValue);
+        setVariable(result, '__value', self.tmpValue);
+        setVariable(result, '__name', self.name);
+        return result;
       }
     };
   })
@@ -215,6 +319,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
     let loadAutoUpdateCancel: Function | null = null;
 
     function config({
+      extraName,
       required,
       unique,
       value,
@@ -236,8 +341,11 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       maxLength,
       minLength,
       validateOnChange,
-      label
+      label,
+      inputGroupControl,
+      pagination
     }: {
+      extraName?: string;
       required?: boolean;
       unique?: boolean;
       value?: any;
@@ -260,11 +368,22 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       maxLength?: number;
       validateOnChange?: boolean;
       label?: string;
+      inputGroupControl?: {
+        name: string;
+        path: string;
+        [propsName: string]: any;
+      };
+      pagination?: {
+        enable?: boolean;
+        page?: number;
+        perPage?: number;
+      };
     }) {
       if (typeof rules === 'string') {
         rules = str2rules(rules);
       }
 
+      typeof extraName !== 'undefined' && (self.extraName = extraName);
       typeof type !== 'undefined' && (self.type = type);
       typeof id !== 'undefined' && (self.itemId = id);
       typeof messages !== 'undefined' && (self.messages = messages);
@@ -289,28 +408,47 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         (self.validateOnChange = !!validateOnChange);
       typeof label === 'string' && (self.label = label);
       self.isValueSchemaExp = !!isValueSchemaExp;
+      isObject(inputGroupControl) &&
+        inputGroupControl?.name != null &&
+        (self.inputGroupControl = inputGroupControl);
 
-      rules = {
-        ...rules,
-        isRequired: self.required || rules?.isRequired
-      };
-
-      // todo 这个弄个配置由渲染器自己来决定
-      // 暂时先这样
-      if (~['input-text', 'textarea'].indexOf(self.type)) {
-        if (typeof minLength === 'number') {
-          rules.minLength = minLength;
-        }
-
-        if (typeof maxLength === 'number') {
-          rules.maxLength = maxLength;
-        }
+      if (pagination && isObject(pagination) && !!pagination.enable) {
+        self.pagination = {
+          enable: true,
+          page: pagination.page ? pagination.page || 1 : 1,
+          perPage: pagination.perPage ? pagination.perPage || 10 : 10,
+          total: 0
+        };
       }
 
-      if (isObjectShallowModified(rules, self.rules)) {
-        self.rules = rules;
-        clearError('builtin');
-        self.validated = false;
+      if (
+        typeof rules !== 'undefined' ||
+        typeof required !== 'undefined' ||
+        typeof minLength === 'number' ||
+        typeof maxLength === 'number'
+      ) {
+        rules = {
+          ...(rules ?? self.rules),
+          isRequired: self.required || rules?.isRequired
+        };
+
+        // todo 这个弄个配置由渲染器自己来决定
+        // 暂时先这样
+        if (~['input-text', 'textarea'].indexOf(self.type)) {
+          if (typeof minLength === 'number') {
+            (rules as any).minLength = minLength;
+          }
+
+          if (typeof maxLength === 'number') {
+            (rules as any).maxLength = maxLength;
+          }
+        }
+
+        if (isObjectShallowModified(rules, self.rules)) {
+          self.rules = rules;
+          clearError('builtin');
+          self.validated = false;
+        }
       }
     }
 
@@ -362,23 +500,28 @@ export const FormItemStore = StoreNode.named('FormItemStore')
           validateCancel = null;
         }
 
-        const json: Payload = yield getEnv(self).fetcher(
-          self.validateApi,
-          /** 如果配置validateApi，需要将用户最新输入同步到数据域内 */
-          createObject(data, {[self.name]: self.tmpValue}),
-          {
-            cancelExecutor: (executor: Function) => (validateCancel = executor)
-          }
-        );
-        validateCancel = null;
-
-        if (!json.ok && json.status === 422 && json.errors) {
-          addError(
-            String(
-              (self.validateApi as ApiObject)?.messages?.failed ??
-                (json.errors || json.msg || `表单项「${self.name}」校验失败`)
-            )
+        try {
+          const json: Payload = yield getEnv(self).fetcher(
+            self.validateApi,
+            /** 如果配置validateApi，需要将用户最新输入同步到数据域内 */
+            createObject(data, {[self.name]: self.tmpValue}),
+            {
+              cancelExecutor: (executor: Function) =>
+                (validateCancel = executor)
+            }
           );
+          validateCancel = null;
+
+          if (!json.ok && json.status === 422 && json.errors) {
+            addError(
+              String(
+                (self.validateApi as ApiObject)?.messages?.failed ??
+                  (json.errors || json.msg || `表单项「${self.name}」校验失败`)
+              )
+            );
+          }
+        } catch (err) {
+          addError(String(err));
         }
       }
 
@@ -467,6 +610,23 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       }
     }
 
+    function setPagination(params: {
+      page?: number;
+      perPage?: number;
+      total?: number;
+    }) {
+      const {page, perPage, total} = params || {};
+
+      if (self.enableSourcePagination) {
+        self.pagination = {
+          ...self.pagination,
+          ...(page != null && typeof page === 'number' ? {page} : {}),
+          ...(perPage != null && typeof perPage === 'number' ? {perPage} : {}),
+          ...(total != null && typeof total === 'number' ? {total} : {})
+        };
+      }
+    }
+
     function setOptions(
       options: Array<object>,
       onChange?: (value: any) => void,
@@ -478,6 +638,15 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       options = filterTree(options, item => item);
       const originOptions = self.options.concat();
       self.options = options;
+      /** 开启分页后当前选项内容需要累加 */
+      self.accumulatedOptions = self.enableSourcePagination
+        ? uniqWith(
+            [...originOptions, ...options],
+            (lhs, rhs) =>
+              lhs[self.valueField ?? 'value'] ===
+              rhs[self.valueField ?? 'value']
+          )
+        : options;
       syncOptions(originOptions, data);
       let selectedOptions;
 
@@ -486,7 +655,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         self.selectFirst &&
         self.filteredOptions.length &&
         (selectedOptions = self.getSelectedOptions(self.value)) &&
-        !selectedOptions.filter(item => !item.__unmatched).length
+        !selectedOptions.filter((item: any) => !item.__unmatched).length
       ) {
         const fistOption = getFirstAvaibleOption(self.filteredOptions);
         if (!fistOption) {
@@ -554,17 +723,23 @@ export const FormItemStore = StoreNode.named('FormItemStore')
                   (config && config.errorMessage)
               })
             );
-          getEnv(self).notify(
-            'error',
-            apiObject.messages?.failed ??
-              (self.errors.join('') || `${apiObject.url}：${json.msg}`),
-            json.msgTimeout !== undefined
-              ? {
-                  closeButton: true,
-                  timeout: json.msgTimeout
-                }
-              : undefined
-          );
+          let msg = json.msg;
+          // 如果没有 msg，就提示 status 信息
+          if (!msg) {
+            msg = `status: ${json.status}`;
+          }
+          !(api as any)?.silent &&
+            getEnv(self).notify(
+              'error',
+              apiObject.messages?.failed ??
+                (self.errors.join('') || `${apiObject.url}: ${msg}`),
+              json.msgTimeout !== undefined
+                ? {
+                    closeButton: true,
+                    timeout: json.msgTimeout
+                  }
+                : undefined
+            );
         } else {
           result = json;
         }
@@ -584,7 +759,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         }
 
         console.error(e);
-        env.notify('error', e.message);
+        !(api as any)?.silent && env.notify('error', e.message);
         return;
       }
     } as any);
@@ -610,9 +785,9 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       ) => void,
       setErrorFlag?: boolean
     ) {
-      let json = yield fetchOptions(api, data, config, setErrorFlag);
+      let json: Payload = yield fetchOptions(api, data, config, setErrorFlag);
       if (!json) {
-        return;
+        return null;
       }
 
       clearError();
@@ -627,11 +802,23 @@ export const FormItemStore = StoreNode.named('FormItemStore')
 
       options = normalizeOptions(options as any, undefined, self.valueField);
 
+      if (self.enableSourcePagination) {
+        self.pagination = {
+          ...self.pagination,
+          page: parseInt(json.data?.page, 10) || 1,
+          total: parseInt(json.data?.total ?? json.data?.count, 10) || 0
+        };
+      }
+
       if (config?.extendsOptions && self.selectedOptions.length > 0) {
         self.selectedOptions.forEach((item: any) => {
           const exited = findTree(
             options as any,
-            optionValueCompare(item, self.valueField || 'value')
+            optionValueCompare(item, self.valueField || 'value'),
+            {
+              resolve: getOptionValueBindField(self.valueField),
+              value: getOptionValue(item, self.valueField)
+            }
           );
 
           if (!exited) {
@@ -652,6 +839,41 @@ export const FormItemStore = StoreNode.named('FormItemStore')
 
       return json;
     });
+
+    /**
+     * 从数据域加载选项数据源，注意这里默认source变量解析后是全量的数据源
+     */
+    function loadOptionsFromDataScope(
+      source: string,
+      ctx: Record<string, any>,
+      onChange?: (value: any) => void
+    ) {
+      let options: any[] = resolveVariableAndFilter(source, ctx, '| raw');
+
+      if (!Array.isArray(options)) {
+        return [];
+      }
+
+      options = normalizeOptions(options, undefined, self.valueField);
+
+      if (self.enableSourcePagination) {
+        self.pagination = {
+          ...self.pagination,
+          ...(ctx?.page ? {page: ctx?.page} : {}),
+          ...(ctx?.perPage ? {perPage: ctx?.perPage} : {}),
+          total: options.length
+        };
+
+        options = options.slice(
+          (self.pagination.page - 1) * self.pagination.perPage,
+          self.pagination.page * self.pagination.perPage
+        );
+      }
+
+      setOptions(options, onChange, ctx);
+
+      return options;
+    }
 
     const loadAutoUpdateData: (
       api: Api,
@@ -686,6 +908,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       }
 
       !silent &&
+        !(api as any)?.silent &&
         getEnv(self).notify('info', self.__('FormItem.autoFillLoadFailed'));
 
       return;
@@ -792,7 +1015,12 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       if (Array.isArray(topOption.children)) {
         const children = topOption.children.concat();
         flattenTree(newLeftOptions).forEach(item => {
-          if (!findTree(topOption.children, node => node.ref === item.value)) {
+          if (
+            !findTree(topOption.children, node => node.ref === item.value, {
+              resolve: node => node.ref,
+              value: item.value
+            })
+          ) {
             children.push({ref: item.value, defer: true});
           }
         });
@@ -1026,37 +1254,40 @@ export const FormItemStore = StoreNode.named('FormItemStore')
     // @issue 强依赖form，需要改造暂且放过。
     function syncOptions(originOptions?: Array<any>, data?: Object) {
       if (!self.options.length && typeof self.value === 'undefined') {
-        self.selectedOptions = [];
-        self.filteredOptions = [];
+        isArrayChildrenModified(self.filteredOptions, []) &&
+          (self.filteredOptions = []);
+        isArrayChildrenModified(self.selectedOptions, []) &&
+          (self.selectedOptions = []);
         return;
       }
 
       const value = self.tmpValue;
+      const valueField = self.valueField || 'value';
+      const labelField = self.labelField || 'label';
 
       const selected = Array.isArray(value)
         ? value.map(item =>
-            item && item.hasOwnProperty(self.valueField || 'value')
-              ? item[self.valueField || 'value']
-              : item
+            item && item.hasOwnProperty(valueField) ? item[valueField] : item
           )
         : typeof value === 'string'
-        ? value.split(self.delimiter || ',')
+        ? value.split(self.delimiter || ',').map((v: string) => v.trim())
         : value === void 0
         ? []
         : [
-            value && value.hasOwnProperty(self.valueField || 'value')
-              ? value[self.valueField || 'value']
+            value && value.hasOwnProperty(valueField)
+              ? value[valueField]
               : value
           ];
 
-      if (value && value.hasOwnProperty(self.labelField || 'label')) {
+      if (value && value.hasOwnProperty(labelField)) {
         selected[0] = {
-          [self.labelField || 'label']: value[self.labelField || 'label'],
-          [self.valueField || 'value']: value[self.valueField || 'value']
+          [labelField]: value[labelField],
+          [valueField]: value[valueField]
         };
       }
 
       let expressionsInOptions = false;
+      const oldFilteredOptions = self.filteredOptions;
       let filteredOptions = self.options
         .filter((item: any) => {
           if (
@@ -1070,14 +1301,14 @@ export const FormItemStore = StoreNode.named('FormItemStore')
             ? evalExpression(item.visibleOn, data) !== false
             : item.hiddenOn
             ? evalExpression(item.hiddenOn, data) !== true
-            : item.visible !== false || item.hidden !== true;
+            : item.visible !== false && item.hidden !== true;
         })
         .map((item: any, index) => {
           const disabled = evalExpression(item.disabledOn, data);
           const newItem = item.disabledOn
-            ? self.filteredOptions.length > index &&
-              self.filteredOptions[index].disabled === disabled
-              ? self.filteredOptions[index]
+            ? oldFilteredOptions.length > index &&
+              oldFilteredOptions[index].disabled === disabled
+              ? oldFilteredOptions[index]
               : {
                   ...item,
                   disabled: disabled
@@ -1088,14 +1319,22 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         });
 
       self.expressionsInOptions = expressionsInOptions;
-      const flattened: Array<any> = flattenTree(filteredOptions);
+      const flattenedMap: Map<any, any> = new Map();
+      const flattened: Array<any> = [];
+      eachTree(filteredOptions, item => {
+        const value = getOptionValue(item, valueField);
+        value != null && flattenedMap.set(value, item);
+        value != null && flattened.push(item);
+      });
       const selectedOptions: Array<any> = [];
-
       selected.forEach((item, index) => {
-        let idx = findIndex(
-          flattened,
-          optionValueCompare(item, self.valueField || 'value')
-        );
+        const value = getOptionValue(item, valueField);
+        if (flattenedMap.get(value)) {
+          selectedOptions.push(flattenedMap.get(value));
+          return;
+        }
+
+        let idx = findIndex(flattened, optionValueCompare(item, valueField));
 
         if (~idx) {
           selectedOptions.push(flattened[idx]);
@@ -1107,26 +1346,22 @@ export const FormItemStore = StoreNode.named('FormItemStore')
             (typeof unMatched === 'string' || typeof unMatched === 'number')
           ) {
             unMatched = {
-              [self.valueField || 'value']: item,
-              [self.labelField || 'label']: item,
+              [valueField]: item,
+              [labelField]: item,
               __unmatched: true
             };
 
             const orgin: any =
               originOptions &&
-              find(
-                originOptions,
-                optionValueCompare(item, self.valueField || 'value')
-              );
+              find(originOptions, optionValueCompare(item, valueField));
 
             if (orgin) {
-              unMatched[self.labelField || 'label'] =
-                orgin[self.labelField || 'label'];
+              unMatched[labelField] = orgin[labelField];
             }
           } else if (unMatched && self.extractValue) {
             unMatched = {
-              [self.valueField || 'value']: item,
-              [self.labelField || 'label']: 'UnKnown',
+              [valueField]: item,
+              [labelField]: 'UnKnown',
               __unmatched: true
             };
           }
@@ -1151,12 +1386,19 @@ export const FormItemStore = StoreNode.named('FormItemStore')
             }
           });
 
-        if (filteredOptions.length) {
-          filteredOptions = filteredOptions.filter(
-            option => !~options.indexOf(option.value)
-          );
+        if (filteredOptions.length && options.length) {
+          filteredOptions = mapTree(filteredOptions, item => {
+            if (~options.indexOf(item.value)) {
+              return {
+                ...item,
+                disabled: true
+              };
+            }
+            return item;
+          });
         }
       }
+
       isArrayChildrenModified(self.selectedOptions, selectedOptions) &&
         (self.selectedOptions = selectedOptions);
       isArrayChildrenModified(self.filteredOptions, filteredOptions) &&
@@ -1181,7 +1423,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
 
       if (subStore && subStore.storeType === 'ComboStore') {
         const combo = subStore as IComboStore;
-        combo.forms.forEach(form => form.reset());
+        combo.forms.forEach(form => form.reset(undefined, false)); // 仅重置校验状态，不要重置数据
       }
 
       !keepErrors && clearError();
@@ -1214,8 +1456,21 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       }
     }
 
-    function changeTmpValue(value: any) {
+    function changeTmpValue(
+      value: any,
+      changeReason?:
+        | 'initialValue' // 初始值，读取与当前数据域，或者上层数据域
+        | 'formInited' // 表单初始化
+        | 'dataChanged' // 表单数据变化
+        | 'formulaChanged' // 公式运算结果变化
+        | 'controlled' // 受控
+        | 'input' // 用户交互改变
+        | 'defaultValue' // 默认值
+    ) {
       self.tmpValue = value;
+      if (changeReason) {
+        self.changeMotivation = changeReason;
+      }
     }
 
     function changeEmitedValue(value: any) {
@@ -1233,6 +1488,10 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       }
     }
 
+    function setIsControlled(value: any) {
+      self.isControlled = !!value;
+    }
+
     return {
       focus,
       blur,
@@ -1241,8 +1500,10 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       setError,
       addError,
       clearError,
+      setPagination,
       setOptions,
       loadOptions,
+      loadOptionsFromDataScope,
       deferLoadOptions,
       deferLoadLeftOptions,
       expandTreeOptions,
@@ -1258,7 +1519,8 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       changeEmitedValue,
       addSubFormItem,
       removeSubFormItem,
-      loadAutoUpdateData
+      loadAutoUpdateData,
+      setIsControlled
     };
   });
 

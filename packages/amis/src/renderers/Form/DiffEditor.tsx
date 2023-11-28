@@ -15,7 +15,7 @@ import type {ListenerAction} from 'amis-core';
 
 /**
  * Diff 编辑器
- * 文档：https://baidu.gitee.io/amis/docs/components/form/diff
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/diff
  */
 export interface DiffControlSchema extends FormBaseControlSchema {
   /**
@@ -143,7 +143,7 @@ export class DiffEditor extends React.Component<DiffEditorProps, any> {
 
     const rendererEvent = await dispatchEvent(
       'focus',
-      resolveEventData(this.props, {value}, 'value')
+      resolveEventData(this.props, {value})
     );
 
     if (rendererEvent?.prevented) {
@@ -162,7 +162,7 @@ export class DiffEditor extends React.Component<DiffEditorProps, any> {
 
     const rendererEvent = await dispatchEvent(
       'blur',
-      resolveEventData(this.props, {value}, 'value')
+      resolveEventData(this.props, {value})
     );
 
     if (rendererEvent?.prevented) {
@@ -199,7 +199,14 @@ export class DiffEditor extends React.Component<DiffEditorProps, any> {
       value !== prevProps.value &&
       !this.state.focused
     ) {
-      this.modifiedEditor.getModel().setValue(normalizeValue(value, language));
+      this.modifiedEditor.getModel().setValue(
+        isPureVariable(value as string)
+          ? normalizeValue(
+              resolveVariableAndFilter(value || '', data, '| raw', () => ''),
+              language
+            )
+          : normalizeValue(value, language)
+      );
     }
   }
 
@@ -259,7 +266,7 @@ export class DiffEditor extends React.Component<DiffEditorProps, any> {
 
     const rendererEvent = await dispatchEvent(
       'change',
-      resolveEventData(this.props, {value}, 'value')
+      resolveEventData(this.props, {value})
     );
 
     if (rendererEvent?.prevented) {

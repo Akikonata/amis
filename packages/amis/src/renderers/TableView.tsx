@@ -3,7 +3,13 @@
  */
 
 import React from 'react';
-import {Renderer, RendererProps, resolveMappingObject} from 'amis-core';
+import {
+  Renderer,
+  RendererProps,
+  resolveMappingObject,
+  CustomStyle,
+  setThemeClassName
+} from 'amis-core';
 import {BaseSchema, SchemaObject} from '../Schema';
 
 // 为了方便编辑器，目前考虑不区分 th 和 td，但因为可以控制展现，所以能实现一样的效果，同时后续这个组件还承担复杂布局的功能，不适合用 th
@@ -96,7 +102,7 @@ export type ColObject = {
 
 /**
  * 表格展现渲染器
- * 文档：https://baidu.gitee.io/amis/docs/components/table-view
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/table-view
  */
 export interface TableViewSchema extends BaseSchema {
   /**
@@ -261,16 +267,44 @@ export default class TableView extends React.Component<TableViewProps, object> {
   }
 
   render() {
-    const {width, trs, classnames: cx, className} = this.props;
+    const {
+      width,
+      trs = [],
+      classnames: cx,
+      className,
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss,
+      baseControlClassName
+    } = this.props;
 
     return (
       <table
-        className={cx('TableView', className)}
+        className={cx(
+          'TableView',
+          className,
+          setThemeClassName('baseControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
         style={{width: width, borderCollapse: 'collapse'}}
       >
         {this.renderCaption()}
         {this.renderCols()}
         <tbody>{this.renderTrs(trs)}</tbody>
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
       </table>
     );
   }

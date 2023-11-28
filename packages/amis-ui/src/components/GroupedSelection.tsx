@@ -48,7 +48,8 @@ export class GroupedSelection extends BaseSelection<BaseSelectionProps> {
               checked: false,
               onChange: () => undefined,
               disabled: disabled || option.disabled,
-              labelField
+              labelField,
+              classnames: cx
             })}
           </div>
 
@@ -92,7 +93,8 @@ export class GroupedSelection extends BaseSelection<BaseSelectionProps> {
               checked: false,
               onChange: () => undefined,
               disabled: disabled || option.disabled,
-              labelField
+              labelField,
+              classnames: cx
             })}
           </div>
         </div>
@@ -161,8 +163,53 @@ export class GroupedSelection extends BaseSelection<BaseSelectionProps> {
             checked: !!~valueArray.indexOf(option),
             onChange: () => this.toggleOption(option),
             disabled: disabled || option.disabled,
-            labelField
+            labelField,
+            classnames: cx
           })}
+        </div>
+      </div>
+    );
+  }
+
+  renderCheckAll() {
+    const {
+      multiple,
+      checkAll,
+      checkAllLabel,
+      classnames: cx,
+      translate: __,
+      labelClassName,
+      itemClassName
+    } = this.props;
+
+    if (!multiple || !checkAll) {
+      return null;
+    }
+    const availableOptions = this.getAvailableOptions();
+
+    const valueArray = this.valueArray;
+
+    const checkedAll = availableOptions.every(
+      option => valueArray.indexOf(option) > -1
+    );
+    const checkedPartial = availableOptions.some(
+      option => valueArray.indexOf(option) > -1
+    );
+
+    return (
+      <div
+        className={cx('GroupedSelection-item', itemClassName)}
+        onClick={this.toggleAll}
+      >
+        <Checkbox
+          checked={checkedPartial}
+          partial={checkedPartial && !checkedAll}
+          size="sm"
+          labelClassName={labelClassName}
+        />
+
+        <div className={cx('GroupedSelection-itemLabel')}>
+          {__(checkAllLabel)}
         </div>
       </div>
     );
@@ -206,6 +253,7 @@ export class GroupedSelection extends BaseSelection<BaseSelectionProps> {
                 height={height}
                 itemCount={flattendOptions.length}
                 itemSize={itemHeight}
+                prefix={this.renderCheckAll()}
                 renderItem={({
                   index,
                   style
@@ -227,7 +275,10 @@ export class GroupedSelection extends BaseSelection<BaseSelectionProps> {
             )}
           </AutoSizer>
         ) : (
-          options.map((option, key) => this.renderOption(option, key))
+          <>
+            {this.renderCheckAll()}
+            {options.map((option, key) => this.renderOption(option, key))}
+          </>
         );
     }
 

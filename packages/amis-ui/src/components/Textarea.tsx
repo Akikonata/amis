@@ -194,7 +194,7 @@ export class Textarea extends React.Component<TextAreaProps, TextAreaState> {
           {
             [`TextareaControl--border${ucFirst(borderMode)}`]: borderMode,
             'is-focused': this.state.focused,
-            'is-disabled': disabled
+            'is-disabled': disabled || readOnly
           },
           className
         )}
@@ -233,9 +233,13 @@ export class Textarea extends React.Component<TextAreaProps, TextAreaState> {
               'is-clearable': clearable && !disabled && value
             })}
           >
-            {`${counter}${
-              typeof maxLength === 'number' && maxLength ? `/${maxLength}` : ''
-            }`}
+            <span>{counter}</span>
+            {typeof maxLength === 'number' && maxLength ? (
+              <>
+                <i>/</i>
+                <span>{maxLength}</span>
+              </>
+            ) : null}
           </span>
         ) : null}
       </div>

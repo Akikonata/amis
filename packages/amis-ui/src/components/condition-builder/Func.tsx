@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   ConditionFieldFunc,
-  ExpressionFunc,
   ConditionBuilderField,
   ConditionBuilderFuncs
 } from './types';
@@ -21,6 +20,7 @@ import ResultBox from '../ResultBox';
 import {Icon} from '../icons';
 import Expression from './Expression';
 import {ConditionBuilderConfig} from './config';
+import type {ExpressionFunc} from 'amis-core';
 
 export interface ConditionFuncProps extends ThemeProps, LocaleProps {
   value: ExpressionFunc;
@@ -29,7 +29,7 @@ export interface ConditionFuncProps extends ThemeProps, LocaleProps {
   config: ConditionBuilderConfig;
   fields?: ConditionBuilderField[];
   funcs?: ConditionBuilderFuncs;
-  allowedTypes?: Array<'value' | 'field' | 'func' | 'formula'>;
+  allowedTypes?: Array<'value' | 'field' | 'func'>;
   fieldClassName?: string;
 }
 
@@ -127,7 +127,7 @@ export class ConditionFunc extends React.Component<ConditionFuncProps> {
                 disabled={disabled}
               >
                 <span className={cx('CBGroup-fieldCaret')}>
-                  <Icon icon="caret" className="icon" />
+                  <Icon icon="right-arrow-bold" className="icon" />
                 </span>
               </ResultBox>
             </div>

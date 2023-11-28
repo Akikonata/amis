@@ -1,4 +1,5 @@
 import {PageSchema} from './renderers/Page';
+import {FlexSchema} from './renderers/Flex';
 import {TplSchema} from './renderers/Tpl';
 import {RemarkSchema, SchemaRemark} from './renderers/Remark';
 import {ActionSchema} from './renderers/Action';
@@ -15,6 +16,7 @@ import {CollapseSchema} from './renderers/Collapse';
 import {CollapseGroupSchema} from './renderers/CollapseGroup';
 import {ColorSchema} from './renderers/Color';
 import {ContainerSchema} from './renderers/Container';
+import {SwitchContainerSchema} from './renderers/SwitchContainer';
 import {CRUDSchema} from './renderers/CRUD';
 import {CRUD2Schema} from './renderers/CRUD2';
 import {DateSchema} from './renderers/Date';
@@ -127,11 +129,12 @@ import {
   SchemaClassName,
   SchemaExpression
 } from 'amis-core';
-import type {FormSchemaBase} from 'amis-core/lib/renderers/Form';
+import type {FormSchemaBase} from 'amis-core';
 import {MultilineTextSchema} from './renderers/MultilineText';
 import {DateRangeSchema} from './renderers/DateRange';
 import {PasswordSchema} from './renderers/Password';
 import {WordsSchema} from './renderers/Words';
+import {RadioControlSchema} from './renderers/Form/Radio';
 
 // 每加个类型，这补充一下。
 export type SchemaType =
@@ -190,6 +193,7 @@ export type SchemaType =
   | 'mapping'
   | 'markdown'
   | 'nav'
+  | 'number'
   | 'page'
   | 'pagination'
   | 'pagination-wrapper'
@@ -235,6 +239,7 @@ export type SchemaType =
   | 'combo'
   | 'condition-builder'
   | 'container'
+  | 'switch-container'
   | 'input-date'
   | 'input-datetime'
   | 'input-time'
@@ -247,6 +252,7 @@ export type SchemaType =
   | 'input-excel'
   | 'input-formula'
   | 'diff-editor'
+  | 'office-viewer'
 
   // editor 系列
   | 'editor'
@@ -311,6 +317,7 @@ export type SchemaType =
   | 'input-number'
   | 'panel'
   | 'picker'
+  | 'radio'
   | 'radios'
   | 'input-range'
   | 'input-rating'
@@ -346,6 +353,7 @@ export type SchemaType =
   | 'words'
   | 'password'
   | 'multiline-text'
+  | 'amis'
 
   // 原生 input 类型
   | 'native-date'
@@ -356,6 +364,7 @@ export type SchemaType =
 
 export type SchemaObject =
   | PageSchema
+  | FlexSchema
   | TplSchema
   | RemarkSchema
   | ActionSchema
@@ -373,6 +382,7 @@ export type SchemaObject =
   | CollapseGroupSchema
   | ColorSchema
   | ContainerSchema
+  | SwitchContainerSchema
   | CRUDSchema
   | CRUD2Schema
   | DateSchema
@@ -459,6 +469,7 @@ export type SchemaObject =
   | NumberControlSchema
   | PickerControlSchema
   | RadiosControlSchema
+  | RadioControlSchema
   | RangeControlSchema
   | RatingControlSchema
   | RichTextControlSchema
@@ -577,7 +588,7 @@ export interface SchemaApiObject {
 
   /**
    * 当开启自动刷新的时候，默认是 api 的 url 来自动跟踪变量变化的。
-   * 如果你希望监控 url 外的变量，请配置 traceExpression。
+   * 如果你希望监控 url 外的变量，请配置 trackExpression。
    */
   trackExpression?: string;
 
@@ -606,6 +617,11 @@ export interface SchemaApiObject {
    * autoFill 是否显示自动填充错误提示
    */
   silent?: boolean;
+
+  /**
+   * 文件下载时，指定文件名
+   */
+  downloadFileName?: string;
 }
 
 export type SchemaApi = string | SchemaApiObject;
@@ -638,7 +654,7 @@ export type SchemaRedirect = string;
  * 2. `<%= data.xxx %>`
  *
  *
- * 更多文档：https://baidu.gitee.io/amis/docs/concepts/template
+ * 更多文档：https://aisuda.bce.baidu.com/amis/zh-CN/docs/concepts/template
  */
 export type SchemaTpl = string;
 
@@ -849,7 +865,7 @@ export interface ToastSchemaBase extends BaseSchema {
 /**
  * Form 表单渲染器。
  *
- * 说明：https://baidu.gitee.io/amis/docs/components/form/index
+ * 说明：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/index
  */
 export interface FormSchema extends FormSchemaBase, BaseSchema {
   /**

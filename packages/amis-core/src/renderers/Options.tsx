@@ -37,6 +37,7 @@ import {
   FormBaseControl
 } from './Item';
 import {IFormItemStore} from '../store/formItem';
+import {isObject} from 'amis-core';
 
 export type OptionsControlComponent = React.ComponentType<FormControlProps>;
 
@@ -54,7 +55,6 @@ import isPlainObject from 'lodash/isPlainObject';
 import {normalizeOptions} from '../utils/normalizeOptions';
 import {optionValueCompare} from '../utils/optionValueCompare';
 import type {Option} from '../types';
-import isEqual from 'lodash/isEqual';
 import {resolveEventData} from '../utils';
 
 export {Option};
@@ -106,6 +106,11 @@ export interface FormOptionsControl extends FormBaseControl {
   delimiter?: string;
 
   /**
+   * 多选模式，值太多时是否避免折行
+   */
+  valuesNoWrap?: boolean;
+
+  /**
    * 开启后将选中的选项 value 的值封装为数组，作为当前表单项的值。
    */
   extractValue?: boolean;
@@ -121,6 +126,11 @@ export interface FormOptionsControl extends FormBaseControl {
    * @default ''
    */
   resetValue?: string;
+
+  /**
+   * 懒加载字段
+   */
+  deferField?: string;
 
   /**
    * 延时加载的 API，当选项中有 defer: true 的选项时，点开会通过此接口扩充。
@@ -226,7 +236,11 @@ export interface OptionsControlProps
   selectedOptions: Array<Option>;
   setOptions: (value: Array<any>, skipNormalize?: boolean) => void;
   setLoading: (value: boolean) => void;
-  reloadOptions: (setError?: boolean) => void;
+  reloadOptions: (
+    setError?: boolean,
+    isInit?: boolean,
+    data?: Record<string, any>
+  ) => void;
   deferLoad: (option: Option) => void;
   leftDeferLoad: (option: Option, leftOptions: Option) => void;
   expandTreeOptions: (nodePathArr: any[]) => void;
@@ -346,6 +360,15 @@ export function registerOptionsControl(config: OptionsConfig) {
               this.syncAutoFill(formItem.getSelectedOptions(formItem.tmpValue))
           )
         );
+
+        if (
+          options &&
+          formItem.tmpValue &&
+          formItem.getSelectedOptions(formItem.tmpValue).length
+        ) {
+          this.syncAutoFill(formItem.getSelectedOptions(formItem.tmpValue));
+        }
+
         // 默认全选。这里会和默认值\回填值逻辑冲突，所以如果有配置source则不执行默认全选
         if (
           multiple &&
@@ -392,11 +415,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         return true;
       } else if (nextProps.formItem?.expressionsInOptions) {
         return true;
-      } else if (nextProps.formItem?.filteredOptions) {
-        return true;
-      }
-
-      if (anyChanged(detectProps, this.props, nextProps)) {
+      } else if (anyChanged(detectProps, this.props, nextProps)) {
         return true;
       }
 
@@ -434,15 +453,12 @@ export function registerOptionsControl(config: OptionsConfig) {
           );
 
           if (prevOptions !== options) {
-            formItem.setOptions(
-              normalizeOptions(
-                options || [],
-                undefined,
-                props.valueField || 'value'
-              ),
-              this.changeOptionValue,
-              props.data
+            formItem.loadOptionsFromDataScope(
+              props.source as string,
+              props.data,
+              this.changeOptionValue
             );
+
             this.normalizeValue();
           }
         } else if (
@@ -483,8 +499,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         eventName,
         resolveEventData(
           this.props,
-          {value: eventData, options, items: options}, // 为了保持名字统一
-          'value'
+          {value: eventData, options, items: options} // 为了保持名字统一
         )
       );
       // 返回阻塞标识
@@ -784,34 +799,32 @@ export function registerOptionsControl(config: OptionsConfig) {
     }
 
     @autobind
-    reloadOptions(setError?: boolean, isInit = false) {
-      const {source, formItem, data, onChange, setPrinstineValue, valueField} =
+    reloadOptions(setError?: boolean, isInit = false, data = this.props.data) {
+      const {source, formItem, onChange, setPrinstineValue, valueField} =
         this.props;
 
       if (formItem && isPureVariable(source as string)) {
         isAlive(formItem) &&
-          formItem.setOptions(
-            normalizeOptions(
-              resolveVariableAndFilter(source as string, data, '| raw') || [],
-              undefined,
-              valueField
-            ),
-            this.changeOptionValue,
-            data
+          formItem.loadOptionsFromDataScope(
+            source as string,
+            data,
+            this.changeOptionValue
           );
         return;
       } else if (!formItem || !isEffectiveApi(source, data)) {
         return;
       }
 
-      return formItem.loadOptions(
-        source,
-        data,
-        undefined,
-        false,
-        isInit ? setPrinstineValue : onChange,
-        setError
-      );
+      return isAlive(formItem)
+        ? formItem.loadOptions(
+            source,
+            data,
+            undefined,
+            false,
+            isInit ? setPrinstineValue : onChange,
+            setError
+          )
+        : undefined;
     }
 
     @autobind
@@ -952,6 +965,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         source,
         data,
         valueField,
+        deferField,
         formItem: model,
         createBtnLabel,
         env,
@@ -1025,11 +1039,12 @@ export function registerOptionsControl(config: OptionsConfig) {
           });
 
           if (!payload.ok) {
-            env.notify(
-              'error',
-              (addApi as BaseApiObject)?.messages?.failed ??
-                (payload.msg || __('Options.createFailed'))
-            );
+            !(addApi as BaseApiObject).silent &&
+              env.notify(
+                'error',
+                (addApi as BaseApiObject)?.messages?.failed ??
+                  (payload.msg || __('Options.createFailed'))
+              );
             result = null;
           } else {
             result = payload.data || result;
@@ -1037,7 +1052,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         } catch (e) {
           result = null;
           console.error(e);
-          env.notify('error', e.message);
+          !(addApi as BaseApiObject).silent && env.notify('error', e.message);
         }
       }
 
@@ -1063,7 +1078,10 @@ export function registerOptionsControl(config: OptionsConfig) {
       }
 
       // 如果是懒加载的，只懒加载当前节点。
-      if (parent?.defer) {
+      if (
+        (parent?.hasOwnProperty(deferField) && parent[deferField]) ||
+        parent?.defer
+      ) {
         await this.deferLoad(parent);
       } else if (source && addApi) {
         // 如果配置了 source 且配置了 addApi 直接重新拉取接口就够了
@@ -1151,11 +1169,12 @@ export function registerOptionsControl(config: OptionsConfig) {
           );
 
           if (!payload.ok) {
-            env.notify(
-              'error',
-              (editApi as BaseApiObject)?.messages?.failed ??
-                (payload.msg || __('saveFailed'))
-            );
+            !(editApi as BaseApiObject).silent &&
+              env.notify(
+                'error',
+                (editApi as BaseApiObject)?.messages?.failed ??
+                  (payload.msg || __('saveFailed'))
+              );
             result = null;
           } else {
             result = payload.data || result;
@@ -1163,7 +1182,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         } catch (e) {
           result = null;
           console.error(e);
-          env.notify('error', e.message);
+          !(editApi as BaseApiObject).silent && env.notify('error', e.message);
         }
       }
 
@@ -1238,11 +1257,12 @@ export function registerOptionsControl(config: OptionsConfig) {
             method: 'delete'
           });
           if (!result.ok) {
-            env.notify(
-              'error',
-              (deleteApi as BaseApiObject)?.messages?.failed ??
-                (result.msg || __('deleteFailed'))
-            );
+            !(deleteApi as BaseApiObject).silent &&
+              env.notify(
+                'error',
+                (deleteApi as BaseApiObject)?.messages?.failed ??
+                  (result.msg || __('deleteFailed'))
+              );
             return;
           }
         }
@@ -1271,7 +1291,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         }
       } catch (e) {
         console.error(e);
-        env.notify('error', e.message);
+        !(deleteApi as BaseApiObject).silent && env.notify('error', e.message);
       }
     }
 

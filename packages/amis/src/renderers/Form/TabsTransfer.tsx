@@ -18,10 +18,11 @@ import {BaseSelection} from 'amis-ui/lib/components/Selection';
 import {ActionObject, toNumber} from 'amis-core';
 import type {ItemRenderStates} from 'amis-ui/lib/components/Selection';
 import {supportStatic} from './StaticHoc';
+import {matchSorter} from 'match-sorter';
 
 /**
  * TabsTransfer
- * 文档：https://baidu.gitee.io/amis/docs/components/form/tabs-transfer
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/tabs-transfer
  */
 export interface TabsTransferControlSchema
   extends Omit<TransferControlSchema, 'type'>,
@@ -76,9 +77,9 @@ export class BaseTabsTransferRenderer<
       valueField,
       env,
       data,
+      searchApi,
       translate: __
     } = this.props;
-    const {searchApi} = option;
 
     if (searchApi) {
       try {
@@ -113,22 +114,21 @@ export class BaseTabsTransferRenderer<
         });
       } catch (e) {
         if (!env.isCancel(e)) {
-          env.notify('error', e.message);
+          !searchApi.silent && env.notify('error', e.message);
         }
 
         return [];
       }
     } else if (term) {
-      const regexp = string2regExp(term);
-
       return filterTree(
         options,
-        (option: Option) => {
+        (option: Option, key: number, level: number, paths: Array<Option>) => {
           return !!(
             (Array.isArray(option.children) && option.children.length) ||
-            (option[(valueField as string) || 'value'] &&
-              (regexp.test(option[(labelField as string) || 'label']) ||
-                regexp.test(option[(valueField as string) || 'value'])))
+            !!matchSorter([option].concat(paths), term, {
+              keys: [labelField || 'label', valueField || 'value'],
+              threshold: matchSorter.rankings.CONTAINS
+            }).length
           );
         },
         0,
@@ -218,15 +218,11 @@ export class BaseTabsTransferRenderer<
     // 触发渲染器事件
     const rendererEvent = await dispatchEvent(
       'change',
-      resolveEventData(
-        this.props,
-        {
-          value: newValue,
-          options,
-          items: options // 为了保持名字统一
-        },
-        'value'
-      )
+      resolveEventData(this.props, {
+        value: newValue,
+        options,
+        items: options // 为了保持名字统一
+      })
     );
     if (rendererEvent?.prevented) {
       return;
@@ -246,7 +242,7 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
 
   @autobind
   optionItemRender(option: any, states: ItemRenderStates) {
-    const {menuTpl, render, data} = this.props;
+    const {menuTpl, render, data, classnames} = this.props;
     const ctx = arguments[2] || {};
 
     if (menuTpl) {
@@ -261,7 +257,7 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
       });
     }
 
-    return BaseSelection.itemRender(option, states);
+    return BaseSelection.itemRender(option, {...states, classnames});
   }
 
   // 动作
@@ -294,6 +290,8 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
       sortable,
       loading,
       searchResultMode,
+      selectMode,
+      searchable,
       showArrow,
       deferLoad,
       leftDeferLoad,
@@ -303,7 +301,13 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
       itemHeight,
       virtualThreshold,
       onlyChildren,
-      loadingConfig
+      loadingConfig,
+      valueField = 'value',
+      labelField = 'label',
+      valueTpl,
+      menuTpl,
+      data,
+      mobileUI
     } = this.props;
 
     return (
@@ -324,13 +328,19 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
           onLeftDeferLoad={leftDeferLoad}
           selectTitle={selectTitle}
           resultTitle={resultTitle}
-          optionItemRender={this.optionItemRender}
-          resultItemRender={this.resultItemRender}
+          selectMode={selectMode}
+          searchable={searchable}
+          optionItemRender={menuTpl ? this.optionItemRender : undefined}
+          resultItemRender={valueTpl ? this.resultItemRender : undefined}
           onTabChange={this.onTabChange}
           itemHeight={
             toNumber(itemHeight) > 0 ? toNumber(itemHeight) : undefined
           }
           virtualThreshold={virtualThreshold}
+          labelField={labelField}
+          valueField={valueField}
+          ctx={data}
+          mobileUI={mobileUI}
         />
 
         <Spinner

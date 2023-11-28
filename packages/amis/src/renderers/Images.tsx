@@ -1,5 +1,10 @@
 import React from 'react';
-import {Renderer, RendererProps} from 'amis-core';
+import {
+  Renderer,
+  RendererProps,
+  CustomStyle,
+  setThemeClassName
+} from 'amis-core';
 import {filter} from 'amis-core';
 import {
   resolveVariable,
@@ -13,7 +18,7 @@ import type {ImageToolbarAction} from './Image';
 
 /**
  * 图片集展示控件。
- * 文档：https://baidu.gitee.io/amis/docs/components/images
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/images
  */
 export interface ImagesSchema extends BaseSchema {
   /**
@@ -74,6 +79,11 @@ export interface ImagesSchema extends BaseSchema {
   enlargeAble?: boolean;
 
   /**
+   * 放大时是否显示图片集
+   */
+  enlargetWithImages?: boolean;
+
+  /**
    * 是否显示尺寸。
    */
   showDimensions?: boolean;
@@ -87,6 +97,11 @@ export interface ImagesSchema extends BaseSchema {
    * 列表 CSS 类名
    */
   listClassName?: SchemaClassName;
+
+  /**
+   * 放大详情图 CSS 类名
+   */
+  imageGallaryClassName?: SchemaClassName;
 
   /**
    * 是否展示图片工具栏
@@ -174,12 +189,20 @@ export class ImagesField extends React.Component<ImagesProps> {
       source,
       delimiter,
       enlargeAble,
+      enlargeWithGallary,
       src,
       originalSrc,
       listClassName,
       options,
       showToolbar,
-      toolbarActions
+      toolbarActions,
+      imageGallaryClassName,
+      galleryControlClassName,
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss,
+      imagesControlClassName
     } = this.props;
 
     let value: any;
@@ -205,7 +228,15 @@ export class ImagesField extends React.Component<ImagesProps> {
     this.list = list;
 
     return (
-      <div className={cx('ImagesField', className)} style={style}>
+      <div
+        className={cx(
+          'ImagesField',
+          className,
+          setThemeClassName('imagesControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
+        style={style}
+      >
         {Array.isArray(list) ? (
           <div className={cx('Images', listClassName)}>
             {list.map((item: any, index: number) => (
@@ -227,8 +258,18 @@ export class ImagesField extends React.Component<ImagesProps> {
                 thumbMode={thumbMode}
                 thumbRatio={thumbRatio}
                 enlargeAble={enlargeAble!}
+                enlargeWithGallary={enlargeWithGallary}
                 onEnlarge={this.handleEnlarge}
                 showToolbar={showToolbar}
+                imageGallaryClassName={`${imageGallaryClassName} ${setThemeClassName(
+                  'imageGallaryClassName',
+                  id,
+                  themeCss
+                )} ${setThemeClassName(
+                  'galleryControlClassName',
+                  id,
+                  themeCss
+                )}`}
                 toolbarActions={toolbarActions}
               />
             ))}
@@ -245,6 +286,22 @@ export class ImagesField extends React.Component<ImagesProps> {
         ) : (
           placeholder
         )}
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'imagesControlClassName'
+              },
+              {
+                key: 'galleryControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
       </div>
     );
   }

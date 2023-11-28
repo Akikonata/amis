@@ -2,6 +2,7 @@ import React from 'react';
 import {findDOMNode} from 'react-dom';
 import Sortable from 'sortablejs';
 import omit from 'lodash/omit';
+import {filterClassNameObject} from 'amis-core';
 import {Button, Spinner, Checkbox, Icon, SpinnerExtraProps} from 'amis-ui';
 import {
   ListStore,
@@ -42,8 +43,8 @@ import {
 } from '../Schema';
 import {ActionSchema} from './Action';
 import {SchemaRemark} from './Remark';
-import type {IItem} from 'amis-core/lib/store/list';
-import type {OnEventProps} from 'amis-core/lib/utils/renderer-event';
+import type {IItem} from 'amis-core';
+import type {OnEventProps} from 'amis-core';
 
 /**
  * 不指定类型默认就是文本
@@ -58,6 +59,11 @@ export type ListBodyFieldObject = {
    * label 类名
    */
   labelClassName?: SchemaClassName;
+
+  /**
+   * 内层组件的CSS类名
+   */
+  innerClassName?: SchemaClassName;
 
   /**
    * 绑定字段名
@@ -123,7 +129,7 @@ export interface ListItemSchema extends Omit<BaseSchema, 'type'> {
 
 /**
  * List 列表展示控件。
- * 文档：https://baidu.gitee.io/amis/docs/components/card
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/card
  */
 export interface ListSchema extends BaseSchema {
   /**
@@ -255,7 +261,7 @@ export interface ListProps
     }
   ) => void;
   onSaveOrder?: (moved: Array<object>, items: Array<object>) => void;
-  onQuery: (values: object) => void;
+  onQuery: (values: object) => any;
 }
 
 export default class List extends React.Component<ListProps, object> {
@@ -305,7 +311,6 @@ export default class List extends React.Component<ListProps, object> {
     this.reset = this.reset.bind(this);
     this.dragTipRef = this.dragTipRef.bind(this);
     this.getPopOverContainer = this.getPopOverContainer.bind(this);
-    this.affixDetect = this.affixDetect.bind(this);
     this.bodyRef = this.bodyRef.bind(this);
     this.renderToolbar = this.renderToolbar.bind(this);
 
@@ -316,15 +321,18 @@ export default class List extends React.Component<ListProps, object> {
       orderBy,
       orderDir,
       multiple,
+      strictMode,
       hideCheckToggler,
       itemCheckableOn,
       itemDraggableOn
     } = props;
 
     store.update({
-      multiple,
-      selectable,
-      draggable,
+      /** Card嵌套List情况下该属性获取到的值为ListStore的默认值, 会导致Schema中的配置被覆盖 */
+      multiple: multiple || props?.$schema.multiple,
+      strictMode: strictMode || props?.$schema.strictMode,
+      selectable: selectable || props?.$schema.selectable,
+      draggable: draggable || props?.$schema.draggable,
       orderBy,
       orderDir,
       hideCheckToggler,
@@ -367,20 +375,6 @@ export default class List extends React.Component<ListProps, object> {
     return updateItems;
   }
 
-  componentDidMount() {
-    let parent: HTMLElement | Window | null = getScrollParent(
-      findDOMNode(this) as HTMLElement
-    );
-    if (!parent || parent === document.body) {
-      parent = window;
-    }
-
-    this.parentNode = parent;
-    this.affixDetect();
-    parent.addEventListener('scroll', this.affixDetect);
-    window.addEventListener('resize', this.affixDetect);
-  }
-
   componentDidUpdate(prevProps: ListProps) {
     const props = this.props;
     const store = props.store;
@@ -393,6 +387,7 @@ export default class List extends React.Component<ListProps, object> {
           'orderBy',
           'orderDir',
           'multiple',
+          'strictMode',
           'hideCheckToggler',
           'itemCheckableOn',
           'itemDraggableOn'
@@ -403,6 +398,7 @@ export default class List extends React.Component<ListProps, object> {
     ) {
       store.update({
         multiple: props.multiple,
+        strictMode: props.strictMode,
         selectable: props.selectable,
         draggable: props.draggable,
         orderBy: props.orderBy,
@@ -426,38 +422,8 @@ export default class List extends React.Component<ListProps, object> {
     }
   }
 
-  componentWillUnmount() {
-    const parent = this.parentNode;
-    parent && parent.removeEventListener('scroll', this.affixDetect);
-    window.removeEventListener('resize', this.affixDetect);
-  }
-
   bodyRef(ref: HTMLDivElement) {
     this.body = ref;
-  }
-
-  affixDetect() {
-    if (!this.props.affixHeader || !this.body) {
-      return;
-    }
-
-    const ns = this.props.classPrefix;
-    const dom = findDOMNode(this) as HTMLElement;
-    const afixedDom = dom.querySelector(`.${ns}List-fixedTop`) as HTMLElement;
-
-    if (!afixedDom) {
-      return;
-    }
-
-    const clip = (this.body as HTMLElement).getBoundingClientRect();
-    const offsetY =
-      this.props.affixOffsetTop ?? this.props.env.affixOffsetTop ?? 0;
-    const affixed = clip.top < offsetY && clip.top + clip.height - 40 > offsetY;
-
-    this.body.offsetWidth &&
-      (afixedDom.style.cssText = `top: ${offsetY}px;width: ${this.body.offsetWidth}px;`);
-    affixed ? afixedDom.classList.add('in') : afixedDom.classList.remove('in');
-    // store.markHeaderAffix(clip.top < offsetY && (clip.top + clip.height - 40) > offsetY);
   }
 
   getPopOverContainer() {
@@ -530,7 +496,7 @@ export default class List extends React.Component<ListProps, object> {
           api: saveImmediately.api,
           reload: options?.reload
         },
-        values
+        item.locals
       );
       return;
     }
@@ -667,6 +633,7 @@ export default class List extends React.Component<ListProps, object> {
     actions = Array.isArray(actions) ? actions.concat() : [];
 
     if (
+      region === 'header' &&
       !~this.renderedToolbars.indexOf('check-all') &&
       (btn = this.renderCheckAll())
     ) {
@@ -896,7 +863,7 @@ export default class List extends React.Component<ListProps, object> {
   }
 
   renderDragToggler() {
-    const {store, multiple, selectable, env} = this.props;
+    const {store, multiple, selectable, popOverContainer, env} = this.props;
 
     if (!store.draggable || store.items.length < 2) {
       return null;
@@ -907,9 +874,7 @@ export default class List extends React.Component<ListProps, object> {
         iconOnly
         key="dragging-toggle"
         tooltip="对列表进行排序操作"
-        tooltipContainer={
-          env && env.getModalContainer ? env.getModalContainer : undefined
-        }
+        tooltipContainer={popOverContainer || env?.getModalContainer}
         size="sm"
         active={store.dragging}
         onClick={(e: React.MouseEvent<any>) => {
@@ -1009,6 +974,7 @@ export default class List extends React.Component<ListProps, object> {
       checkOnItemClick,
       itemAction,
       affixHeader,
+      env,
       classnames: cx,
       size,
       translate: __,
@@ -1029,15 +995,18 @@ export default class List extends React.Component<ListProps, object> {
         style={style}
         ref={this.bodyRef}
       >
-        {affixHeader && heading && header ? (
+        {affixHeader ? (
           <div className={cx('List-fixedTop')}>
             {header}
             {heading}
           </div>
-        ) : null}
+        ) : (
+          <>
+            {header}
+            {heading}
+          </>
+        )}
 
-        {header}
-        {heading}
         {store.items.length ? (
           <div className={cx('List-items')}>
             {store.items.map((item, index) =>
@@ -1127,7 +1096,7 @@ export class ListItem extends React.Component<ListItemProps> {
     onAction?.(
       e,
       hasClickActions ? undefined : itemAction,
-      hasClickActions ? item : item?.data
+      hasClickActions ? item : item.locals
     );
 
     // itemAction, itemClick事件和checkOnItemClick为互斥关系
@@ -1185,10 +1154,10 @@ export class ListItem extends React.Component<ListItemProps> {
         <div className={cx('ListItem-checkBtn')}>
           <Checkbox
             classPrefix={ns}
-            type={multiple ? 'checkbox' : 'radio'}
+            type={multiple !== false ? 'checkbox' : 'radio'}
             disabled={!checkable}
             checked={selected}
-            onChange={checkOnItemClick ? noop : this.handleCheck}
+            onChange={this.handleCheck}
             inline
           />
         </div>
@@ -1255,7 +1224,7 @@ export class ListItem extends React.Component<ListItemProps> {
     if (childNode.type === 'hbox' || childNode.type === 'grid') {
       return render(region, node, {
         key,
-        itemRender: this.itemRender
+        itemRender: this.itemRender.bind(this)
       }) as JSX.Element;
     }
 
@@ -1298,7 +1267,10 @@ export class ListItem extends React.Component<ListItemProps> {
             {
               rowIndex: itemIndex,
               colIndex: key,
-              className: cx('ListItem-fieldValue', field.className),
+              className: cx(
+                'ListItem-fieldValue',
+                filterClassNameObject(field.className, data)
+              ),
               value: field.name ? resolveVariable(field.name, data) : undefined,
               onAction: this.handleAction,
               onQuickChange: this.handleQuickChange
@@ -1421,6 +1393,7 @@ export class ListItemFieldRenderer extends TableCell {
       render,
       style,
       wrapperComponent: Component,
+      contentsOnly,
       labelClassName,
       value,
       data,
@@ -1456,9 +1429,10 @@ export class ListItemFieldRenderer extends TableCell {
       );
     }
 
-    if (!Component) {
+    if (contentsOnly) {
       return body as JSX.Element;
     }
+    Component = Component || 'div';
 
     return (
       <Component

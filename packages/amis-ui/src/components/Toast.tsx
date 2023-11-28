@@ -53,7 +53,7 @@ export type ToastConf = Partial<
     | 'errorTimeout'
     | 'className'
     | 'items'
-    | 'useMobileUI'
+    | 'mobileUI'
   >
 >;
 
@@ -72,7 +72,6 @@ interface ToastComponentProps extends ThemeProps, LocaleProps {
   errorTimeout: number;
   className?: string;
   items?: Array<Item>;
-  useMobileUI?: boolean;
 }
 
 interface Item extends Config {
@@ -80,6 +79,7 @@ interface Item extends Config {
   body: string | React.ReactNode;
   level: ToastLevel;
   id: string;
+  className?: string;
   onDissmiss?: () => void;
   position?:
     | 'top-right'
@@ -90,12 +90,12 @@ interface Item extends Config {
     | 'bottom-right'
     | 'center';
   showIcon?: boolean;
-  useMobileUI?: boolean;
+  mobileUI?: boolean;
 }
 
 interface ToastComponentState {
   items: Array<Item>;
-  useMobileUI?: boolean;
+  mobileUI?: boolean;
 }
 
 export class ToastComponent extends React.Component<
@@ -132,11 +132,11 @@ export class ToastComponent extends React.Component<
   }
 
   notifiy(level: string, content: any, config?: any) {
-    const useMobileUI =
-      (config.useMobileUI || this.props.useMobileUI) && isMobile();
+    const mobileUI = config.mobileUI || this.props.mobileUI;
+
     this.setState(state => {
       let items = state.items.concat();
-      if (useMobileUI) {
+      if (mobileUI) {
         // 移动端只能存在一个
         items = [];
       }
@@ -145,12 +145,13 @@ export class ToastComponent extends React.Component<
         level,
         ...config,
         id: guid(),
-        position: config.position || (useMobileUI ? 'center' : config.position),
-        timeout: config.timeout || (useMobileUI ? 3000 : undefined)
+        className: config.className || '',
+        position: config.position || (mobileUI ? 'center' : config.position),
+        timeout: config.timeout || (mobileUI ? 3000 : undefined)
       });
       return {
         items,
-        useMobileUI
+        mobileUI
       };
     });
   }
@@ -198,11 +199,10 @@ export class ToastComponent extends React.Component<
       position,
       showIcon,
       translate,
-      closeButton,
-      useMobileUI
+      closeButton
     } = this.props;
     const items = this.state.items;
-    const mobileUI = (useMobileUI || this.state.useMobileUI) && isMobile();
+    const mobileUI = this.state.mobileUI || this.props.mobileUI;
     const groupedItems = groupBy(items, item => item.position || position);
     return Object.keys(groupedItems).map(position => {
       const toasts = groupedItems[position];
@@ -230,12 +230,13 @@ export class ToastComponent extends React.Component<
                 title={item.title}
                 body={item.body}
                 level={level}
+                className={item.className}
                 timeout={toastTimeout}
                 closeButton={!mobileUI && (item.closeButton ?? closeButton)}
                 onDismiss={this.handleDismissed.bind(this, items.indexOf(item))}
                 translate={translate}
                 showIcon={item.showIcon ?? showIcon}
-                useMobileUI={mobileUI}
+                mobileUI={mobileUI}
               />
             );
           })}
@@ -266,7 +267,8 @@ interface ToastMessageProps {
   classnames: ClassNamesFn;
   translate: TranslateFn;
   allowHtml: boolean;
-  useMobileUI?: boolean;
+  className?: string;
+  mobileUI?: boolean;
 }
 
 interface ToastMessageState {
@@ -341,10 +343,11 @@ export class ToastMessage extends React.Component<
       allowHtml,
       level,
       showIcon,
-      useMobileUI,
-      translate: __
+      mobileUI,
+      translate: __,
+      className
     } = this.props;
-    const iconName = useMobileUI ? '' : 'alert-';
+    const iconName = mobileUI ? '' : 'alert-';
 
     return (
       <Transition
@@ -358,9 +361,14 @@ export class ToastMessage extends React.Component<
         {(status: string) => {
           return (
             <div
-              className={cx(`Toast Toast--${level}`, fadeStyles[status], {
-                'Toast-mobile--has-icon': useMobileUI && showIcon !== false
-              })}
+              className={cx(
+                `Toast Toast--${level}`,
+                className,
+                fadeStyles[status],
+                {
+                  'Toast-mobile--has-icon': mobileUI && showIcon !== false
+                }
+              )}
               onMouseEnter={this.handleMouseEnter}
               onMouseLeave={this.handleMouseLeave}
               onClick={closeButton ? noop : this.close}

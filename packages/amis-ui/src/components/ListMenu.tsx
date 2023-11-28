@@ -13,6 +13,7 @@ export interface ListMenuProps extends ThemeProps, LocaleProps {
   itemRender: (option: Option) => JSX.Element;
   getItemProps: (props: {item: Option; index: number}) => any;
   prefix?: JSX.Element;
+  children?: React.ReactNode | Array<React.ReactNode>;
 }
 
 interface RenderResult {
@@ -35,6 +36,7 @@ export class ListMenu extends React.Component<ListMenuProps> {
       getItemProps,
       highlightIndex,
       selectedOptions,
+      mobileUI,
       onSelect
     } = this.props;
 
@@ -85,11 +87,19 @@ export class ListMenu extends React.Component<ListMenuProps> {
   }
 
   render() {
-    const {classnames: cx, options, placeholder, prefix, children} = this.props;
+    const {
+      classnames: cx,
+      options,
+      placeholder,
+      prefix,
+      children,
+      mobileUI,
+      selectedOptions
+    } = this.props;
     const __ = this.props.translate;
 
     return (
-      <div className={cx('ListMenu')}>
+      <div className={cx('ListMenu', {'is-mobile': mobileUI})}>
         {prefix}
         {Array.isArray(options) && options.length ? (
           options.reduce(

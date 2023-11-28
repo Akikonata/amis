@@ -14,16 +14,13 @@ import {
   noop
 } from 'amis-core';
 import {uncontrollable} from 'amis-core';
-import {
-  ConditionBuilderFields,
-  ConditionGroupValue,
-  ConditionBuilderFuncs
-} from './types';
+import {ConditionBuilderFields, ConditionBuilderFuncs} from './types';
 import ConditionGroup from './Group';
 import defaultConfig, {ConditionBuilderConfig} from './config';
 import {FormulaPickerProps} from '../formula/Picker';
 import PickerContainer from '../PickerContainer';
 import ResultBox from '../ResultBox';
+import type {ConditionGroupValue} from 'amis-core';
 
 export interface ConditionBuilderProps extends ThemeProps, LocaleProps {
   builderMode?: 'simple' | 'full'; // 简单模式｜完整模式
@@ -33,19 +30,24 @@ export interface ConditionBuilderProps extends ThemeProps, LocaleProps {
   title?: string;
   fields: ConditionBuilderFields;
   funcs?: ConditionBuilderFuncs;
-  showNot?: boolean;
-  showANDOR?: boolean;
+  showNot?: boolean; // 是否显示非按钮
+  showANDOR?: boolean; // 是否显示并或切换键按钮
+  showIf?: boolean; // 是否显示条件
+  formulaForIf?: FormulaPickerProps;
   value?: ConditionGroupValue;
   data?: any;
   onChange: (value?: ConditionGroupValue) => void;
   config?: ConditionBuilderConfig;
   disabled?: boolean;
+  draggable?: boolean;
   searchable?: boolean;
   fieldClassName?: string;
   formula?: FormulaPickerProps;
   popOverContainer?: any;
   renderEtrValue?: any;
-  selectMode?: 'list' | 'tree';
+  selectMode?: 'list' | 'tree' | 'chained';
+  isAddBtnVisibleOn?: (param: {depth: number; breadth: number}) => boolean;
+  isAddGroupBtnVisibleOn?: (param: {depth: number; breadth: number}) => boolean;
 }
 
 export interface ConditionBuilderState {
@@ -68,6 +70,9 @@ export class QueryBuilder extends React.Component<
 
   @autobind
   handleDragStart(e: React.DragEvent) {
+    const {draggable = true} = this.props;
+    // draggable为false时不可拖拽
+    if (!draggable) return;
     const target = e.currentTarget;
     const item = target.closest('[data-id]') as HTMLElement;
     this.dragTarget = item;
@@ -251,11 +256,16 @@ export class QueryBuilder extends React.Component<
       showANDOR,
       data,
       disabled,
+      draggable = true,
       searchable,
       builderMode,
       formula,
       renderEtrValue,
-      selectMode
+      selectMode,
+      isAddBtnVisibleOn,
+      isAddGroupBtnVisibleOn,
+      showIf,
+      formulaForIf
     } = this.props;
 
     const normalizedValue = Array.isArray(value?.children)
@@ -290,11 +300,17 @@ export class QueryBuilder extends React.Component<
         showNot={showNot}
         data={data}
         disabled={disabled}
+        draggable={draggable}
         searchable={searchable}
         formula={formula}
         renderEtrValue={renderEtrValue}
         popOverContainer={popOverContainer}
         selectMode={selectMode}
+        depth={1}
+        isAddBtnVisibleOn={isAddBtnVisibleOn}
+        isAddGroupBtnVisibleOn={isAddGroupBtnVisibleOn}
+        showIf={showIf}
+        formulaForIf={formulaForIf}
       />
     );
   }
@@ -312,7 +328,8 @@ export class QueryBuilder extends React.Component<
       value,
       title,
       disabled,
-      popOverContainer
+      popOverContainer,
+      mobileUI
     } = this.props;
 
     if (embed) {
@@ -358,7 +375,8 @@ export class QueryBuilder extends React.Component<
                 </span>
               )
             }
-            onResultClick={pickerIcon ? undefined : onClick}
+            mobileUI={mobileUI}
+            onResultClick={onClick}
           ></ResultBox>
         )}
       </PickerContainer>

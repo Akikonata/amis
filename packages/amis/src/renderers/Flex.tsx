@@ -3,13 +3,19 @@
  */
 
 import React from 'react';
-import {Renderer, RendererProps} from 'amis-core';
+import {
+  buildStyle,
+  Renderer,
+  RendererProps,
+  CustomStyle,
+  setThemeClassName
+} from 'amis-core';
 import {Schema} from 'amis-core';
 import {BaseSchema, SchemaCollection, SchemaObject} from '../Schema';
 
 /**
  * Flex 布局
- * 文档：https://baidu.gitee.io/amis/docs/components/flex
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/flex
  */
 export interface FlexSchema extends BaseSchema {
   /**
@@ -81,7 +87,7 @@ export default class Flex extends React.Component<FlexProps, object> {
   static defaultProps: Partial<FlexProps> = {
     direction: 'row',
     justify: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
     alignContent: 'center'
   };
 
@@ -99,20 +105,42 @@ export default class Flex extends React.Component<FlexProps, object> {
       style,
       className,
       render,
-      disabled
+      disabled,
+      data,
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss,
+      classnames: cx
     } = this.props;
-
+    const styleVar = buildStyle(style, data);
     const flexStyle = {
       display: 'flex',
       flexDirection: direction,
       justifyContent: justify,
       alignItems,
       alignContent,
-      ...style
+      ...styleVar
     };
 
+    if (flexStyle.flexBasis !== undefined && flexStyle.flex) {
+      // 合并flex和flexBasis，并优先使用flexBasis
+      const flexValArr = flexStyle.flex.split(' ');
+      flexStyle.flex = `${flexValArr[0]} ${flexValArr[1] || flexValArr[0]} ${
+        flexStyle.flexBasis
+      }`;
+    }
+
     return (
-      <div style={flexStyle} className={className}>
+      <div
+        style={flexStyle}
+        className={cx(
+          'Flex',
+          className,
+          setThemeClassName('baseControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
+      >
         {(Array.isArray(items) ? items : items ? [items] : []).map(
           (item, key) =>
             render(`flexItem/${key}`, item, {
@@ -120,6 +148,19 @@ export default class Flex extends React.Component<FlexProps, object> {
               disabled: (item as SchemaObject)?.disabled ?? disabled
             })
         )}
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
       </div>
     );
   }

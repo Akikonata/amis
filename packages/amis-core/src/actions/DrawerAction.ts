@@ -9,10 +9,11 @@ import {
 
 export interface IDrawerAction extends ListenerAction {
   actionType: 'drawer';
+  // 兼容历史，保留。不建议用args
   args: {
     drawer: SchemaNode;
   };
-  drawer?: SchemaNode; // 兼容历史
+  drawer?: SchemaNode;
 }
 
 /**
@@ -28,11 +29,15 @@ export class DrawerAction implements RendererAction {
     renderer: ListenerContext,
     event: RendererEvent<any>
   ) {
+    // 防止editor preview模式下执行
+    if ((action as any).$$id !== undefined) {
+      return;
+    }
     renderer.props.onAction?.(
       event,
       {
         actionType: 'drawer',
-        drawer: action.args?.drawer || action.drawer,
+        drawer: action.drawer,
         reload: 'none'
       },
       action.data

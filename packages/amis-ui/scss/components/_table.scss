@@ -8,81 +8,25 @@
     margin-bottom: var(--gap-sm);
   }
 
-  &-fixedLeft,
-  &-fixedRight {
-    position: absolute;
-    background: var(--Table-bg);
-    z-index: var(--Table-fixed-zIndex);
-    top: auto;
-    box-shadow: none;
-
-    &--autoFillHeight {
-      & > table thead {
-        position: sticky; // 简单实现表头吸顶效果，不考虑 IE 11 不然太麻烦
-        top: 0;
-        z-index: 1; // 由于 badge 导致 tbody 里 tr 的 position: relative 了
-      }
-    }
-  }
-
-  &-fixedLeft {
-    // 还是改成默认不显示，footable 展示的时候，配置 固定列还没修复
-    left: 0;
-    top: -999999px;
-
-    &.in {
-      box-shadow: var(--Table-fixedLeft-boxShadow);
-      top: auto;
-    }
-
-    & > .#{$ns}Table-table {
-      > thead > tr > th:last-child,
-      > tbody > tr > td:last-child {
-        padding-right: var(--TableCell-paddingX);
-      }
-
-      // > thead > tr > th:last-child {
-      //   border-right: var(--Table-thead-borderWidth) solid var(--Table-thead-borderColor);
-      // }
-    }
-  }
-
-  &-fixedRight {
-    // 还是改成默认不显示，footable 展示的时候，配置 固定列还没修复
-    right: 0;
-    top: -999999px;
-
-    &.in {
-      box-shadow: var(--Table-fixedRight-boxShadow);
-      top: auto;
-    }
-
-    & > .#{$ns}Table-table {
-      > thead > tr > th:first-child,
-      > tbody > tr > td:first-child {
-        padding-left: var(--TableCell-paddingX);
-      }
-
-      // > thead > tr > th:first-child {
-      //   border-left: var(--Table-thead-borderWidth) solid var(--Table-thead-borderColor);
-      // }
-    }
-  }
-
   &-fixedTop {
-    position: absolute;
+    position: sticky;
+    top: var(--affix-offset-top);
     background: var(--Table-bg);
-    z-index: -1;
-    opacity: 0;
+    display: block;
+    opacity: 1;
+    z-index: $zindex-sticky;
 
-    &-shadow {
+    &:after {
+      content: '';
       position: absolute;
+      width: 100%;
       box-shadow: var(--Table-fixedTop-boxShadow);
-      z-index: -1;
-      height: 10px;
-      margin-top: -10px;
+      z-index: 30;
+      height: 30px;
+      top: 100%;
+      pointer-events: none;
       background-color: transparent;
-      opacity: 0;
+      margin-top: -2px;
     }
 
     // box-sizing: content-box;
@@ -93,27 +37,19 @@
     //   box-sizing: border-box;
     // }
 
-    &.in,
-    &.in + .#{$ns}Table-fixedTop-shadow {
-      position: fixed;
-      opacity: 1;
-      z-index: $zindex-affix;
-    }
-
-    > .#{$ns}Table-fixedLeft,
-    > .#{$ns}Table-fixedRight {
-      z-index: $zindex-affix + 10;
-      // box-shadow: none;
-      background: transparent;
-    }
+    // &.in {
+    //   // position: fixed;
+    // }
 
     &.is-fakeHide {
-      > .#{$ns}Table-fixedLeft,
-      > .#{$ns}Table-fixedRight,
       > .#{$ns}Table-wrapper {
         visibility: hidden;
         position: absolute;
       }
+    }
+
+    .#{$ns}Table-table {
+      table-layout: fixed;
     }
   }
 
@@ -207,13 +143,20 @@
     }
   }
 
+  &.is-mobile {
+    .#{$ns}Table-toolbar {
+      .#{$ns}Form-item {
+        padding: 0;
+      }
+    }
+  }
+
   &-header + &-toolbar {
     padding-top: 0;
   }
 
   &-contentWrap {
     position: relative;
-    margin-bottom: var(--Table-toolbar-marginY);
   }
 
   &-actions {
@@ -228,10 +171,6 @@
     min-height: 0.01%;
     overflow-x: auto;
     transform: translateZ(0);
-
-    th {
-      position: relative;
-    }
   }
 
   &-content-colDragLine {
@@ -243,9 +182,10 @@
     cursor: col-resize;
     user-select: none;
     opacity: 0.5;
-    z-index: $zindex-top;
+    z-index: 15;
 
-    &:hover {
+    &:hover,
+    &.is-resizing {
       background: var(--primary);
     }
   }
@@ -258,12 +198,63 @@
     color: var(--Table-color);
     background: var(--Table-bg);
     border-spacing: 0;
-    border-collapse: collapse;
-    border-bottom: var(--Table-borderWidth) solid var(--Table-borderColor);
+    border-collapse: separate;
+
+    &.is-layout-fixed {
+      table-layout: fixed !important;
+    }
 
     & th,
     & td {
       text-align: left;
+      border-bottom: var(--Table-borderWidth) solid var(--Table-borderColor);
+
+      &.is-sticky {
+        position: sticky !important;
+        z-index: 20;
+        background: inherit;
+      }
+
+      &.is-sticky-last-left:after {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: -1px;
+        width: 30px;
+        transform: translateX(100%);
+        transition: box-shadow 0.3s;
+        content: '';
+        pointer-events: none;
+      }
+
+      &.is-sticky-first-right:after {
+        position: absolute;
+        top: 0;
+        bottom: -1px;
+        left: 0;
+        width: 30px;
+        transform: translateX(-100%);
+        transition: box-shadow 0.3s;
+        content: '';
+        pointer-events: none;
+      }
+    }
+
+    &.is-layout-fixed td {
+      white-space: normal;
+      word-break: break-all;
+    }
+
+    &.table-fixed-left .is-sticky-last-left:after {
+      box-shadow: var(--Table-fixedLeft-boxShadow);
+    }
+
+    &.table-fixed-right .is-sticky-first-right:after {
+      box-shadow: var(--Table-fixedRight-boxShadow);
+    }
+
+    & th {
+      position: relative;
     }
 
     & th.text-center,
@@ -282,6 +273,14 @@
       padding-top: 0;
     }
 
+    &--affixHeader {
+      margin-top: calc(var(--Table-thead-height) * -1);
+
+      > thead {
+        visibility: hidden;
+      }
+    }
+
     &--withCombine {
       > thead > tr > th,
       > tbody > tr > td {
@@ -296,7 +295,7 @@
 
       // reset
       > tbody > tr {
-        @if $Table-strip-bg !=transparent {
+        @if $Table-strip-bg != transparent {
           &.#{$ns}Table-tr--odd {
             background: transparent;
           }
@@ -323,8 +322,9 @@
     }
 
     > thead > tr {
+      background: var(--Table-thead-bg);
       > th {
-        background: var(--Table-thead-bg);
+        background: inherit;
         padding: var(--TableCell-paddingY) var(--TableCell-paddingX);
         text-align: left;
 
@@ -369,6 +369,7 @@
 
         .#{$ns}TableCell--title {
           min-width: fit-content;
+          display: inline-block;
         }
       }
     }
@@ -387,6 +388,9 @@
 
     > thead > tr {
       border-bottom: var(--Table-borderWidth) solid var(--Table-borderColor);
+    }
+    @at-root .#{$ns}Table-table-tr {
+      background: var(--Table-bg);
     }
 
     > tbody > tr {
@@ -407,6 +411,7 @@
         color: var(--Table-thead-color);
         font-weight: var(--fontWeightNormal);
         white-space: nowrap;
+
         border-right: var(--Table-thead-borderWidth) solid
           var(--Table-thead-borderColor);
       }
@@ -448,7 +453,7 @@
       }
 
       &:active {
-        background: transparent;
+        background: var(--Table-onHover-bg);
       }
 
       &:hover.#{$ns}Table-placeholder {
@@ -522,64 +527,36 @@
 
       &.is-dragging {
         opacity: var(--Table-onDragging-opacity);
+        background-color: var(--Table-onDragging-bg);
       }
     }
 
-    @for $i from 2 through 10 {
-      tr.#{$ns}Table-tr--#{$i}th.is-expanded {
-        .#{$ns}Table-expandCell:before {
-          right: px2rem(7px) + px2rem(-18px) * ($i - 1);
-        }
-      }
+    > tbody.is-dragging > tr:not(.is-dragging) {
+      background: var(--Table-bg);
+      color: var(--Table-color);
+    }
 
-      tr.#{$ns}Table-tr--#{$i}th {
-        .#{$ns}Table-expandBtn {
-          position: relative;
-          right: -(px2rem(18px)) * ($i - 1);
-        }
+    > tbody.is-dragging > tr:not(.is-drop-allowed):not(.is-dragging) {
+      color: var(--table-body-disabled-color);
+      background-color: var(--table-body-disabled-bg-color);
+    }
 
-        .#{$ns}Table-expandCell + td {
-          position: relative;
+    .#{$ns}Table-divider2 {
+      content: '';
+      position: absolute;
+      height: px2rem(1px);
+      top: 50%;
+      width: px2rem(10px);
+      background: var(--Table-tree-borderColor);
+    }
 
-          &::before {
-            content: '';
-            position: absolute;
-            width: px2rem(1px);
-            top: 0;
-            bottom: 0;
-            left: px2rem(-8px) + px2rem(18px) * ($i - 2);
-            height: auto;
-            background: var(--Table-tree-borderColor);
-          }
-
-          &::after {
-            content: '';
-            position: absolute;
-            height: px2rem(1px);
-            top: 50%;
-            left: px2rem(-8px) + px2rem(18px) * ($i - 2);
-            width: px2rem(10px);
-            background: var(--Table-tree-borderColor);
-          }
-
-          padding-left: px2rem(18px) * $i - px2rem(18px);
-        }
-      }
-
-      tr.#{$ns}Table-tr--#{$i}th.is-expandable {
-        .#{$ns}Table-expandCell + td {
-          padding-left: px2rem(18px) * ($i - 1);
-        }
-      }
-
-      tr.#{$ns}Table-tr--#{$i}th.is-last:not(.is-expanded) {
-        .#{$ns}Table-expandCell + td {
-          &::before {
-            height: 50%;
-            bottom: auto;
-          }
-        }
-      }
+    .#{$ns}Table-divider3 {
+      position: absolute;
+      width: px2rem(1px);
+      top: 0;
+      bottom: 0;
+      height: 100%;
+      background: var(--Table-tree-borderColor);
     }
 
     > thead > tr > th.#{$ns}Table-checkCell,
@@ -619,18 +596,6 @@
 
     > tbody > tr > td.#{$ns}Table-expandCell {
       position: relative;
-
-      @for $i from 1 through 7 {
-        .#{$ns}Table-divider-#{$i} {
-          position: absolute;
-          width: px2rem(1px);
-          top: 0;
-          bottom: 0;
-          height: 100%;
-          background: var(--Table-tree-borderColor);
-          right: px2rem(7px) + px2rem(-18px) * ($i - 1);
-        }
-      }
     }
 
     > tbody > tr.is-expanded > td.#{$ns}Table-expandCell {
@@ -642,7 +607,7 @@
         width: px2rem(1px);
         top: 50%;
         bottom: 0;
-        right: px2rem(7px);
+        left: px2rem(23px);
         height: auto;
         background: var(--Table-tree-borderColor);
       }
@@ -653,6 +618,30 @@
     > thead > tr > th.#{$ns}TableCell--filterable {
       > .#{$ns}TableCell--title {
         display: inline-block;
+      }
+    }
+
+    > thead > tr > th.#{$ns}Table-primayCell,
+    > tbody > tr > td.#{$ns}Table-primayCell {
+      white-space: nowrap; // 树形表格展示标题栏，不要换行
+
+      > .#{$ns}Spinner {
+        vertical-align: middle;
+      }
+    }
+  }
+
+  &.is-mobile {
+    .#{$ns}Table-table > tbody > tr {
+      &:hover,
+      &.is-hovered {
+        background: var(--Table-bg);
+        border-color: var(--Table-borderColor);
+        color: var(--Table-color);
+
+        & + tr {
+          border-color: var(--Table-borderColor);
+        }
       }
     }
   }
@@ -883,7 +872,16 @@
     }
   }
 
-  &-expandBtn {
+  &-retryBtn {
+    color: var(--Form-feedBack-color);
+    cursor: pointer;
+    &:hover {
+      color: var(--Form-feedBack-color);
+    }
+  }
+
+  &-expandBtn,
+  &-expandBtn2 {
     position: relative;
     z-index: 1;
     color: var(--Table-expandBtn-color);
@@ -915,6 +913,23 @@
     &:hover {
       text-decoration: none;
     }
+  }
+
+  &-expandBtn2 {
+    margin-right: var(--gap-sm);
+  }
+
+  &-expandBtn2 + * {
+    display: inline-block;
+  }
+
+  &-indent {
+    display: inline-block;
+  }
+
+  &-expandSpace {
+    display: inline-block;
+    width: px2rem(22px);
   }
 
   &-dragBtn {
@@ -949,6 +964,7 @@
     position: absolute;
     top: 0;
     left: 0;
+    z-index: 25; // 因为 sticky 的时候是 20
   }
 
   &--autoFillHeight {
@@ -962,12 +978,8 @@
       > .#{$ns}Table-content table thead {
         position: sticky; // 简单实现表头吸顶效果，不考虑 IE 11 不然太麻烦
         top: 0;
-        z-index: 1; // 由于 badge 导致 tbody 里 tr 的 position: relative 了
+        z-index: 21; // 由于 badge 导致 tbody 里 tr 的 position: relative 了
       }
-    }
-
-    > .#{$ns}Table-fixedTop {
-      display: none;
     }
 
     > .#{$ns}Table-footToolbar {
@@ -981,6 +993,11 @@
     margin-left: var(--gap-sm);
     display: inline-flex;
     cursor: pointer;
+
+    &:hover {
+      color: var(--link-color);
+      font-size: var(--Button--sm-fontSize);
+    }
 
     &-arrow {
       width: var(--gap-md);
@@ -1008,6 +1025,13 @@
         transform: rotate(180deg);
       }
     }
+  }
+
+  // table 骨架样式
+  &-emptyBlock {
+    background-color: #eaebed;
+    border-radius: 5px;
+    line-height: 15px;
   }
 }
 
@@ -1044,11 +1068,6 @@
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-between;
-
-  .#{$ns}Button {
-    border-color: transparent;
-    color: var(--button-link-default-font-color);
-  }
 }
 
 .#{$ns}InputTable-pager {
@@ -1061,6 +1080,7 @@
   > .#{$ns}Button,
   > .#{$ns}Button--disabled-wrap > .#{$ns}Button {
     margin: px2rem(3px);
+    height: auto;
   }
 
   > .#{$ns}Button--disabled-wrap > .#{$ns}Button--link {
@@ -1070,5 +1090,35 @@
   > .#{$ns}Button--link {
     padding: 0;
     margin-right: px2rem(10px);
+  }
+}
+
+/* 移动端样式调整 */
+@include media-breakpoint-down(sm) {
+  .#{$ns}Table-table > thead > tr > th {
+    border-bottom: none;
+
+    &::before {
+      @include hairline-bottom(var(--Table-thead-borderColor));
+    }
+  }
+  .#{$ns}Table-table th,
+  .#{$ns}Table-table td {
+    position: relative;
+    border-bottom: none;
+
+    &::before {
+      @include hairline-bottom(var(--Table-borderColor));
+    }
+  }
+}
+
+.#{$ns}AutoFilterToolbar {
+  display: block;
+  text-align: right;
+  white-space: nowrap;
+
+  > .#{$ns}Button {
+    margin-top: 0;
   }
 }

@@ -6,17 +6,17 @@
     margin-left: var(--DropDown-caret-marginLeft);
     display: inline-block;
     vertical-align: top;
-    transition: transform var(--animation-duration) ease;
 
     > svg {
       width: px2rem(10px);
       height: px2rem(10px);
-      top: 0.125em;
+      transition: transform var(--animation-duration) ease;
+      transform: rotate(90deg);
     }
   }
 
-  &.is-opened &-caret {
-    transform: rotate(180deg);
+  &.is-opened &-caret svg {
+    transform: rotate(270deg);
   }
 
   &.is-actived > .#{$ns}Button {
@@ -55,7 +55,9 @@
 
   &-menuItem,
   &-menu > li {
-    padding: var(--DropDown-menuItem-paddingY) var(--DropDown-menuItem-paddingX);
+    padding: var(--table-togglable-paddingTop)
+      var(--table-togglable-paddingRight) var(--table-togglable-paddingBottom)
+      var(--table-togglable-paddingLeft);
     white-space: nowrap;
     box-sizing: border-box;
     height: var(--DropDown-menu-height);
@@ -63,11 +65,7 @@
     user-select: none;
     color: var(--link-color);
     text-decoration: var(--link-decoration);
-
-    &:hover {
-      background: var(--DropDown-menuItem-onHover-bg);
-      color: var(--DropDown-menuItem-onHover-color);
-    }
+    background: var(--table-togglable-bg-color);
 
     &.is-active {
       color: var(--DropDown-menuItem-onActive-color);
@@ -91,6 +89,13 @@
       overflow: hidden;
       background: var(--DropDown-menu-borderColor);
       padding: 0;
+    }
+  }
+
+  &-menu:not(.is-mobile) > li {
+    &:hover {
+      background: var(--table-togglable-hover-bg-color);
+      color: var(--DropDown-menuItem-onHover-color);
     }
   }
 

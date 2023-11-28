@@ -21,6 +21,25 @@ import {
 } from './utils/helper';
 import {RendererData, ActionObject} from './types';
 import {isPureVariable} from './utils/isPureVariable';
+import {createObject, createRendererEvent, filter} from './utils';
+import {ListenerAction, runActions} from './actions';
+
+/**
+ * target 里面可能包含 ?xxx=xxx，这种情况下，需要把 ?xxx=xxx 保留下来，然后对前面的部分进行 filter
+ * 因为后面会对 query 部分做不一样的处理。会保留原始的值。而不是会转成字符串。
+ * @param target
+ * @param data
+ * @returns
+ */
+export function filterTarget(target: string, data: Record<string, any>) {
+  const idx = target.indexOf('?');
+
+  if (~idx) {
+    return filter(target.slice(0, idx), data) + target.slice(idx);
+  }
+
+  return filter(target, data, '| raw');
+}
 
 export interface ScopedComponentType extends React.Component<RendererProps> {
   focus?: () => void;
@@ -36,14 +55,12 @@ export interface ScopedComponentType extends React.Component<RendererProps> {
     ctx?: RendererData
   ) => void;
   context: any;
-  setData?: (
-    value?: object,
-    replace?: boolean,
-    index?: number
-  ) => void;
+  setData?: (value?: object, replace?: boolean, index?: number) => void;
 }
 
 export interface IScopedContext {
+  rendererType?: string;
+  component?: ScopedComponentType;
   parent?: AliasIScopedContext;
   children?: AliasIScopedContext[];
   registerComponent: (component: ScopedComponentType) => void;
@@ -55,21 +72,32 @@ export interface IScopedContext {
   send: (target: string, ctx: RendererData) => void;
   close: (target: string) => void;
   closeById: (target: string) => void;
+  getComponentsByRefPath: (
+    session: string,
+    path: string
+  ) => ScopedComponentType[];
+  doAction: (actions: ListenerAction | ListenerAction[], ctx: any) => void;
 }
 type AliasIScopedContext = IScopedContext;
-export const ScopedContext = React.createContext(createScopedTools(''));
+
+const rootScopedContext = createScopedTools('');
+export const ScopedContext = React.createContext(rootScopedContext);
 
 function createScopedTools(
   path?: string,
   parent?: AliasIScopedContext,
-  env?: RendererEnv
+  env?: RendererEnv,
+  rendererType?: string
 ): IScopedContext {
   const components: Array<ScopedComponentType> = [];
-  const self = {
+  const self: IScopedContext = {
+    rendererType,
+    component: undefined,
     parent,
     registerComponent(component: ScopedComponentType) {
       // 不要把自己注册在自己的 Scoped 上，自己的 Scoped 是给子节点们注册的。
       if (component.props.$path === path && parent) {
+        self.component = component;
         return parent.registerComponent(component);
       }
 
@@ -109,7 +137,8 @@ function createScopedTools(
       const resolved = find(
         components,
         component =>
-          component.props.name === name || component.props.id === name
+          filter(component.props.name, component.props.data) === name ||
+          component.props.id === name
       );
       return resolved || (parent && parent.getComponentByName(name));
     },
@@ -117,7 +146,7 @@ function createScopedTools(
     getComponentById(id: string) {
       let root: AliasIScopedContext = this;
       // 找到顶端scoped
-      while (root.parent) {
+      while (root.parent && root.parent !== rootScopedContext) {
         root = root.parent;
       }
 
@@ -125,13 +154,14 @@ function createScopedTools(
       let component = undefined;
       findTree([root], (item: TreeItem) =>
         item.getComponents().find((cmpt: ScopedComponentType) => {
-          if (cmpt.props.id === id) {
+          if (filter(cmpt.props.id, cmpt.props.data) === id) {
             component = cmpt;
             return true;
           }
           return false;
         })
       ) as ScopedComponentType | undefined;
+
       return component;
     },
 
@@ -246,7 +276,8 @@ function createScopedTools(
             location.reload();
           }
         } else {
-          const component = scoped.getComponentByName(name);
+          const component =
+            scoped.getComponentByName(name) || scoped.getComponentById(name);
           component &&
             component.reload &&
             component.reload(subPath, query, ctx);
@@ -326,6 +357,22 @@ function createScopedTools(
       if (component && component.props.show) {
         closeDialog(component);
       }
+    },
+
+    async doAction(actions: ListenerAction | ListenerAction[], ctx: any) {
+      const renderer = this.getComponents()[0]; // 直接拿最顶层
+      const rendererEvent = createRendererEvent('embed', {
+        env,
+        nativeEvent: undefined,
+        data: createObject(renderer.props.data, ctx),
+        scoped: this
+      });
+
+      await runActions(actions, renderer, rendererEvent);
+
+      if (rendererEvent.prevented) {
+        return;
+      }
     }
   };
 
@@ -386,7 +433,8 @@ export function HocScoped<
     env: RendererEnv;
   }
 >(
-  ComposedComponent: React.ComponentType<T>
+  ComposedComponent: React.ComponentType<T>,
+  rendererType?: string
 ): React.ComponentType<
   T & {
     scopeRef?: (ref: any) => void;
@@ -412,7 +460,8 @@ export function HocScoped<
       this.scoped = createScopedTools(
         this.props.$path,
         context,
-        this.props.env
+        this.props.env,
+        rendererType
       );
 
       const scopeRef = props.scopeRef;

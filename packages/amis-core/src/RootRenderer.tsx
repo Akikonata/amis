@@ -1,7 +1,7 @@
 import {observer} from 'mobx-react';
 import React from 'react';
 import type {RootProps} from './Root';
-import {IScopedContext, ScopedContext} from './Scoped';
+import {IScopedContext, ScopedContext, filterTarget} from './Scoped';
 import {IRootStore, RootStore} from './store/root';
 import {ActionObject} from './types';
 import {bulkBindFunctions, guid, isVisible} from './utils/helper';
@@ -11,9 +11,12 @@ import pick from 'lodash/pick';
 import mapValues from 'lodash/mapValues';
 import {saveAs} from 'file-saver';
 import {normalizeApi} from './utils/api';
+import {findDOMNode} from 'react-dom';
 
 export interface RootRendererProps extends RootProps {
   location?: any;
+  data?: Record<string, any>;
+  context?: Record<string, any>;
   render: (region: string, schema: any, props: any) => React.ReactNode;
 }
 
@@ -24,17 +27,17 @@ export class RootRenderer extends React.Component<RootRendererProps> {
 
   constructor(props: RootRendererProps) {
     super(props);
-
     this.store = props.rootStore.addStore({
       id: guid(),
       path: this.props.$path,
       storeType: RootStore.name,
       parentId: ''
     }) as IRootStore;
-
+    this.store.updateContext(props.context);
     this.store.initData(props.data);
     this.store.updateLocation(props.location, this.props.env?.parseLocation);
 
+    // 将数据里面的函数批量的绑定到 this 上
     bulkBindFunctions<RootRenderer /*为毛 this 的类型自动识别不出来？*/>(this, [
       'handleAction',
       'handleDialogConfirm',
@@ -50,6 +53,22 @@ export class RootRenderer extends React.Component<RootRendererProps> {
       'visibilitychange',
       this.handlePageVisibilityChange
     );
+
+    // 兼容 affixOffsetTop 和 affixOffsetBottom
+    if (
+      typeof this.props.env.affixOffsetTop !== 'undefined' ||
+      typeof this.props.env.affixOffsetBottom !== 'undefined'
+    ) {
+      // top: var(--affix-offset-top);
+      const dom = findDOMNode(this);
+      if (dom?.parentElement) {
+        dom.parentElement.style.cssText += `--affix-offset-top: ${
+          this.props.env.affixOffsetTop || 0
+        }px; --affix-offset-bottom: ${
+          this.props.env.affixOffsetBottom || 0
+        }px;`;
+      }
+    }
   }
 
   componentDidUpdate(prevProps: RootRendererProps) {
@@ -62,9 +81,14 @@ export class RootRenderer extends React.Component<RootRendererProps> {
     if (props.location !== prevProps.location) {
       this.store.updateLocation(props.location);
     }
+
+    if (props.context !== prevProps.context) {
+      this.store.updateContext(props.context);
+    }
   }
 
   componentDidCatch(error: any, errorInfo: any) {
+    this.props.env?.errorCatcher?.(error, errorInfo);
     this.store.setRuntimeError(error, errorInfo);
   }
 
@@ -96,7 +120,7 @@ export class RootRenderer extends React.Component<RootRendererProps> {
     throwErrors: boolean = false,
     delegate?: IScopedContext
   ) {
-    const {env, messages, onAction, render} = this.props;
+    const {env, messages, onAction, mobileUI, render} = this.props;
     const store = this.store;
 
     if (
@@ -106,7 +130,7 @@ export class RootRenderer extends React.Component<RootRendererProps> {
       return;
     }
 
-    const scoped = delegate || this.context;
+    const scoped = delegate || (this.context as IScopedContext);
     if (action.actionType === 'reload') {
       action.target && scoped.reload(action.target, ctx);
     } else if (action.target) {
@@ -152,10 +176,15 @@ export class RootRenderer extends React.Component<RootRendererProps> {
       window.open(mailto);
     } else if (action.actionType === 'dialog') {
       store.setCurrentAction(action);
-      store.openDialog(ctx);
+      store.openDialog(
+        ctx,
+        undefined,
+        action.callback,
+        delegate || (this.context as any)
+      );
     } else if (action.actionType === 'drawer') {
       store.setCurrentAction(action);
-      store.openDrawer(ctx);
+      store.openDrawer(ctx, undefined, undefined, delegate);
     } else if (action.actionType === 'toast') {
       action.toast?.items?.forEach((item: any) => {
         env.notify(
@@ -163,7 +192,8 @@ export class RootRenderer extends React.Component<RootRendererProps> {
           item.body
             ? render('body', item.body, {
                 ...this.props,
-                data: ctx
+                data: ctx,
+                context: store.context
               })
             : '',
           {
@@ -172,10 +202,11 @@ export class RootRenderer extends React.Component<RootRendererProps> {
             title: item.title
               ? render('title', item.title, {
                   ...this.props,
-                  data: ctx
+                  data: ctx,
+                  context: store.context
                 })
               : null,
-            useMobileUI: env.useMobileUI
+            mobileUI: mobileUI
           }
         );
       });
@@ -197,11 +228,11 @@ export class RootRenderer extends React.Component<RootRendererProps> {
 
           const redirect =
             action.redirect && filter(action.redirect, store.data);
-          redirect && env.jumpTo(redirect, action);
+          redirect && env.jumpTo(redirect, action, store.data);
           action.reload &&
             this.reloadTarget(
-              delegate || this.context,
-              action.reload,
+              delegate || (this.context as IScopedContext),
+              filterTarget(action.reload, ctx),
               store.data
             );
         })
@@ -252,7 +283,15 @@ export class RootRenderer extends React.Component<RootRendererProps> {
       return;
     }
 
+    const dialogAction = store.action as ActionObject;
+    const reload = action.reload ?? dialogAction.reload;
+    const scoped = store.getDialogScoped() || (this.context as IScopedContext);
+
     store.closeDialog(true);
+
+    if (reload) {
+      scoped.reload(reload, store.data);
+    }
   }
 
   handleDialogClose(confirmed = false) {
@@ -280,7 +319,18 @@ export class RootRenderer extends React.Component<RootRendererProps> {
       return;
     }
 
+    const drawerAction = store.action as ActionObject;
+    const reload = action.reload ?? drawerAction.reload;
+    const scoped = store.getDrawerScoped() || (this.context as IScopedContext);
+
     store.closeDrawer();
+
+    // 稍等会，等动画结束。
+    setTimeout(() => {
+      if (reload) {
+        scoped.reload(reload, store.data);
+      }
+    }, 300);
   }
 
   handleDrawerClose() {
@@ -296,9 +346,14 @@ export class RootRenderer extends React.Component<RootRendererProps> {
         actionType: 'dialog',
         dialog: dialog
       });
-      store.openDialog(ctx, undefined, confirmed => {
-        resolve(confirmed);
-      });
+      store.openDialog(
+        ctx,
+        undefined,
+        confirmed => {
+          resolve(confirmed);
+        },
+        this.context as any
+      );
     });
   }
 
@@ -306,30 +361,120 @@ export class RootRenderer extends React.Component<RootRendererProps> {
     scoped.reload(target, data);
   }
 
+  renderRuntimeError() {
+    const {render, ...rest} = this.props;
+    const {store} = this;
+    return render(
+      'error',
+      {
+        type: 'alert',
+        level: 'danger'
+      },
+      {
+        ...rest,
+        topStore: store,
+        body: (
+          <>
+            <h3>{store.runtimeError?.toString()}</h3>
+            <pre>
+              <code>{store.runtimeErrorStack.componentStack}</code>
+            </pre>
+          </>
+        )
+      }
+    );
+  }
+
+  renderSpinner() {
+    const {render, ...rest} = this.props;
+    const {store} = this;
+    return render(
+      'spinner',
+      {
+        type: 'spinner'
+      },
+      {
+        ...rest,
+        topStore: store,
+        show: store.loading
+      }
+    );
+  }
+
+  renderError() {
+    const {render, ...rest} = this.props;
+    const store = this.store;
+    return store.error
+      ? render(
+          'error',
+          {
+            type: 'alert'
+          },
+          {
+            ...rest,
+            topStore: this.store,
+            body: store.msg,
+            showCloseButton: true,
+            onClose: store.clearMessage
+          }
+        )
+      : null;
+  }
+
+  renderDialog() {
+    const {render, ...rest} = this.props;
+    const store = this.store;
+    return render(
+      'dialog',
+      {
+        ...((store.action as ActionObject) &&
+          ((store.action as ActionObject).dialog as object)),
+        type: 'dialog'
+      },
+      {
+        ...rest,
+        key: 'dialog',
+        topStore: this.store,
+        data: store.dialogData,
+        context: store.context,
+        onConfirm: this.handleDialogConfirm,
+        onClose: this.handleDialogClose,
+        show: store.dialogOpen,
+        onAction: this.handleAction
+      }
+    );
+  }
+
+  renderDrawer() {
+    const {render, ...rest} = this.props;
+    const store = this.store;
+    return render(
+      'drawer',
+      {
+        ...((store.action as ActionObject) &&
+          ((store.action as ActionObject).drawer as object)),
+        type: 'drawer'
+      },
+      {
+        ...rest,
+        key: 'drawer',
+        topStore: this.store,
+        data: store.drawerData,
+        context: store.context,
+        onConfirm: this.handleDrawerConfirm,
+        onClose: this.handleDrawerClose,
+        show: store.drawerOpen,
+        onAction: this.handleAction
+      }
+    );
+  }
+
   render() {
     const {pathPrefix, schema, render, ...rest} = this.props;
     const store = this.store;
 
     if (store.runtimeError) {
-      return render(
-        'error',
-        {
-          type: 'alert',
-          level: 'danger'
-        },
-        {
-          ...rest,
-          topStore: this.store,
-          body: (
-            <>
-              <h3>{this.store.runtimeError?.toString()}</h3>
-              <pre>
-                <code>{this.store.runtimeErrorStack.componentStack}</code>
-              </pre>
-            </>
-          )
-        }
-      );
+      return this.renderRuntimeError();
     }
 
     return (
@@ -339,75 +484,18 @@ export class RootRenderer extends React.Component<RootRendererProps> {
             ...rest,
             topStore: this.store,
             data: this.store.downStream,
+            context: store.context,
             onAction: this.handleAction
           }) as JSX.Element
         }
 
-        {render(
-          'spinner',
-          {
-            type: 'spinner'
-          },
-          {
-            ...rest,
-            topStore: this.store,
-            show: store.loading
-          }
-        )}
+        {this.renderSpinner()}
 
-        {store.error
-          ? render(
-              'error',
-              {
-                type: 'alert'
-              },
-              {
-                ...rest,
-                topStore: this.store,
-                body: store.msg,
-                showCloseButton: true,
-                onClose: store.clearMessage
-              }
-            )
-          : null}
+        {this.renderError()}
 
-        {render(
-          'dialog',
-          {
-            ...((store.action as ActionObject) &&
-              ((store.action as ActionObject).dialog as object)),
-            type: 'dialog'
-          },
-          {
-            ...rest,
-            key: 'dialog',
-            topStore: this.store,
-            data: store.dialogData,
-            onConfirm: this.handleDialogConfirm,
-            onClose: this.handleDialogClose,
-            show: store.dialogOpen,
-            onAction: this.handleAction
-          }
-        )}
+        {this.renderDialog()}
 
-        {render(
-          'drawer',
-          {
-            ...((store.action as ActionObject) &&
-              ((store.action as ActionObject).drawer as object)),
-            type: 'drawer'
-          },
-          {
-            ...rest,
-            key: 'drawer',
-            topStore: this.store,
-            data: store.drawerData,
-            onConfirm: this.handleDrawerConfirm,
-            onClose: this.handleDrawerClose,
-            show: store.drawerOpen,
-            onAction: this.handleAction
-          }
-        )}
+        {this.renderDrawer()}
       </>
     );
   }

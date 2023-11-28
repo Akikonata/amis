@@ -1450,6 +1450,8 @@ order: 2
 
 ## 自动填充 autoFill
 
+> 支持该配置项的有：ButtonGroup、List、NestedSelect、Picker、Radios、Select、InputFile、InputImage、InputExcel
+
 一些选择器组件，支持配置`autoFill`，将当前已选中的选项的某个字段的值，自动填充到表单中某个表单项中，支持[数据映射](../../../docs/concepts/data-mapping)
 
 ```schema: scope="body"
@@ -1556,8 +1558,6 @@ order: 2
 }
 ```
 
-支持该配置项的有：ButtonGroup、List、NestedSelect、Picker、Radios、Select。
-
 ## 控制选项高度
 
 > 1.10.0 及以上版本
@@ -1593,6 +1593,7 @@ order: 2
 | multiple         | `boolean`                                                                         | `false`   | 是否支持多选                                                                 |
 | labelField       | `boolean`                                                                         | `"label"` | 标识选项中哪个字段是`label`值                                                |
 | valueField       | `boolean`                                                                         | `"value"` | 标识选项中哪个字段是`value`值                                                |
+| deferField       | `string`                                                                          | `"defer"` | 标识选项中哪个字段是`defer`值                                                |
 | joinValues       | `boolean`                                                                         | `true`    | 是否拼接`value`值                                                            |
 | extractValue     | `boolean`                                                                         | `false`   | 是否将`value`值抽取出来组成新的数组，只有在`joinValues`是`false`是生效       |
 | itemHeight       | `number`                                                                          | `32`      | 每个选项的高度，用于虚拟渲染                                                 |

@@ -1,11 +1,23 @@
 import React from 'react';
-import {ResultBox, Spinner,Icon, PopUp, Checkbox, Cascader, SpinnerExtraProps} from 'amis-ui';
 import {
-  Overlay, resolveEventData,
-  PopOver, Option, Options,
+  ResultBox,
+  Spinner,
+  Icon,
+  PopUp,
+  Checkbox,
+  Cascader,
+  SpinnerExtraProps
+} from 'amis-ui';
+import {
+  Overlay,
+  resolveEventData,
+  PopOver,
+  Option,
+  Options,
   autobind,
   flattenTree,
   filterTree,
+  getTreeDepth,
   string2regExp,
   getTreeAncestors,
   getTreeParent,
@@ -14,7 +26,8 @@ import {
   OptionsControl,
   OptionsControlProps,
   RootClose,
-  ActionObject
+  ActionObject,
+  renderTextByKeyword
 } from 'amis-core';
 import {findDOMNode} from 'react-dom';
 import xor from 'lodash/xor';
@@ -22,10 +35,13 @@ import union from 'lodash/union';
 import compact from 'lodash/compact';
 import {FormOptionsSchema} from '../../Schema';
 import {supportStatic} from './StaticHoc';
+import {matchSorter} from 'match-sorter';
+
+import type {TooltipObject} from 'amis-ui/lib/components/TooltipWrapper';
 
 /**
  * Nested Select
- * 文档：https://baidu.gitee.io/amis/docs/components/form/nested-select
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/nested-select
  */
 export interface NestedSelectControlSchema extends FormOptionsSchema {
   type: 'nested-select';
@@ -63,6 +79,16 @@ export interface NestedSelectControlSchema extends FormOptionsSchema {
    * 是否隐藏选择框中已选中节点的祖先节点的文本信息
    */
   hideNodePathLabel?: boolean;
+
+  /**
+   * 标签的最大展示数量，超出数量后以收纳浮层的方式展示，仅在多选模式开启后生效
+   */
+  maxTagCount?: number;
+
+  /**
+   * 收纳标签的Popover配置
+   */
+  overflowTagPopover?: object;
 }
 
 export interface NestedSelectProps
@@ -73,7 +99,9 @@ export interface NestedSelectProps
   withChildren?: boolean;
   onlyChildren?: boolean;
   hideNodePathLabel?: boolean;
-  useMobileUI?: boolean;
+  mobileUI?: boolean;
+  maxTagCount?: number;
+  overflowTagPopover?: TooltipObject;
 }
 
 export interface NestedSelectState {
@@ -98,6 +126,8 @@ export default class NestedSelectControl extends React.Component<
     checkAllLabel: 'Select.checkAll',
     hideNodePathLabel: false
   };
+  outTarget: React.RefObject<HTMLDivElement> = React.createRef();
+  outTargetWidth?: number;
   target: any;
   input: HTMLInputElement;
   state: NestedSelectState = {
@@ -136,15 +166,21 @@ export default class NestedSelectControl extends React.Component<
     const {dispatchEvent} = this.props;
     const rendererEvent = await dispatchEvent(
       eventName,
-      resolveEventData(this.props, eventData, 'value')
+      resolveEventData(this.props, eventData)
     );
     // 返回阻塞标识
     return !!rendererEvent?.prevented;
   }
 
+  /** 是否为父节点 */
+  isParentNode(option: Option) {
+    return Array.isArray(option.children) && option.children.length > 0;
+  }
+
   @autobind
   handleOutClick(e: React.MouseEvent<any>) {
     const {options} = this.props;
+    this.outTargetWidth = this.outTarget.current?.clientWidth;
     e.defaultPrevented ||
       this.setState({
         isOpened: true
@@ -205,49 +241,42 @@ export default class NestedSelectControl extends React.Component<
       options,
       hideNodePathLabel
     } = this.props;
-    const inputValue = this.state.inputValue;
-    const regexp = string2regExp(inputValue || '');
+    const inputValue = this.state.inputValue || '';
+    const regexp = string2regExp(inputValue);
 
     if (hideNodePathLabel) {
       return option[labelField || 'label'];
     }
     const ancestors = getTreeAncestors(options, option, true);
 
+    const optionText = option[labelField || 'label'];
+    const splitJoin = ' / ';
+
+    const title = ancestors
+      ? ancestors.map(item => item[labelField || 'label']).join(splitJoin)
+      : optionText;
+
     return (
       <span
         className={cx('Select-valueLabel')}
         key={key || option[valueField || 'value']}
+        title={title}
       >
         {ancestors
           ? ancestors.map((item, index) => {
               const label = item[labelField || 'label'];
               const value = item[valueField || 'value'];
               const isEnd = index === ancestors.length - 1;
-              const unmatchText = label.split(regexp || '');
-              let pointer = 0;
               return (
                 <span key={index}>
                   {regexp.test(value) || regexp.test(label)
-                    ? unmatchText.map((text: string, textIndex: number) => {
-                        const current = pointer;
-                        pointer += text.length || inputValue?.length || 0;
-                        return (
-                          <span
-                            key={textIndex}
-                            className={cx({
-                              'NestedSelect-optionLabel-highlight': !text
-                            })}
-                          >
-                            {text || label.slice(current, pointer)}
-                          </span>
-                        );
-                      })
+                    ? renderTextByKeyword(label, inputValue)
                     : label}
-                  {!isEnd && ' / '}
+                  {!isEnd && splitJoin}
                 </span>
               );
             })
-          : option[labelField || 'label']}
+          : optionText}
       </span>
     );
   }
@@ -271,7 +300,7 @@ export default class NestedSelectControl extends React.Component<
       return;
     }
 
-    if (onlyLeaf && option.children) {
+    if (onlyLeaf && this.isParentNode(option)) {
       return;
     }
 
@@ -303,7 +332,7 @@ export default class NestedSelectControl extends React.Component<
 
     let valueField = this.props.valueField || 'value';
 
-    if (onlyLeaf && !Array.isArray(option) && option.children) {
+    if (onlyLeaf && !Array.isArray(option) && this.isParentNode(option)) {
       return;
     }
 
@@ -407,6 +436,7 @@ export default class NestedSelectControl extends React.Component<
 
   allChecked(options: Options): boolean {
     const {selectedOptions, withChildren, onlyChildren} = this.props;
+
     return options.every(option => {
       if ((withChildren || onlyChildren) && option.children) {
         return this.allChecked(option.children);
@@ -524,16 +554,20 @@ export default class NestedSelectControl extends React.Component<
   handleInputChange(inputValue: string) {
     const {options, labelField, valueField} = this.props;
 
-    const regexp = string2regExp(inputValue);
-
     let filtedOptions =
       inputValue && this.state.isOpened
         ? filterTree(
             options,
-            option =>
-              regexp.test(option[labelField || 'label']) ||
-              regexp.test(option[valueField || 'value']) ||
-              !!(option.children && option.children.length),
+            (
+              option: Option,
+              key: number,
+              level: number,
+              paths: Array<Option>
+            ) =>
+              !!matchSorter([option].concat(paths), inputValue, {
+                keys: [labelField || 'label', valueField || 'value'],
+                threshold: matchSorter.rankings.CONTAINS
+              }).length || !!(option.children && option.children.length),
             1,
             true
           )
@@ -580,6 +614,20 @@ export default class NestedSelectControl extends React.Component<
     isPrevented || onChange(newValue);
   }
 
+  @autobind
+  getMenuSelectMenuStyle() {
+    const {options} = this.props;
+    const width = this.outTargetWidth;
+    const depth = getTreeDepth(options);
+    let style = {};
+    if (width) {
+      style = {
+        width: width / depth
+      };
+    }
+    return style;
+  }
+
   renderOptions() {
     const {
       multiple,
@@ -603,7 +651,11 @@ export default class NestedSelectControl extends React.Component<
     return (
       <>
         {stack.map((options, index) => (
-          <div key={index} className={cx('NestedSelect-menu', menuClassName)}>
+          <div
+            key={index}
+            className={cx('NestedSelect-menu', menuClassName)}
+            style={this.getMenuSelectMenuStyle()}
+          >
             {multiple && checkAll && index === 0 ? (
               <div className={cx('NestedSelect-option', 'checkall')}>
                 <Checkbox
@@ -637,11 +689,13 @@ export default class NestedSelectControl extends React.Component<
               if (
                 !selfChecked &&
                 onlyChildren &&
-                option.children &&
-                this.allChecked(option.children)
+                this.isParentNode(option) &&
+                this.allChecked(option.children!)
               ) {
                 selfChecked = true;
               }
+
+              let label = option[labelField || 'label'];
 
               return (
                 <div
@@ -674,12 +728,17 @@ export default class NestedSelectControl extends React.Component<
                         ? this.handleCheck(option, index)
                         : this.handleOptionClick(option))
                     }
+                    title={label}
                   >
-                    {option[labelField || 'label']}
+                    {label}
                   </div>
 
                   {option.children && option.children.length ? (
-                    <div className={cx('NestedSelect-optionArrowRight')}>
+                    <div
+                      className={cx('NestedSelect-optionArrowRight', {
+                        'is-disabled': nodeDisabled
+                      })}
+                    >
                       <Icon icon="right-arrow-bold" className="icon" />
                     </div>
                   ) : null}
@@ -722,7 +781,10 @@ export default class NestedSelectControl extends React.Component<
 
     // 一个stack一个menu
     const resultBody = (
-      <div className={cx('NestedSelect-menu')}>
+      <div
+        className={cx('NestedSelect-menu')}
+        style={this.getMenuSelectMenuStyle()}
+      >
         {flattenTreeWithNodes.length ? (
           flattenTreeWithNodes.map((option, index) => {
             const ancestors = getTreeAncestors(propOptions, option as any);
@@ -747,8 +809,8 @@ export default class NestedSelectControl extends React.Component<
             if (
               !isChecked &&
               onlyChildren &&
-              option.children &&
-              this.allChecked(option.children)
+              this.isParentNode(option) &&
+              this.allChecked(option.children!)
             ) {
               isChecked = true;
             }
@@ -874,16 +936,23 @@ export default class NestedSelectControl extends React.Component<
       clearable,
       loading,
       borderMode,
-      useMobileUI,
+      mobileUI,
+      popOverContainer,
       env,
-      loadingConfig
+      loadingConfig,
+      maxTagCount,
+      overflowTagPopover
     } = this.props;
 
-    const mobileUI = useMobileUI && isMobile();
     return (
-      <div className={cx('NestedSelectControl', className)}>
+      <div
+        className={cx('NestedSelectControl', className)}
+        ref={this.outTarget}
+      >
         <ResultBox
-          useMobileUI={useMobileUI}
+          mobileUI={mobileUI}
+          maxTagCount={maxTagCount}
+          overflowTagPopover={overflowTagPopover}
           disabled={disabled}
           ref={this.domRef}
           placeholder={__(placeholder ?? 'placeholder.empty')}
@@ -916,7 +985,7 @@ export default class NestedSelectControl extends React.Component<
           onKeyDown={this.handleInputKeyDown}
           clearable={clearable}
           hasDropDownArrow={true}
-          allowInput={searchable}
+          allowInput={searchable && !mobileUI}
         >
           {loading ? (
             <Spinner loadingConfig={loadingConfig} size="sm" />
@@ -925,9 +994,7 @@ export default class NestedSelectControl extends React.Component<
         {mobileUI ? (
           <PopUp
             className={cx(`NestedSelect-popup`)}
-            container={
-              env && env.getModalContainer ? env.getModalContainer : undefined
-            }
+            container={env.getModalContainer}
             isShow={this.state.isOpened}
             onHide={this.close}
             showConfirm={false}

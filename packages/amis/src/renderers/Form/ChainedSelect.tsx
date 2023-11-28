@@ -8,18 +8,18 @@ import {
   resolveEventData
 } from 'amis-core';
 import {Select, Spinner} from 'amis-ui';
-import {Api} from 'amis-core';
+import {Api, ApiObject} from 'amis-core';
 import {isEffectiveApi} from 'amis-core';
 import {isMobile, createObject} from 'amis-core';
 import {ActionObject} from 'amis-core';
 import {FormOptionsSchema} from '../../Schema';
 import {supportStatic} from './StaticHoc';
 import find from 'lodash/find';
-import {isEmpty} from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 
 /**
  * 链式下拉框
- * 文档：https://baidu.gitee.io/amis/docs/components/form/chained-select
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/chained-select
  */
 export interface ChainedSelectControlSchema extends FormOptionsSchema {
   type: 'chained-select';
@@ -190,7 +190,7 @@ export default class ChainedSelectControl extends React.Component<
 
               const rendererEvent = await dispatchEvent(
                 'change',
-                resolveEventData(this.props, {value: valueRes}, 'value')
+                resolveEventData(this.props, {value: valueRes})
               );
 
               if (rendererEvent?.prevented) {
@@ -215,7 +215,7 @@ export default class ChainedSelectControl extends React.Component<
             );
           })
           .catch(e => {
-            env.notify('error', e.message);
+            !(source as ApiObject)?.silent && env.notify('error', e.message);
           });
       }
     );
@@ -244,7 +244,7 @@ export default class ChainedSelectControl extends React.Component<
 
     const rendererEvent = await dispatchEvent(
       'change',
-      resolveEventData(this.props, {value: valueRes}, 'value')
+      resolveEventData(this.props, {value: valueRes})
     );
 
     if (rendererEvent?.prevented) {
@@ -317,7 +317,7 @@ export default class ChainedSelectControl extends React.Component<
       joinValues,
       extractValue,
       multiple,
-      useMobileUI,
+      mobileUI,
       env,
       ...rest
     } = this.props;
@@ -329,16 +329,15 @@ export default class ChainedSelectControl extends React.Component<
 
     const hasStackLoading = this.state.stack.find((a: StackItem) => a.loading);
 
-    const mobileUI = useMobileUI && isMobile();
     return (
       <div className={cx(`${ns}ChainedSelectControl`, className)}>
         <Select
           {...rest}
-          useMobileUI={useMobileUI}
+          mobileUI={mobileUI}
           popOverContainer={
-            mobileUI && env && env.getModalContainer
-              ? env.getModalContainer
-              : rest.popOverContainer
+            mobileUI
+              ? env?.getModalContainer
+              : rest.popOverContainer || env?.getModalContainer
           }
           classPrefix={ns}
           key="base"
@@ -354,11 +353,11 @@ export default class ChainedSelectControl extends React.Component<
           visible === false || loading ? null : (
             <Select
               {...rest}
-              useMobileUI={useMobileUI}
+              mobileUI={mobileUI}
               popOverContainer={
-                mobileUI && env && env.getModalContainer
+                mobileUI
                   ? env.getModalContainer
-                  : rest.popOverContainer
+                  : rest.popOverContainer || env?.getModalContainer
               }
               classPrefix={ns}
               key={`x-${index + 1}`}

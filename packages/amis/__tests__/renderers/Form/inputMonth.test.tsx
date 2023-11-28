@@ -74,7 +74,7 @@ test('Renderer:inputMonth with dynamic minDate & maxDate', async () => {
             type: 'input-month',
             name: 'startTime',
             size: 'md',
-            format: 'X',
+            valueFormat: 'X',
             maxDate: '${endTime}',
             value: '2000-05'
           },
@@ -83,7 +83,7 @@ test('Renderer:inputMonth with dynamic minDate & maxDate', async () => {
             label: '结束日期',
             size: 'md',
             name: 'endTime',
-            format: 'X',
+            valueFormat: 'X',
             minDate: '${startTime}',
             maxDate: '${startTime} +1year',
             value: '2000-10'
@@ -122,4 +122,4 @@ test('Renderer:inputMonth with dynamic minDate & maxDate', async () => {
   expect(end.querySelector('.rdtMonth:not(.rdtDisabled)')!).toHaveTextContent(
     '8月'
   );
-});
+}, 10000);

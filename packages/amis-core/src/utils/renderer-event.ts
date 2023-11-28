@@ -1,7 +1,7 @@
 import {ListenerAction, ListenerContext, runActions} from '../actions/Action';
 import {RendererProps} from '../factory';
 import {IScopedContext} from '../Scoped';
-import {createObject} from './object';
+import {createObject, extendObject} from './object';
 import debounce from 'lodash/debounce';
 
 export interface debounceConfig {
@@ -10,10 +10,16 @@ export interface debounceConfig {
   leading?: boolean;
   trailing?: boolean;
 }
+
+export interface trackConfig {
+  id: string;
+  name: string;
+}
 // 事件监听器
 export interface EventListeners {
   [propName: string]: {
     debounce?: debounceConfig;
+    track?: trackConfig;
     weight?: number; // 权重
     actions: ListenerAction[]; // 执行的动作集
   };
@@ -26,6 +32,7 @@ export interface OnEventProps {
       weight?: number; // 权重
       actions: ListenerAction[]; // 执行的动作集,
       debounce?: debounceConfig;
+      track?: trackConfig;
     };
   };
 }
@@ -36,6 +43,7 @@ export interface RendererEventListener {
   type: string;
   weight: number;
   debounce: debounceConfig | null;
+  track: trackConfig | null;
   actions: ListenerAction[];
   executing?: boolean;
   debounceInstance?: any;
@@ -65,7 +73,7 @@ export function createRendererEvent<T extends RendererEventContext>(
   context: T
 ): RendererEvent<T> {
   const rendererEvent = {
-    context,
+    context: extendObject({pristineData: context.data}, context),
     type,
     prevented: false,
     stoped: false,
@@ -79,6 +87,10 @@ export function createRendererEvent<T extends RendererEventContext>(
 
     get data() {
       return rendererEvent.context.data;
+    },
+
+    get pristineData() {
+      return rendererEvent.context.pristineData;
     },
 
     setData(data: any) {
@@ -109,28 +121,34 @@ export const bindEvent = (renderer: any) => {
               item.renderer === listener.renderer && item.type === listener.type
             )
         );
-        rendererEventListeners.push({
-          renderer,
-          type: key,
-          debounce: listener.debounce || null,
-          weight: listener.weight || 0,
-          actions: listener.actions
-        });
+        listener.actions.length &&
+          rendererEventListeners.push({
+            renderer,
+            type: key,
+            debounce: listener.debounce || null,
+            track: listeners[key].track || null,
+            weight: listener.weight || 0,
+            actions: listener.actions
+          });
       }
-      if (!listener) {
+      if (!listener && listeners[key].actions?.length) {
         rendererEventListeners.push({
           renderer,
           type: key,
           debounce: listeners[key].debounce || null,
+          track: listeners[key].track || null,
           weight: listeners[key].weight || 0,
           actions: listeners[key].actions
         });
       }
     }
-
-    return () => {
+    return (eventName?: string) => {
+      // eventName用来避免过滤广播事件
       rendererEventListeners = rendererEventListeners.filter(
-        (item: RendererEventListener) => item.renderer !== renderer
+        (item: RendererEventListener) =>
+          item.renderer === renderer && eventName !== undefined
+            ? item.type !== eventName
+            : true
       );
     };
   }
@@ -146,7 +164,7 @@ export async function dispatchEvent(
   data: any,
   broadcast?: RendererEvent<any>
 ): Promise<RendererEvent<any> | void> {
-  let unbindEvent: (() => void) | null | undefined = null;
+  let unbindEvent: ((eventName?: string) => void) | null | undefined = null;
   const eventName = typeof e === 'string' ? e : e.type;
 
   renderer?.props?.env?.beforeDispatchEvent?.(
@@ -156,6 +174,8 @@ export async function dispatchEvent(
     data,
     broadcast
   );
+
+  broadcast && renderer.props.onBroadcast?.(e as string, broadcast, data);
 
   if (!broadcast) {
     const eventConfig = renderer?.props?.onEvent?.[eventName];
@@ -180,6 +200,7 @@ export async function dispatchEvent(
       data,
       scoped
     });
+
   // 过滤&排序
   const listeners = rendererEventListeners
     .filter(
@@ -195,7 +216,7 @@ export async function dispatchEvent(
   const checkExecuted = () => {
     executedCount++;
     if (executedCount === listeners.length) {
-      unbindEvent?.();
+      unbindEvent?.(eventName);
     }
   };
   for (let listener of listeners) {
@@ -234,6 +255,17 @@ export async function dispatchEvent(
       checkExecuted();
     }
 
+    if (listener?.track) {
+      const {id: trackId, name: trackName} = listener.track;
+      renderer?.props?.env?.tracker({
+        eventType: listener.type,
+        eventData: {
+          trackId,
+          trackName
+        }
+      });
+    }
+
     // 停止后续监听器执行
     if (rendererEvent.stoped) {
       break;
@@ -252,7 +284,11 @@ export const getRendererEventListeners = () => {
  * @param data
  * @param valueKey
  */
-export const resolveEventData = (props: any, data: any, valueKey?: string) => {
+export const resolveEventData = (
+  props: any,
+  data: any,
+  valueKey: string = 'value'
+) => {
   return createObject(
     props.data,
     props.name && valueKey

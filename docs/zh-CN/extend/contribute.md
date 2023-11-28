@@ -2,11 +2,11 @@
 title: 如何贡献代码
 ---
 
-如果发现 amis 有不满足的功能，除了发 issue 等官方升级之外，最快的方法就是自己实现它，本文将介绍 amis 代码的基本结构，一步步教会你如何新增功能。
+如果发现 amis 有不满足的功能，除了发 issue 等官方升级之外，最快的方法就是自己实现它，本文将介绍 amis 代码的基本结构，并一步步教你如何新增功能。
 
 ## 准备开始
 
-1. 首先，你需要对 React 有基本了解，快速看一遍[官方文档](https://zh-hans.reactjs.org/docs/getting-started.html)就行。
+1. 首先，你需要对 React 有基本了解，快速看一遍[官方文档](https://zh-hans.react.dev/learn)即可。
 2. 在 github 上 fork amis 项目到自己的账号下。
 3. 创建分支 `git checkout -b feat-xxx`
 
@@ -42,11 +42,11 @@ amis 主要代码在 `src` 和 `scss` 目录下，这里主要介绍 `src` 下�
 
 虽然文件很多，但对于组件开发而言，大部分情况下只需要关注 `components` 及 `renderers` 目录下的内容就行，如果发现某个组件不满足需求，可以先在 `renderers` 中找到这个组件，对齐进行修改就行。
 
-下面我们将以一个实际例子来介绍如果新增一个组件。
+下面我们将以一个实际例子来介绍如何新增一个组件。
 
 ## 实战：avatar 组件
 
-本文的目标是新增 avatar 头像组件，完整演示如何在 amis 中添加一个新组建，完整实现可以参考这个 [pr](https://github.com/baidu/amis/pull/1684/files)，本文基于这个例子进行了简化。
+本文的目标是新增 avatar 头像组件，完整演示如何在 amis 中添加一个新组件，完整实现可以参考这个 [pr](https://github.com/baidu/amis/pull/1684/files)，本文基于这个例子进行了简化。
 
 ### 编写 React 组件代码代码
 

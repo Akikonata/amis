@@ -6,7 +6,9 @@ import React from 'react';
 import {RendererProps} from './factory';
 import {IIRendererStore, IRendererStore} from './store';
 import {RendererData, SchemaNode} from './types';
-import getExprProperties from './utils/filter-schema';
+import getExprProperties, {
+  hasExprPropertiesChanged
+} from './utils/filter-schema';
 import {
   createObject,
   extendObject,
@@ -15,7 +17,7 @@ import {
   syncDataFromSuper,
   isSuperDataModified
 } from './utils/helper';
-import {dataMapping} from './utils/tpl-builtin';
+import {dataMapping, tokenize} from './utils/tpl-builtin';
 import {RootStoreContext} from './WithRootStore';
 
 export function HocStoreFactory(renderer: {
@@ -35,6 +37,8 @@ export function HocStoreFactory(renderer: {
       store?: IIRendererStore;
       data?: RendererData;
       scope?: RendererData;
+      rootStore: any;
+      topStore: any;
     };
 
     @observer
@@ -66,6 +70,7 @@ export function HocStoreFactory(renderer: {
           storeType: renderer.storeType,
           parentId: this.props.store ? this.props.store.id : ''
         }) as IIRendererStore;
+        store.setTopStore(props.topStore);
         this.store = store;
 
         const extendsData =
@@ -124,26 +129,19 @@ export function HocStoreFactory(renderer: {
         this.state = {};
         const {detectField, ...rest} = props;
         let exprProps: any = {};
+
         if (!detectField || detectField === 'data') {
-          exprProps = getExprProperties(rest, store.data, undefined, rest);
+          exprProps = getExprProperties(rest, store.data);
 
           this.state = {
             ...exprProps
           };
 
           this.unReaction = reaction(
-            () =>
-              JSON.stringify(
-                getExprProperties(this.props, store.data, undefined, this.props)
-              ),
+            () => JSON.stringify(getExprProperties(this.props, store.data)),
             () =>
               this.setState({
-                ...getExprProperties(
-                  this.props,
-                  store.data,
-                  undefined,
-                  this.props
-                )
+                ...getExprProperties(this.props, store.data)
               })
           );
         }
@@ -167,9 +165,30 @@ export function HocStoreFactory(renderer: {
         return data as object;
       }
 
-      componentDidUpdate(prevProps: RendererProps) {
+      componentDidUpdate(prevProps: Props) {
         const props = this.props;
         const store = this.store;
+
+        // dialog 场景下 schema 是显示的时候更新的，
+        // 所以 schema 里面有表达式属性其实是监听不到变化的
+        // 所以这里需要根据新属性重新 reaction 一下
+        if (
+          (!props.detectField || props.detectField === 'data') &&
+          hasExprPropertiesChanged(this.props, prevProps)
+        ) {
+          const state = getExprProperties(this.props, store.data);
+          isObjectShallowModified(state, this.state) && this.setState(state);
+          // 需要重新监听
+          this.unReaction?.();
+          this.unReaction = reaction(
+            () => JSON.stringify(getExprProperties(props, store.data)),
+            () =>
+              this.setState({
+                ...getExprProperties(this.props, store.data)
+              })
+          );
+        }
+
         const shouldSync = renderer.shouldSyncSuperStore?.(
           store,
           props,
@@ -188,27 +207,34 @@ export function HocStoreFactory(renderer: {
           if (
             shouldSync === true ||
             prevProps.defaultData !== props.defaultData ||
-            isObjectShallowModified(prevProps.data, props.data) ||
-            //
-            // 特殊处理 CRUD。
-            // CRUD 中 toolbar 里面的 data 是空对象，但是 __super 会不一样
-            (props.data &&
-              prevProps.data &&
-              props.data.__super !== prevProps.data.__super)
+            (props.trackExpression
+              ? tokenize(props.trackExpression, props.data!) !==
+                tokenize(props.trackExpression, prevProps.data!)
+              : isObjectShallowModified(prevProps.data, props.data) ||
+                //
+                // 特殊处理 CRUD。
+                // CRUD 中 toolbar 里面的 data 是空对象，但是 __super 会不一样
+                (props.data &&
+                  prevProps.data &&
+                  props.data.__super !== prevProps.data.__super))
           ) {
             store.initData(
               extendObject(props.data, {
                 ...(store.hasRemoteData ? store.data : null), // todo 只保留 remote 数据
                 ...this.formatData(props.defaultData),
                 ...this.formatData(props.data)
-              })
+              }),
+              props.updatePristineAfterStoreDataReInit === false
             );
           }
         } else if (
           shouldSync === true ||
-          isObjectShallowModified(prevProps.data, props.data) ||
-          (props.syncSuperStore !== false &&
-            isSuperDataModified(props.data, prevProps.data, store))
+          (props.trackExpression
+            ? tokenize(props.trackExpression, props.data!) !==
+              tokenize(props.trackExpression, prevProps.data!)
+            : isObjectShallowModified(prevProps.data, props.data) ||
+              (props.syncSuperStore !== false &&
+                isSuperDataModified(props.data, prevProps.data, store)))
         ) {
           if (props.store && props.store.data === props.data) {
             store.initData(
@@ -225,27 +251,43 @@ export function HocStoreFactory(renderer: {
                       store,
                       props.syncSuperStore === true
                     )
-              )
+              ),
+              props.updatePristineAfterStoreDataReInit === false
             );
           } else if (props.data && (props.data as any).__super) {
             store.initData(
               extendObject(
                 props.data,
-                store.hasRemoteData || store.path === 'page'
+                // 有远程数据
+                // 或者顶级 store
+                store.hasRemoteData || !store.path.includes('/')
                   ? {
                       ...store.data,
                       ...props.data
                     }
-                  : undefined
-              )
+                  : // combo 不需要同步，如果要同步，在 Combo.tsx 里面已经实现了相关逻辑
+                  // 目前主要的问题是，如果 combo 中表单项名字和 combo 本身的名字一样，会导致里面的值会被覆盖成数组
+                  props.store?.storeType === 'ComboStore'
+                  ? undefined
+                  : syncDataFromSuper(
+                      props.data,
+                      (props.data as any).__super,
+                      (prevProps.data as any).__super,
+                      store,
+                      false
+                    )
+              ),
+              props.updatePristineAfterStoreDataReInit === false
             );
           } else {
-            store.initData(createObject(props.scope, props.data));
+            store.initData(
+              createObject(props.scope, props.data),
+              props.updatePristineAfterStoreDataReInit === false
+            );
           }
         } else if (
-          (shouldSync === true ||
-            !props.store ||
-            props.data !== props.store.data) &&
+          !props.trackExpression &&
+          (!props.store || props.data !== props.store.data) &&
           props.data &&
           props.data.__super
         ) {
@@ -264,15 +306,17 @@ export function HocStoreFactory(renderer: {
                 ...store.data
               }),
 
-              store.storeType === 'FormStore' &&
-                prevProps.store?.storeType === 'CRUDStore'
+              props.updatePristineAfterStoreDataReInit === false ||
+                (store.storeType === 'FormStore' &&
+                  prevProps.store?.storeType === 'CRUDStore')
             );
           }
           // nextProps.data.__super !== props.data.__super) &&
         } else if (
+          !props.trackExpression &&
           props.scope &&
           props.data === props.store!.data &&
-          (shouldSync === true || prevProps.data !== props.data)
+          prevProps.data !== props.data
         ) {
           // 只有父级数据变动的时候才应该进来，
           // 目前看来这个 case 很少有情况下能进来
@@ -280,7 +324,8 @@ export function HocStoreFactory(renderer: {
             createObject(props.scope, {
               // ...nextProps.data,
               ...store.data
-            })
+            }),
+            props.updatePristineAfterStoreDataReInit === false
           );
         }
       }
@@ -290,7 +335,10 @@ export function HocStoreFactory(renderer: {
         const store = this.store;
 
         this.unReaction?.();
-        isAlive(store) && rootStore.removeStore(store);
+        if (isAlive(store)) {
+          store.setTopStore(null);
+          rootStore.removeStore(store);
+        }
 
         // @ts-ignore
         delete this.store;

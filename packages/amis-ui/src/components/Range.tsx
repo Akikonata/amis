@@ -9,6 +9,7 @@ import keys from 'lodash/keys';
 import isString from 'lodash/isString';
 import difference from 'lodash/difference';
 import React from 'react';
+import TooltipWrapper from './TooltipWrapper';
 import {uncontrollable} from 'amis-core';
 
 import {Overlay} from 'amis-core';
@@ -16,6 +17,7 @@ import type {ThemeProps} from 'amis-core';
 import {themeable} from 'amis-core';
 import {autobind, camel} from 'amis-core';
 import {stripNumber} from 'amis-core';
+import {safeAdd, safeSub} from 'amis-core';
 import {findDOMNode} from 'react-dom';
 import {Icon} from './icons';
 
@@ -165,6 +167,31 @@ class HandleItem extends React.Component<HandleItemProps, HandleItemState> {
     });
   }
 
+  @autobind
+  onTouchStart() {
+    this.setState({
+      isDrag: true,
+      labelActive: true
+    });
+  }
+
+  @autobind
+  onTouchMove(e: any) {
+    const {isDrag} = this.state;
+    const {type = 'min'} = this.props;
+    if (!isDrag) {
+      return;
+    }
+    this.props.onChange(e.touches[0].clientX, type);
+  }
+
+  @autobind
+  onTouchEnd() {
+    this.setState({
+      labelActive: false
+    });
+  }
+
   render() {
     const {
       classnames: cx,
@@ -175,7 +202,8 @@ class HandleItem extends React.Component<HandleItemProps, HandleItemState> {
       tooltipVisible,
       tipFormatter,
       unit,
-      tooltipPlacement = 'auto'
+      tooltipPlacement = 'auto',
+      mobileUI
     } = this.props;
     const {isDrag, labelActive} = this.state;
     const style = {
@@ -191,7 +219,9 @@ class HandleItem extends React.Component<HandleItemProps, HandleItemState> {
       </div>
     ) : (
       <div
-        className={cx('InputRange-handle')}
+        className={cx('InputRange-handle', {
+          'is-mobile': mobileUI
+        })}
         style={style}
         ref={this.handleRef}
       >
@@ -202,6 +232,9 @@ class HandleItem extends React.Component<HandleItemProps, HandleItemState> {
           onMouseDown={this.onMouseDown}
           onMouseEnter={this.onMouseEnter}
           onMouseLeave={this.onMouseLeave}
+          onTouchStart={this.onTouchStart}
+          onTouchMove={this.onTouchMove}
+          onTouchEnd={this.onTouchEnd}
         >
           <Icon icon="slider-handle" className="icon" />
         </div>
@@ -209,7 +242,7 @@ class HandleItem extends React.Component<HandleItemProps, HandleItemState> {
         <Overlay
           placement={tooltipPlacement}
           target={() => findDOMNode(this)}
-          container={() => findDOMNode(this)}
+          container={() => findDOMNode(this) as HTMLElement}
           rootClose={false}
           show={true}
         >
@@ -350,11 +383,16 @@ export class Range extends React.Component<RangeItemProps, any> {
   getStepValue(value: number, step: number) {
     const surplus = value % step;
     let result = 0;
+    let closeNum = Math.floor(value - (value % step));
     // 余数 >= 步长一半 -> 向上取
     // 余数 <  步长一半 -> 向下取
-    const _value = surplus >= step / 2 ? value : value - step;
+    const _value = surplus >= step / 2 ? value : safeSub(value, step);
     while (result <= _value) {
-      result += step;
+      if (step < 1 || result === 0 || result === closeNum) {
+        result = safeAdd(result, step);
+      } else {
+        result = closeNum;
+      }
     }
     return result;
   }
@@ -442,13 +480,41 @@ export class Range extends React.Component<RangeItemProps, any> {
    * @returns
    */
   @autobind
-  getOffsetLeft(value: number | string) {
+  getOffsetLeft(value: number | string, getNumber?: boolean) {
     const {max, min} = this.props;
     if (isString(value) && MARKS_REG.test(value)) {
-      return value;
+      return getNumber ? parseFloat(value) : value;
     }
     value = Math.min(Math.max(+value, min), max);
-    return ((value - min) * 100) / (max - min) + '%';
+    return getNumber
+      ? ((value - min) * 100) / (max - min)
+      : ((value - min) * 100) / (max - min) + '%';
+  }
+
+  /**
+   * 计算每个刻度标记mark 的最大宽度 max-width
+   * 通过给父元素div的width赋值，从而继承
+   * @param value 刻度标记key
+   * @param marks 整个刻度标记对象
+   * @returns 刻度标记的最大宽度 string
+   */
+  @autobind
+  getMarkMaxWidth(value: keyof MarksType, marks: MarksType) {
+    const {max, min, mobileUI} = this.props;
+    const curNum = isString(value) ? parseInt(value, 10) : value;
+    // 给最大宽度赋初始值 默认最大
+    let maxWidth = Math.abs(max - min);
+    // 遍历刻度标记masks 寻找距离当前节点最近的刻度标记 并记录差值
+    keys(marks).forEach((mKey: keyof MarksType) => {
+      const mNum = isString(mKey) ? parseInt(mKey, 10) : mKey;
+      if (mKey !== value && !isNaN(mNum)) {
+        maxWidth = Math.min(Math.abs(curNum - mNum), maxWidth);
+      }
+    });
+    // 差值的1/2 即为此刻度标记的最大宽度
+    return mobileUI
+      ? Math.floor(maxWidth) + '%'
+      : Math.floor(maxWidth / 2) + '%';
   }
 
   render() {
@@ -464,7 +530,8 @@ export class Range extends React.Component<RangeItemProps, any> {
       unit,
       tooltipPlacement,
       tipFormatter,
-      onAfterChange
+      onAfterChange,
+      mobileUI
     } = this.props;
 
     // trace
@@ -494,6 +561,14 @@ export class Range extends React.Component<RangeItemProps, any> {
         max: (value as MultipleValue).max
       };
     }
+
+    const sortMaks = marks
+      ? keys(marks).sort(
+          (a: keyof MarksType, b: keyof MarksType) =>
+            (this.getOffsetLeft(a, true) as number) -
+            (this.getOffsetLeft(b, true) as number)
+        )
+      : [];
 
     return (
       <div className={cx('InputRange-wrap')}>
@@ -525,6 +600,7 @@ export class Range extends React.Component<RangeItemProps, any> {
                 tooltipVisible={tooltipVisible}
                 tipFormatter={tipFormatter}
                 unit={unit}
+                mobileUI={mobileUI}
                 tooltipPlacement={tooltipPlacement}
                 onAfterChange={onAfterChange}
                 onChange={this.onGetChangeValue.bind(this)}
@@ -541,6 +617,7 @@ export class Range extends React.Component<RangeItemProps, any> {
               tooltipVisible={tooltipVisible}
               tipFormatter={tipFormatter}
               unit={unit}
+              mobileUI={mobileUI}
               tooltipPlacement={tooltipPlacement}
               onAfterChange={onAfterChange}
               onChange={this.onChange.bind(this)}
@@ -550,14 +627,26 @@ export class Range extends React.Component<RangeItemProps, any> {
           {/* 刻度标记 */}
           {marks && (
             <div className={cx('InputRange-marks')}>
-              {keys(marks).map((key: keyof MarksType) => {
-                const offsetLeft = this.getOffsetLeft(key);
+              {sortMaks.map((key: keyof MarksType) => {
+                const offsetLeft = this.getOffsetLeft(key) as string;
+                const markMaxWidth = this.getMarkMaxWidth(key, marks);
+
                 if (MARKS_REG.test(offsetLeft)) {
                   return (
-                    <div key={key} style={{left: offsetLeft}}>
-                      <span style={(marks[key] as any)?.style}>
-                        {(marks[key] as any)?.label || marks[key]}
-                      </span>
+                    <div
+                      key={key}
+                      style={{left: offsetLeft, width: markMaxWidth}}
+                    >
+                      <TooltipWrapper
+                        placement={'bottom'}
+                        tooltip={(marks[key] as any)?.label || marks[key]}
+                        trigger={['hover', 'focus']}
+                        rootClose={false}
+                      >
+                        <span style={(marks[key] as any)?.style}>
+                          {(marks[key] as any)?.label || marks[key]}
+                        </span>
+                      </TooltipWrapper>
                     </div>
                   );
                 } else {

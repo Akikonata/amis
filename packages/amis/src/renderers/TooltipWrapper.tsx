@@ -1,5 +1,10 @@
 import React from 'react';
-import {Renderer, RendererProps} from 'amis-core';
+import {
+  Renderer,
+  RendererProps,
+  CustomStyle,
+  setThemeClassName
+} from 'amis-core';
 import {BaseSchema, SchemaCollection} from '../Schema';
 import {filter} from 'amis-core';
 import {escapeHtml} from 'amis-core';
@@ -143,7 +148,7 @@ export interface TooltipWrapperProps extends RendererProps {
   disabled?: boolean;
   mouseEnterDelay?: number;
   mouseLeaveDelay?: number;
-  container?: React.ReactNode;
+  container?: HTMLElement | (() => HTMLElement);
   style?: React.CSSProperties;
   tooltipStyle?: React.CSSProperties;
   wrapperComponent?: string;
@@ -191,7 +196,9 @@ export default class TooltipWrapper extends React.Component<
       inline,
       style,
       data,
-      wrap
+      themeCss,
+      wrapperCustomStyle,
+      id
     } = this.props;
     const Comp =
       (wrapperComponent as keyof JSX.IntrinsicElements) ||
@@ -199,9 +206,15 @@ export default class TooltipWrapper extends React.Component<
 
     return (
       <Comp
-        className={cx('TooltipWrapper', className, {
-          'TooltipWrapper--inline': inline
-        })}
+        className={cx(
+          'TooltipWrapper',
+          className,
+          {
+            'TooltipWrapper--inline': inline
+          },
+          setThemeClassName('baseControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
         style={buildStyle(style, data)}
       >
         {render('body', body)}
@@ -230,7 +243,11 @@ export default class TooltipWrapper extends React.Component<
       disabled,
       enterable,
       data,
-      env
+      env,
+      popOverContainer,
+      wrapperCustomStyle,
+      id,
+      themeCss
     } = this.props;
 
     const tooltipObj: TooltipObject = {
@@ -240,21 +257,50 @@ export default class TooltipWrapper extends React.Component<
       placement,
       trigger,
       rootClose,
-      container: container !== undefined ? container : (env && env.getModalContainer ? env.getModalContainer : undefined),
+      container:
+        container !== undefined
+          ? container
+          : popOverContainer || env?.getModalContainer,
       tooltipTheme,
-      tooltipClassName,
+      tooltipClassName: cx(
+        tooltipClassName,
+        setThemeClassName('tooltipControlClassName', id, themeCss)
+      ),
       mouseEnterDelay,
       mouseLeaveDelay,
       offset,
       showArrow,
       disabled,
-      enterable
+      enterable,
+      filterHtml: env.filterHtml
     };
 
     return (
-      <TooltipWrapperComp classPrefix={ns} classnames={cx} tooltip={tooltipObj}>
-        {this.renderBody()}
-      </TooltipWrapperComp>
+      <>
+        <TooltipWrapperComp
+          classPrefix={ns}
+          classnames={cx}
+          tooltip={tooltipObj}
+        >
+          {this.renderBody()}
+        </TooltipWrapperComp>
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName'
+              },
+              {
+                key: 'tooltipControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
+      </>
     );
   }
 }

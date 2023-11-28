@@ -7,14 +7,14 @@
 import React from 'react';
 import {findDOMNode} from 'react-dom';
 import {ClassNamesFn, themeable} from '../theme';
-import {camel, preventDefault} from '../utils';
+import {autobind, camel, preventDefault} from '../utils';
 
 export interface Offset {
   x: number;
   y: number;
 }
 
-export interface PopOverPorps {
+export interface PopOverProps {
   className?: string;
   placement?: string;
   positionTop?: number;
@@ -36,7 +36,7 @@ interface PopOverState {
   yOffset: number;
 }
 
-export class PopOver extends React.PureComponent<PopOverPorps, PopOverState> {
+export class PopOver extends React.PureComponent<PopOverProps, PopOverState> {
   static defaultProps = {
     className: '',
     offset: {
@@ -54,6 +54,7 @@ export class PopOver extends React.PureComponent<PopOverPorps, PopOverState> {
 
   parent: HTMLElement;
   wrapperRef: React.RefObject<HTMLDivElement> = React.createRef();
+  isRootClosed = false;
 
   componentDidMount() {
     this.mayUpdateOffset();
@@ -68,6 +69,23 @@ export class PopOver extends React.PureComponent<PopOverPorps, PopOverState> {
         capture: false
       });
     }
+
+    // 从弹窗中处理复制过来的，如果要修改，请同步修改
+    // 因为 overlay 功能其实是用 postion: fixed 来实现的
+    // 目的是加一个蒙层监听蒙层点击然后关闭弹窗。意图就是 closeOnOutside
+    // 但是如果上层有个 translateZ 之类的样式就会影响 fixed 的定位，导致功能失效
+    // 所以这里兜底加了个 closeOnOutside 的功能
+    document.body.addEventListener(
+      'mousedown',
+      this.handleRootMouseDownCapture,
+      true
+    );
+    document.body.addEventListener(
+      'mouseup',
+      this.handleRootMouseUpCapture,
+      true
+    );
+    document.body.addEventListener('mouseup', this.handleRootMouseUp);
   }
 
   componentDidUpdate() {
@@ -79,6 +97,62 @@ export class PopOver extends React.PureComponent<PopOverPorps, PopOverState> {
 
     if (this.wrapperRef && this.wrapperRef.current) {
       this.wrapperRef.current.removeEventListener('touchmove', preventDefault);
+    }
+
+    document.body.removeEventListener('mouseup', this.handleRootMouseUp);
+    document.body.removeEventListener(
+      'mousedown',
+      this.handleRootMouseDownCapture,
+      true
+    );
+    document.body.removeEventListener(
+      'mouseup',
+      this.handleRootMouseUpCapture,
+      true
+    );
+  }
+
+  @autobind
+  handleRootMouseDownCapture(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    const {overlay: closeOnOutside, classPrefix: ns} = this.props;
+    const isLeftButton =
+      (e.button === 1 && window.event !== null) || e.button === 0;
+
+    this.isRootClosed = !!(
+      isLeftButton &&
+      closeOnOutside &&
+      target &&
+      this.wrapperRef.current &&
+      ((!this.wrapperRef.current.contains(target) &&
+        !target.closest('[role=dialog]')) ||
+        (target.matches(`.${ns}Modal`) && target === this.wrapperRef.current))
+    ); // 干脆过滤掉来自弹框里面的点击
+  }
+
+  @autobind
+  handleRootMouseUpCapture(e: MouseEvent) {
+    // mousedown 的时候不在弹窗里面，则不需要判断了
+    if (!this.isRootClosed) {
+      return;
+    }
+
+    // 再判断 mouseup 的时候是不是在弹窗里面
+    this.handleRootMouseDownCapture(e);
+  }
+
+  @autobind
+  handleRootMouseUp(e: MouseEvent) {
+    const {onHide} = this.props;
+    if (this.isRootClosed && !e.defaultPrevented) {
+      // 因为原来 overlay 是不会让别的部分还有点击事件的，所以这里要阻止默认事件
+      // 参考：https://stackoverflow.com/questions/8643739/cancel-click-event-in-the-mouseup-event-handler
+      let captureClick = (e: Event) => {
+        e.stopPropagation();
+        window.removeEventListener('click', captureClick, true);
+      };
+      window.addEventListener('click', captureClick, true);
+      onHide?.();
     }
   }
 
@@ -132,14 +206,17 @@ export class PopOver extends React.PureComponent<PopOverPorps, PopOverState> {
       top: (positionTop as number) + yOffset,
       left: (positionLeft as number) + xOffset
     };
+    const placements =
+      typeof activePlacement === 'string' ? activePlacement.split('-') : [];
 
     return (
       <div
         ref={this.wrapperRef}
         className={cx(
-          `${ns}PopOver`,
+          `PopOver`,
           className,
-          `${ns}PopOver--${camel(activePlacement)}`
+          `PopOver--${camel(activePlacement)}`,
+          placements[3] ? `PopOver--v-${placements[3]}` : ''
         )}
         style={outerStyle}
         {...rest}

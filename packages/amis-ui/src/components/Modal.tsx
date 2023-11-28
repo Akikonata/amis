@@ -17,6 +17,30 @@ import {ClassNamesFn, themeable, ThemeProps} from 'amis-core';
 import {Icon} from './icons';
 import {LocaleProps, localeable} from 'amis-core';
 import {autobind, getScrollbarWidth} from 'amis-core';
+import {
+  DraggableCore,
+  type DraggableBounds,
+  type DraggableData,
+  type DraggableEvent
+} from 'react-draggable';
+import isNumber from 'lodash/isNumber';
+
+export const getContainerWithFullscreen =
+  (container?: () => HTMLElement | HTMLElement | null) => () => {
+    const envContainer =
+      typeof container === 'function' ? container() : container;
+
+    // 获取当前全屏元素
+    const fullscreenElement = document.fullscreenElement;
+
+    if (
+      fullscreenElement &&
+      (!envContainer || !fullscreenElement.contains(envContainer))
+    ) {
+      return fullscreenElement as HTMLElement;
+    }
+    return envContainer || null;
+  };
 
 export interface ModalProps extends ThemeProps, LocaleProps {
   className?: string;
@@ -33,8 +57,17 @@ export interface ModalProps extends ThemeProps, LocaleProps {
   disabled?: boolean;
   onExited?: () => void;
   onEntered?: () => void;
+  children?: React.ReactNode | Array<React.ReactNode>;
+  modalClassName?: string;
+  modalMaskClassName?: string;
+  draggable?: boolean;
 }
-export interface ModalState {}
+
+export interface ModalState {
+  bounds?: DraggableBounds;
+  dragPos?: {x: number; y: number};
+}
+
 const fadeStyles: {
   [propName: string]: string;
 } = {
@@ -42,6 +75,7 @@ const fadeStyles: {
   [ENTERED]: 'in',
   [EXITING]: 'out'
 };
+
 const contentFadeStyles: {
   [propName: string]: string;
 } = {
@@ -49,11 +83,13 @@ const contentFadeStyles: {
   [ENTERED]: '',
   [EXITING]: 'out'
 };
+
 export class Modal extends React.Component<ModalProps, ModalState> {
   static defaultProps = {
     container: document.body,
     size: '',
-    overlay: true
+    overlay: true,
+    draggable: false
   };
 
   isRootClosed = false;
@@ -153,27 +189,19 @@ export class Modal extends React.Component<ModalProps, ModalState> {
     )
   );
 
+  state: Readonly<ModalState> = {dragPos: undefined};
+
   componentDidMount() {
     if (this.props.show) {
       this.handleEnter();
       this.handleEntered();
     }
-
-    document.body.addEventListener('click', this.handleRootClickCapture, true);
-    document.body.addEventListener('click', this.handleRootClick);
   }
 
   componentWillUnmount() {
     if (this.props.show) {
       this.handleExited();
     }
-
-    document.body.removeEventListener('click', this.handleRootClick);
-    document.body.removeEventListener(
-      'click',
-      this.handleRootClickCapture,
-      true
-    );
   }
 
   handleEnter = () => {
@@ -190,10 +218,35 @@ export class Modal extends React.Component<ModalProps, ModalState> {
   handleEntered = () => {
     const onEntered = this.props.onEntered;
 
+    document.body.addEventListener(
+      'mousedown',
+      this.handleRootMouseDownCapture,
+      true
+    );
+    document.body.addEventListener(
+      'mouseup',
+      this.handleRootMouseUpCapture,
+      true
+    );
+    document.body.addEventListener('mouseup', this.handleRootMouseUp);
+
     onEntered && onEntered();
   };
   handleExited = () => {
     const onExited = this.props.onExited;
+
+    document.body.removeEventListener('mouseup', this.handleRootMouseUp);
+    document.body.removeEventListener(
+      'mousedown',
+      this.handleRootMouseDownCapture,
+      true
+    );
+    document.body.removeEventListener(
+      'mouseup',
+      this.handleRootMouseUpCapture,
+      true
+    );
+
     onExited && onExited();
     setTimeout(() => {
       if (!document.querySelector('.amis-dialog-widget')) {
@@ -215,7 +268,7 @@ export class Modal extends React.Component<ModalProps, ModalState> {
   };
 
   @autobind
-  handleRootClickCapture(e: MouseEvent) {
+  handleRootMouseDownCapture(e: MouseEvent) {
     const target = e.target as HTMLElement;
     const {closeOnOutside, classPrefix: ns} = this.props;
     const isLeftButton =
@@ -232,10 +285,102 @@ export class Modal extends React.Component<ModalProps, ModalState> {
   }
 
   @autobind
-  handleRootClick(e: MouseEvent) {
+  handleRootMouseUpCapture(e: MouseEvent) {
+    // mousedown 的时候不在弹窗里面，则不需要判断了
+    if (!this.isRootClosed) {
+      return;
+    }
+
+    // 再判断 mouseup 的时候是不是在弹窗里面
+    this.handleRootMouseDownCapture(e);
+  }
+
+  @autobind
+  handleRootMouseUp(e: MouseEvent) {
     const {onHide} = this.props;
     this.isRootClosed && !e.defaultPrevented && onHide(e);
   }
+
+  // #region 处理dialog拖动
+
+  handleDragStart = (_event: DraggableEvent, uiData: DraggableData) => {
+    const node = uiData.node;
+    const {offsetParent} = node;
+    if (!node || !offsetParent) {
+      return;
+    }
+    const {clientWidth, clientHeight} = window.document.documentElement;
+    const nodeStyle = getComputedStyle(node);
+    const marginTop = parseInt(nodeStyle.marginTop, 10);
+    const nodeWidth = parseInt(nodeStyle.width, 10);
+    const nodeHeight = parseInt(nodeStyle.height, 10);
+    const bounds = {
+      left: 0,
+      right: clientWidth - nodeWidth,
+      top: -marginTop,
+      bottom: clientHeight - nodeHeight - marginTop
+    };
+    const parentRect = offsetParent.getBoundingClientRect();
+    const clientRect = node.getBoundingClientRect();
+    const cLeft = clientRect.left;
+    const pLeft = parentRect.left;
+    const cTop = clientRect.top;
+    const pTop = parentRect.top;
+    const left = cLeft - pLeft + offsetParent.scrollLeft;
+    const top = cTop - pTop + offsetParent.scrollTop - marginTop;
+    this.setState({dragPos: {x: left, y: top}, bounds});
+    // 阻止冒泡  存在弹窗里面套弹窗
+    _event.stopPropagation();
+  };
+
+  handleDrag = (e: DraggableEvent, {deltaX, deltaY}: DraggableData) => {
+    e.stopPropagation();
+    if (!this.state.dragPos) {
+      return;
+    }
+    const {
+      dragPos: {x, y},
+      bounds
+    } = this.state;
+
+    let calcY = y + deltaY;
+    let calcX = x + deltaX;
+
+    // 防止拖动到屏幕外 处理边界
+    if (isNumber(bounds?.right)) {
+      calcX = Math.min(calcX, bounds!.right);
+    }
+    if (isNumber(bounds?.bottom)) {
+      calcY = Math.min(calcY, bounds!.bottom);
+    }
+    if (isNumber(bounds?.left)) {
+      calcX = Math.max(calcX, bounds!.left);
+    }
+    if (isNumber(bounds?.top)) {
+      calcY = Math.max(calcY, bounds!.top);
+    }
+    this.setState({dragPos: {x: calcX, y: calcY}});
+  };
+
+  handleDragStop = (e: DraggableEvent) => {
+    e.stopPropagation();
+  };
+
+  getDragStyle = (): React.CSSProperties => {
+    const {draggable} = this.props;
+    const {dragPos} = this.state;
+    if (!dragPos || !draggable) {
+      return {};
+    }
+    const {x, y} = dragPos;
+    return {
+      top: `${y}px`,
+      left: `${x}px`,
+      position: 'absolute'
+    };
+  };
+
+  // #endregion
 
   render() {
     const {
@@ -245,11 +390,22 @@ export class Modal extends React.Component<ModalProps, ModalState> {
       container,
       show,
       size,
+      style,
       overlay,
       width,
       height,
-      classnames: cx
+      modalClassName,
+      modalMaskClassName,
+      classnames: cx,
+      mobileUI,
+      draggable,
+      classPrefix
     } = this.props;
+
+    let _style = {
+      width: style?.width ? style?.width : width,
+      height: style?.height ? style?.height : height
+    };
 
     return (
       <Transition
@@ -263,7 +419,7 @@ export class Modal extends React.Component<ModalProps, ModalState> {
         onEntered={this.handleEntered}
       >
         {(status: string) => (
-          <Portal container={container}>
+          <Portal container={getContainerWithFullscreen(container)}>
             <div
               ref={this.modalRef}
               role="dialog"
@@ -276,18 +432,35 @@ export class Modal extends React.Component<ModalProps, ModalState> {
               )}
             >
               {overlay ? (
-                <div className={cx(`Modal-overlay`, fadeStyles[status])} />
+                <div
+                  className={cx(
+                    `Modal-overlay`,
+                    fadeStyles[status],
+                    modalMaskClassName
+                  )}
+                />
               ) : null}
-              <div
-                className={cx(
-                  `Modal-content`,
-                  contentClassName,
-                  contentFadeStyles[status]
-                )}
-                style={{width, height}}
+              <DraggableCore
+                disabled={!draggable || mobileUI}
+                onStart={this.handleDragStart}
+                onDrag={this.handleDrag}
+                onStop={this.handleDragStop}
+                handle={`.${classPrefix}Modal-header`}
               >
-                {status === EXITED ? null : children}
-              </div>
+                <div
+                  className={cx(
+                    `Modal-content`,
+                    draggable && !mobileUI ? 'Modal-draggable' : '',
+                    size === 'custom' ? 'Modal-content-custom' : '',
+                    contentClassName,
+                    modalClassName,
+                    contentFadeStyles[status]
+                  )}
+                  style={{..._style, ...this.getDragStyle()}}
+                >
+                  {status === EXITED ? null : children}
+                </div>
+              </DraggableCore>
             </div>
           </Portal>
         )}

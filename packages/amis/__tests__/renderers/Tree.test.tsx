@@ -430,3 +430,176 @@ test('Tree: add child & cancel', async () => {
     expect(!!container.querySelector('[icon="close"]')).toBeFalsy()
   );
 });
+
+test('Tree: item disabled', async () => {
+  const onSubmit = jest.fn();
+  const {container, findByText, findByPlaceholderText} = render(
+    amisRender(
+      {
+        "type": "form",
+        "api": "/api/mock2/form/saveForm",
+        "body": [
+          {
+            "label": "树型展示",
+            "type": "transfer",
+            "name": "transfer",
+            "selectMode": "tree",
+            "searchable": true,
+            "options": [
+              {
+                "label": "法师",
+                "children": [
+                  {
+                    "label": "诸葛亮",
+                    "value": "zhugeliang"
+                  }
+                ]
+              },
+              {
+                "label": "战士",
+                "children": [
+                  {
+                    "label": "曹操",
+                    "value": "caocao"
+                  },
+                  {
+                    "label": "曹操1",
+                    "value": "caocao1",
+                    "children": [
+                      {
+                        "label": "李白1",
+                        "value": "libai1"
+                      },
+                      {
+                        "label": "韩信1",
+                        "value": "hanxin1"
+                      },
+                      {
+                        "label": "云中君1",
+                        "value": "yunzhongjun1"
+                      }
+                    ]
+                  },
+                  {
+                    "disabled": true,
+                    "label": "钟无艳",
+                    "value": "zhongwuyan"
+                  }
+                ]
+              },
+              {
+                "label": "打野",
+                "children": [
+                  {
+                    "label": "李白",
+                    "value": "libai"
+                  },
+                  {
+                    "label": "韩信",
+                    "value": "hanxin"
+                  },
+                  {
+                    "label": "云中君",
+                    "value": "yunzhongjun"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {onSubmit},
+      makeEnv({})
+    )
+  );
+  const node = await findByText('战士');
+  const submitBtn = await findByText('提交');
+  fireEvent.click(node);
+  fireEvent.click(submitBtn);
+
+  await wait(100);
+
+  expect(onSubmit.mock.calls[0][0]).toEqual({
+    transfer: 'caocao,libai1,hanxin1,yunzhongjun1'
+  });
+
+  fireEvent.click(node);
+  fireEvent.click(submitBtn);
+  await wait(100);
+  expect(onSubmit.mock.calls[1][0]).toEqual({
+    transfer: ''
+  });
+});
+
+test('Tree: single value mode should not render input when searchable enabled and default value settled', async () => {
+  const {container} = render(
+    amisRender({
+      type: 'container',
+      body: [
+        {
+          "type": "tree-select",
+          "name": "tree",
+          "label": "Tree",
+          "searchable": true,
+          "value": 2,
+          "inputClassName": "single",
+          "options": [
+            {
+              "label": "Folder A",
+              "value": 1,
+              "children": [
+                {
+                  "label": "file A",
+                  "value": 2
+                },
+                {
+                  "label": "file B",
+                  "value": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tree-select",
+          "name": "tree2",
+          "label": "Tree2",
+          "searchable": true,
+          "value": "2,4",
+          "multiple": true,
+          "inputClassName": "multiple",
+          "options": [
+            {
+              "label": "Folder A",
+              "value": 1,
+              "children": [
+                {
+                  "label": "file A",
+                  "value": 2
+                },
+                {
+                  "label": "file B",
+                  "value": 3
+                }
+              ]
+            },
+            {
+              "label": "file C",
+              "value": 4
+            }
+          ]
+        }
+      ]
+    },
+    {},
+    makeEnv({})
+  ));
+
+  const singleModeInput = container.querySelector('.single .cxd-ResultBox-value-input');
+  const multipleModeInput = container.querySelector('.multiple .cxd-ResultBox-value-input');
+
+  /** 单选模式且已选值，不应该再有 input */
+  expect(singleModeInput).not.toBeInTheDocument();
+  /** 多选模式始终都有 input */
+  expect(multipleModeInput).toBeInTheDocument();
+})

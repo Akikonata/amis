@@ -17,7 +17,6 @@ exports[`Renderer:inputCity 1`] = `
         >
           <div
             class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-            style="position: relative;"
           >
             <div
               class="cxd-Panel-heading"
@@ -71,7 +70,6 @@ exports[`Renderer:inputCity 1`] = `
                       <div
                         aria-expanded="false"
                         aria-haspopup="listbox"
-                        aria-labelledby="downshift-0-label"
                         class="cxd-Select"
                         role="combobox"
                         tabindex="0"
@@ -105,7 +103,6 @@ exports[`Renderer:inputCity 1`] = `
                       <div
                         aria-expanded="false"
                         aria-haspopup="listbox"
-                        aria-labelledby="downshift-1-label"
                         class="cxd-Select"
                         role="combobox"
                         tabindex="0"
@@ -139,7 +136,6 @@ exports[`Renderer:inputCity 1`] = `
                       <div
                         aria-expanded="false"
                         aria-haspopup="listbox"
-                        aria-labelledby="downshift-2-label"
                         class="cxd-Select is-focused"
                         role="combobox"
                         tabindex="0"
@@ -191,45 +187,6 @@ exports[`Renderer:inputCity 1`] = `
                 </button>
               </div>
             </div>
-            <div
-              class="resize-sensor"
-              style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-            >
-              
-  
-              <div
-                class="resize-sensor-expand"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-              >
-                
-    
-                <div
-                  style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-                />
-                
-  
-              </div>
-              
-  
-              <div
-                class="resize-sensor-shrink"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-              >
-                
-    
-                <div
-                  style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-                />
-                
-  
-              </div>
-              
-  
-              <div
-                class="resize-sensor-appear"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -255,7 +212,6 @@ exports[`Renderer:inputCity with searchable: open select 1`] = `
         >
           <div
             class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-            style="position: relative;"
           >
             <div
               class="cxd-Panel-heading"
@@ -309,7 +265,6 @@ exports[`Renderer:inputCity with searchable: open select 1`] = `
                       <div
                         aria-expanded="true"
                         aria-haspopup="listbox"
-                        aria-labelledby="downshift-3-label"
                         aria-owns="downshift-3-menu"
                         class="cxd-Select cxd-Select--searchable is-opened has-popover"
                         role="combobox"
@@ -334,7 +289,7 @@ exports[`Renderer:inputCity with searchable: open select 1`] = `
                           />
                         </span>
                         <div
-                          class="cxd-PopOver cxd-Select-popover cxd-PopOver--leftBottomLeftTop"
+                          class="cxd-PopOver cxd-Select-popover cxd-PopOver--leftBottomLeftTop cxd-PopOver--v-top"
                           style="display: block; width: auto; left: 0px; top: 0px; position: relative;"
                           theme="cxd"
                         >
@@ -354,7 +309,6 @@ exports[`Renderer:inputCity with searchable: open select 1`] = `
                               <input
                                 aria-autocomplete="list"
                                 aria-controls="downshift-3-menu"
-                                aria-labelledby="downshift-3-label"
                                 autocomplete="off"
                                 id="downshift-3-input"
                                 placeholder="搜索"
@@ -905,45 +859,6 @@ exports[`Renderer:inputCity with searchable: open select 1`] = `
                   </span>
                 </button>
               </div>
-            </div>
-            <div
-              class="resize-sensor"
-              style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-            >
-              
-  
-              <div
-                class="resize-sensor-expand"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-              >
-                
-    
-                <div
-                  style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-                />
-                
-  
-              </div>
-              
-  
-              <div
-                class="resize-sensor-shrink"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-              >
-                
-    
-                <div
-                  style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-                />
-                
-  
-              </div>
-              
-  
-              <div
-                class="resize-sensor-appear"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-              />
             </div>
           </div>
         </div>

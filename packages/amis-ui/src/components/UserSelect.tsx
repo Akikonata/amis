@@ -6,7 +6,7 @@
 import React from 'react';
 import {eachTree, Payload, themeable, ThemeProps} from 'amis-core';
 import {LocaleProps, localeable} from 'amis-core';
-import {ResultBox} from '.';
+import ResultBox from './ResultBox';
 import type {Option} from 'amis-core';
 import Sortable from 'sortablejs';
 import PopUp from './PopUp';
@@ -32,6 +32,7 @@ export interface UserSelectProps
   selection?: Array<Option>;
   valueField?: string;
   labelField?: string;
+  deferField?: string;
   multi?: boolean;
   multiple?: boolean;
   isDep?: boolean;
@@ -113,7 +114,8 @@ export class UserSelect extends React.Component<
   static defaultProps = {
     showResultBox: true,
     labelField: 'label',
-    valueField: 'value'
+    valueField: 'value',
+    deferField: 'defer'
   };
 
   componentDidMount() {}
@@ -438,14 +440,30 @@ export class UserSelect extends React.Component<
       labelField = 'label',
       options = []
     } = this.props;
-    const _selection = this.props.selection?.slice() || [];
+    const _selection = this.props.selection?.concat() || [];
+    if (Array.isArray(options?.[0]?.leftOptions)) {
+      eachTree(options[0].leftOptions, (item: Option) => {
+        const index = _selection.findIndex(
+          (item2: Option) => item2[valueField] === item[valueField]
+        );
+        if (!!~index) {
+          _selection.splice(index, 1, {
+            ..._selection[index],
+            label: item[labelField]
+          });
+        }
+      });
+    }
 
     eachTree(options, (item: Option) => {
-      const res = _selection.find(
+      const index = _selection.findIndex(
         (item2: Option) => item2[valueField] === item[valueField]
       );
-      if (res) {
-        res.label = item[labelField];
+      if (!!~index) {
+        _selection.splice(index, 1, {
+          ..._selection[index],
+          label: item[labelField]
+        });
       }
     });
     return _selection;
@@ -525,7 +543,8 @@ export class UserSelect extends React.Component<
       controlled,
       displayFields,
       isTab,
-      multiple
+      multiple,
+      deferField = 'defer'
     } = this.props;
     let selection = controlled
       ? this.props.selection || []
@@ -538,7 +557,7 @@ export class UserSelect extends React.Component<
           {options.map((option: Option, index: number) => {
             const hasChildren =
               (isRef && !option.isRef) ||
-              (isDep && (option.defer || option.children?.length));
+              (isDep && (option[deferField] || option.children?.length));
             const checkVisible =
               (isDep && isRef) ||
               (isRef && option.isRef) ||
@@ -704,8 +723,6 @@ export class UserSelect extends React.Component<
                     </span>
                   ) : null}
 
-                  {}
-
                   {!option.isRef ? (
                     labelField === 'avatar' ? (
                       option[labelField] ? (
@@ -786,7 +803,8 @@ export class UserSelect extends React.Component<
       classnames: cx,
       multiple,
       translate: __,
-      loadingConfig
+      loadingConfig,
+      mobileUI
     } = this.props;
 
     const {breadList, options, isSearch, searchList, searchLoading} =
@@ -813,6 +831,7 @@ export class UserSelect extends React.Component<
               onChange={this.handleSearch}
               placeholder={searchPlaceholder}
               clearable={false}
+              mobileUI={mobileUI}
             >
               {this.state.isSearch ? (
                 <a onClick={this.handleSeachCancel}>
@@ -968,7 +987,8 @@ export class UserSelect extends React.Component<
       placeholder = '请选择',
       showResultBox,
       labelField = 'label',
-      valueField = 'value'
+      valueField = 'value',
+      mobileUI
     } = this.props;
 
     const {isOpened, isEdit, isSelectOpened} = this.state;
@@ -1005,7 +1025,7 @@ export class UserSelect extends React.Component<
             onResultChange={value => this.handleSelectChange(value, true)}
             onResultClick={this.onOpen}
             placeholder={placeholder}
-            useMobileUI
+            mobileUI={mobileUI}
           />
         ) : null}
 

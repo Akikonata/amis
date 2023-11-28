@@ -5,7 +5,7 @@ import {ClassNamesFn} from 'amis-core';
 
 export interface ItemActionsProps {
   classnames: ClassNamesFn;
-  children: JSX.Element;
+  children: React.ReactNode | Array<React.ReactNode>;
   store: ITableStore;
 }
 
@@ -30,7 +30,10 @@ function ItemActionsWrapper(props: ItemActionsProps) {
     }
     const rect = dom.getBoundingClientRect();
     const height = rect.height;
-    const top = rect.top - frame.getBoundingClientRect().top;
+    const top =
+      rect.top -
+      frame.getBoundingClientRect().top +
+      parseInt(getComputedStyle(frame)['marginTop'], 10);
     divRef.current!.style.cssText += `top: ${top}px;height: ${height}px;`;
   }, [store.hoverRow?.id]);
 

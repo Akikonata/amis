@@ -8,7 +8,7 @@ title: 常见问题
 
 ## CRUD 顶部有重叠遮挡
 
-在初始化 amis 渲染器的时候设置 `affixOffsetTop`，或者通过 `"affixHeader": false` 关闭固定顶部功能。
+在初始化 amis 渲染器的时候设置 `--affix-offset-top` css 变量设置成合适的值，或者通过 `"affixHeader": false` 关闭固定顶部功能。
 
 ## 如何换行
 
@@ -103,3 +103,7 @@ amisScoped.updateProps({
 ## CRUD api 分页功能失效
 
 如果 api 地址中有变量，比如 `/api/mock2/sample/${id}`，amis 就不会自动加上分页参数，需要自己加上，改成 `/api/mock2/sample/${id}?page=${page}&perPage=${perPage}`
+
+## CRUD 性能较慢怎么办？
+
+3.4.1 之后版本有个 `lazyRenderAfter` 配置项，默认是 100，可以改小点，延迟渲染不在屏幕中的行

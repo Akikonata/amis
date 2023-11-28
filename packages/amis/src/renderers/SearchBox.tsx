@@ -4,6 +4,7 @@ import {
   Renderer,
   RendererProps,
   resolveEventData,
+  ScopedComponentType,
   ScopedContext
 } from 'amis-core';
 import React from 'react';
@@ -11,7 +12,6 @@ import {BaseSchema, SchemaClassName} from '../Schema';
 import {SearchBox} from 'amis-ui';
 import {autobind, getPropValue, getVariable, setVariable} from 'amis-core';
 import type {ListenerAction} from 'amis-core';
-import type {ScopedComponentType} from 'amis-core/lib/Scoped';
 
 /**
  * 搜索框渲染器
@@ -20,7 +20,7 @@ export interface SearchBoxSchema extends BaseSchema {
   /**
    * 指定为搜索框。
    *
-   * 文档：https://baidu.gitee.io/amis/docs/components/search-box
+   * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/search-box
    */
   type: 'search-box';
 
@@ -60,13 +60,18 @@ export interface SearchBoxSchema extends BaseSchema {
    * 是否立马搜索。
    */
   searchImediately?: boolean;
+
+  /**
+   * 是否开启清空内容后立即重新搜索
+   */
+  clearAndSubmit?: boolean;
 }
 
 interface SearchBoxProps
   extends RendererProps,
     Omit<SearchBoxSchema, 'type' | 'className'> {
   name: string;
-  onQuery?: (query: {[propName: string]: string}) => void;
+  onQuery?: (query: {[propName: string]: string}) => any;
 }
 
 export interface SearchBoxState {
@@ -85,7 +90,8 @@ export class SearchBoxRenderer extends React.Component<
     mini: false,
     enhance: false,
     clearable: false,
-    searchImediately: false
+    searchImediately: false,
+    clearAndSubmit: false
   };
   static contextType = ScopedContext;
 
@@ -113,13 +119,9 @@ export class SearchBoxRenderer extends React.Component<
 
     const rendererEvent = await dispatchEvent(
       'change',
-      resolveEventData(
-        this.props,
-        {
-          value
-        },
-        'value'
-      )
+      resolveEventData(this.props, {
+        value
+      })
     );
 
     if (rendererEvent?.prevented) {
@@ -165,7 +167,7 @@ export class SearchBoxRenderer extends React.Component<
     const {dispatchEvent} = this.props;
     dispatchEvent(
       name,
-      resolveEventData(this.props, {value: this.state.value}, 'value')
+      resolveEventData(this.props, {value: this.state.value})
     );
   }
 
@@ -176,9 +178,10 @@ export class SearchBoxRenderer extends React.Component<
       this.setState({value: ''});
     }
   }
-
   setData(value: any) {
-    this.setState({value});
+    if (typeof value === 'string') {
+      this.setState({value});
+    }
   }
 
   render() {
@@ -190,10 +193,12 @@ export class SearchBoxRenderer extends React.Component<
       enhance,
       clearable,
       searchImediately,
+      clearAndSubmit,
       placeholder,
       onChange,
       className,
-      style
+      style,
+      mobileUI
     } = this.props;
 
     const value = this.state.value;
@@ -211,12 +216,14 @@ export class SearchBoxRenderer extends React.Component<
         enhance={enhance}
         clearable={clearable}
         searchImediately={searchImediately}
+        clearAndSubmit={clearAndSubmit}
         onSearch={this.handleSearch}
         onCancel={this.handleCancel}
         placeholder={placeholder}
         onChange={this.handleChange}
         onFocus={() => this.dispatchEvent('focus')}
         onBlur={() => this.dispatchEvent('blur')}
+        mobileUI={mobileUI}
       />
     );
   }

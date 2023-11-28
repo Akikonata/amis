@@ -20,6 +20,9 @@
     margin-top: var(--gap-xs);
     display: inline-block;
   }
+  &-itemInner {
+    margin-right: px2rem(12px);
+  }
 
   &-addBtn {
     > svg {
@@ -32,15 +35,15 @@
       var(--Combo-addBtn-fontSize),
       var(--Combo-addBtn-fontWeight),
       var(--Combo-addBtn-lineHeight),
-      var(--Combo-addBtn-borderRadius),
-      var(--Combo-addBtn-borderRadius),
-      var(--Combo-addBtn-borderRadius),
-      var(--Combo-addBtn-borderRadius),
+      var(--combo-multi-addBtn-top-left-border-radius),
+      var(--combo-multi-addBtn-top-right-border-radius),
+      var(--combo-multi-addBtn-bottom-right-border-radius),
+      var(--combo-multi-addBtn-bottom-left-border-radius),
       var(--Combo-addBtn-height),
-      var(--Combo-addBtn-paddingY),
-      var(--Combo-addBtn-paddingY),
-      var(--Combo-addBtn-paddingX),
-      var(--Combo-addBtn-paddingX)
+      var(--combo-multi-addBtn-paddingTop),
+      var(--combo-multi-addBtn-paddingBottom),
+      var(--combo-multi-addBtn-paddingLeft),
+      var(--combo-multi-addBtn-paddingRight)
     );
 
     @include button-variant(
@@ -98,27 +101,34 @@
   }
 
   &-delBtn {
-    color: var(--icon-color);
+    color: var(--combo-multi-delBtn-color);
     cursor: pointer;
 
     &:hover {
-      color: var(--icon-onHover-color);
+      color: var(--combo-multi-delBtn-hover-color);
+    }
+  }
+
+  .#{$ns}Tabs--radio .is-active &-tab-delBtn {
+    color: var(--Tabs--radio-active-color);
+    &:hover {
+      color: var(--Tabs--radio-active-color);
     }
   }
 
   &-tab-delBtn {
-    color: var(--icon-color);
+    color: var(--combo-multi-delBtn-color);
     cursor: pointer;
     margin-left: var(--gap-sm);
     display: inline-block;
 
     > svg {
-      width: px2rem(11px);
-      height: px2rem(11px);
+      width: px2rem(14px);
+      height: px2rem(14px);
     }
 
     &:hover {
-      color: var(--icon-onHover-color);
+      color: var(--combo-multi-delBtn-hover-color);
     }
   }
 
@@ -137,7 +147,7 @@
   }
 
   &-item {
-    background: var(--Page-main-bg);
+    background: var(--combo-bg-color);
   }
 
   &-itemDrager {
@@ -187,6 +197,7 @@
       white-space: nowrap;
       align-items: flex-start;
       padding-top: var(--Form-label-paddingTop);
+      height: px2rem(30px);
 
       &.is-disabled {
         pointer-events: none;
@@ -239,11 +250,20 @@
     // 不严格点会命中 combo 里面嵌套 combo 的情况，so sad.
     > .#{$ns}Combo-item,
     > .#{$ns}Combo-items > .#{$ns}Combo-item {
-      border: var(--Combo--vertical-item-borderWidth) dashed
-        var(--Combo--vertical-item-borderColor);
-      padding: var(--Combo--vertical-item-paddingY)
-        var(--Combo--vertical-item-paddingX);
+      border-color: var(--Combo--vertical-item-borderColor);
+      border-width: var(--Combo--vertical-item-borderWidth);
+      border-style: var(--Combo--vertical-item-borderStyle);
+      border-radius: var(--Combo--vertical-item-borderRadius);
+      padding: var(--combo-vertical-paddingTop)
+        var(--combo-vertical-paddingRight) var(--combo-vertical-paddingBottom)
+        var(--combo-vertical-paddingLeft);
       position: relative;
+
+      &.has-error {
+        border-color: var(
+          --Combo--vertical-item--onError-borderColor
+        ) !important; // 因为下面的规则权重更高 &:not(.is-disabled) > .#{$ns}Combo-items > .#{$ns}Combo-item:hover
+      }
     }
 
     > .#{$ns}Combo-items > .#{$ns}Combo-item {
@@ -260,7 +280,14 @@
     &:not(.is-disabled) > .#{$ns}Combo-item:hover,
     &:not(.is-disabled) > .#{$ns}Combo-items > .#{$ns}Combo-item:hover {
       border-color: var(--Combo--vertical-item-onHover-borderColor);
-      // border-style: solid;
+      border-width: var(--combo-vertical-hover-top-border-width)
+        var(--combo-vertical-hover-right-border-width)
+        var(--combo-vertical-hover-bottom-border-width)
+        var(--combo-vertical-hover-left-border-width);
+      border-style: var(--combo-vertical-hover-top-border-style)
+        var(--combo-vertical-hover-right-border-style)
+        var(--combo-vertical-hover-bottom-border-style)
+        var(--combo-vertical-hover-left-border-style);
 
       > .#{$ns}Combo-delBtn,
       > .#{$ns}Combo-delController {
@@ -308,6 +335,36 @@
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  &.is-mobile {
+    .#{$ns}Form-item {
+      .#{$ns}Form-rowInner {
+        flex: 1;
+      }
+    }
+
+    .#{$ns}Combo-delBtn {
+      height: px2rem(20px);
+      padding-top: 0;
+    }
+
+    .#{$ns}Combo-item {
+      align-items: center;
+      position: relative;
+
+      &::before {
+        @include hairline-bottom(var(--borderColor));
+      }
+    }
+  }
+
+  &.is-mobile:not(.#{$ns}Combo--ver) {
+    .#{$ns}TextareaControl > textarea,
+    .#{$ns}Form-control > .#{$ns}TextControl-input,
+    .#{$ns}TextControl.is-focused > .#{$ns}TextControl-input {
+      border-bottom: var(--Form-input-borderWidth) solid var(--borderColor);
     }
   }
 }

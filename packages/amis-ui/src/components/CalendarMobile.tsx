@@ -10,11 +10,14 @@ import Calendar from './calendar/Calendar';
 import {themeable, ThemeProps} from 'amis-core';
 import {LocaleProps, localeable} from 'amis-core';
 import {autobind} from 'amis-core';
+import {ShortCuts} from './DatePicker';
+import type {ViewMode} from './calendar/Calendar';
 
 export interface CalendarMobileProps extends ThemeProps, LocaleProps {
   className?: string;
   timeFormat?: string;
   inputFormat?: string;
+  displayForamt?: string;
   startDate?: moment.Moment;
   endDate?: moment.Moment;
   minDate?: moment.Moment;
@@ -23,7 +26,7 @@ export interface CalendarMobileProps extends ThemeProps, LocaleProps {
   maxDuration?: moment.Duration;
   dateFormat?: string;
   embed?: boolean;
-  viewMode?: 'days' | 'months' | 'years' | 'time' | 'quarters';
+  viewMode?: ViewMode;
   close?: () => void;
   confirm?: (startDate?: any, endTime?: any) => void;
   onChange?: (data: any, callback?: () => void) => void;
@@ -48,6 +51,7 @@ export interface CalendarMobileProps extends ThemeProps, LocaleProps {
     };
   };
   defaultDate?: moment.Moment;
+  isEndDate?: boolean;
 }
 
 export interface CalendarMobileState {
@@ -147,6 +151,7 @@ export class CalendarMobile extends React.Component<
 
   componentDidUpdate(prevProps: CalendarMobileProps) {
     const props = this.props;
+    const {classPrefix: ns} = props;
 
     if (
       prevProps.minDate !== props.minDate ||
@@ -165,6 +170,28 @@ export class CalendarMobile extends React.Component<
           currentDate: dateRange.currentDate
         },
         () => this.initMonths()
+      );
+    }
+
+    if (
+      (prevProps.startDate !== props.startDate &&
+        props.startDate !== this.state.startDate) ||
+      (prevProps.endDate !== props.endDate &&
+        props.endDate !== this.state.endDate)
+    ) {
+      this.setState(
+        {
+          startDate: props.startDate,
+          endDate: props.endDate
+        },
+        () =>
+          requestAnimationFrame(() => {
+            document
+              .querySelector(
+                `.${ns}CalendarMobile:not(.${ns}CalendarMobile-embed) .rdtRangeStart:not(.rdtNew)`
+              )
+              ?.scrollIntoView();
+          })
       );
     }
   }
@@ -354,22 +381,18 @@ export class CalendarMobile extends React.Component<
         dateTime: newTime,
         startDate: endDate
           ? startDate
-          : startDate
-              ?.clone()
-              .set({
-                hour: newTime[0],
-                minute: newTime[1],
-                second: newTime[2] || 0
-              }),
+          : startDate?.clone().set({
+              hour: newTime[0],
+              minute: newTime[1],
+              second: newTime[2] || 0
+            }),
         endDate: !endDate
           ? endDate
-          : endDate
-              ?.clone()
-              .set({
-                hour: newTime[0],
-                minute: newTime[1],
-                second: newTime[2] || 0
-              })
+          : endDate?.clone().set({
+              hour: newTime[0],
+              minute: newTime[1],
+              second: newTime[2] || 0
+            })
       };
       this.setState(obj, () => {
         onChange && onChange(this.state);
@@ -550,11 +573,13 @@ export class CalendarMobile extends React.Component<
       dateFormat,
       timeFormat,
       inputFormat,
+      displayForamt,
       locale,
       viewMode = 'days',
       close,
       defaultDate,
-      showViewMode
+      showViewMode,
+      isEndDate
     } = this.props;
     const __ = this.props.translate;
 
@@ -621,7 +646,7 @@ export class CalendarMobile extends React.Component<
                 onChange={this.handleMobileChange}
                 requiredConfirm={false}
                 dateFormat={dateFormat}
-                inputFormat={inputFormat}
+                displayForamt={displayForamt || inputFormat}
                 timeFormat=""
                 isValidDate={this.checkIsValidDate}
                 viewMode={viewMode}
@@ -634,6 +659,7 @@ export class CalendarMobile extends React.Component<
                 hideHeader={true}
                 updateOn={viewMode}
                 key={'calendar' + index}
+                isEndDate={isEndDate}
               />
             </div>
           );
@@ -651,7 +677,8 @@ export class CalendarMobile extends React.Component<
       close,
       timeConstraints,
       defaultDate,
-      isDatePicker
+      isDatePicker,
+      isEndDate
     } = this.props;
     const __ = this.props.translate;
 
@@ -676,7 +703,7 @@ export class CalendarMobile extends React.Component<
           input={false}
           onClose={close}
           locale={locale}
-          useMobileUI={true}
+          mobileUI={true}
           showToolbar={false}
           viewDate={moment().set({
             hour: dateTime[0],
@@ -685,6 +712,7 @@ export class CalendarMobile extends React.Component<
           })}
           timeConstraints={timeConstraints}
           isValidDate={this.checkIsValidDate}
+          isEndDate={isEndDate}
         />
       </div>
     );

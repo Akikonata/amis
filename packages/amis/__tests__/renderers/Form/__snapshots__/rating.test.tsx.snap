@@ -4,7 +4,6 @@ exports[`Renderer:rating with allowClear 1`] = `
 <div>
   <div
     class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-    style="position: relative;"
   >
     <div
       class="cxd-Panel-heading"
@@ -59,10 +58,6 @@ exports[`Renderer:rating with allowClear 1`] = `
                 <li
                   class="cxd-Rating-star"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -71,10 +66,6 @@ exports[`Renderer:rating with allowClear 1`] = `
                 <li
                   class="cxd-Rating-star"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -83,10 +74,6 @@ exports[`Renderer:rating with allowClear 1`] = `
                 <li
                   class="cxd-Rating-star"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -95,10 +82,6 @@ exports[`Renderer:rating with allowClear 1`] = `
                 <li
                   class="cxd-Rating-star"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -107,10 +90,6 @@ exports[`Renderer:rating with allowClear 1`] = `
                 <li
                   class="cxd-Rating-star"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -191,45 +170,6 @@ exports[`Renderer:rating with allowClear 1`] = `
         </button>
       </div>
     </div>
-    <div
-      class="resize-sensor"
-      style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-    >
-      
-  
-      <div
-        class="resize-sensor-expand"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-shrink"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-appear"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-      />
-    </div>
   </div>
 </div>
 `;
@@ -238,7 +178,6 @@ exports[`Renderer:rating with char & charClassName 1`] = `
 <div>
   <div
     class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-    style="position: relative;"
   >
     <div
       class="cxd-Panel-heading"
@@ -337,45 +276,6 @@ exports[`Renderer:rating with char & charClassName 1`] = `
         </button>
       </div>
     </div>
-    <div
-      class="resize-sensor"
-      style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-    >
-      
-  
-      <div
-        class="resize-sensor-expand"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-shrink"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-appear"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-      />
-    </div>
   </div>
 </div>
 `;
@@ -384,7 +284,6 @@ exports[`Renderer:rating with colors & inactiveColor 1`] = `
 <div>
   <div
     class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-    style="position: relative;"
   >
     <div
       class="cxd-Panel-heading"
@@ -440,10 +339,6 @@ exports[`Renderer:rating with colors & inactiveColor 1`] = `
                   class="cxd-Rating-star is-active"
                   style="color: rgb(119, 168, 141);"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -453,10 +348,6 @@ exports[`Renderer:rating with colors & inactiveColor 1`] = `
                   class="cxd-Rating-star is-active"
                   style="color: rgb(119, 168, 141);"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -466,10 +357,6 @@ exports[`Renderer:rating with colors & inactiveColor 1`] = `
                   class="cxd-Rating-star is-active"
                   style="color: rgb(119, 168, 141);"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -479,10 +366,6 @@ exports[`Renderer:rating with colors & inactiveColor 1`] = `
                   class="cxd-Rating-star"
                   style="color: yellow;"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -492,10 +375,6 @@ exports[`Renderer:rating with colors & inactiveColor 1`] = `
                   class="cxd-Rating-star"
                   style="color: yellow;"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -589,45 +468,6 @@ exports[`Renderer:rating with colors & inactiveColor 1`] = `
         </button>
       </div>
     </div>
-    <div
-      class="resize-sensor"
-      style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-    >
-      
-  
-      <div
-        class="resize-sensor-expand"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-shrink"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-appear"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-      />
-    </div>
   </div>
 </div>
 `;
@@ -636,7 +476,6 @@ exports[`Renderer:rating with count & half 1`] = `
 <div>
   <div
     class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-    style="position: relative;"
   >
     <div
       class="cxd-Panel-heading"
@@ -691,10 +530,6 @@ exports[`Renderer:rating with count & half 1`] = `
                 <li
                   class="cxd-Rating-star is-active"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -703,10 +538,6 @@ exports[`Renderer:rating with count & half 1`] = `
                 <li
                   class="cxd-Rating-star is-active"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -715,10 +546,6 @@ exports[`Renderer:rating with count & half 1`] = `
                 <li
                   class="cxd-Rating-star is-active"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -730,19 +557,11 @@ exports[`Renderer:rating with count & half 1`] = `
                   <div
                     class="cxd-Rating-star-half"
                   >
-                    <div
-                      class=" Rating-star-icon"
-                      style="display: none;"
-                    />
                     <icon-mock
                       classname="icon icon-star"
                       icon="star"
                     />
                   </div>
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -751,10 +570,6 @@ exports[`Renderer:rating with count & half 1`] = `
                 <li
                   class="cxd-Rating-star"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -782,45 +597,6 @@ exports[`Renderer:rating with count & half 1`] = `
         </button>
       </div>
     </div>
-    <div
-      class="resize-sensor"
-      style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-    >
-      
-  
-      <div
-        class="resize-sensor-expand"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-shrink"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-appear"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-      />
-    </div>
   </div>
 </div>
 `;
@@ -829,7 +605,6 @@ exports[`Renderer:rating with readOnly 1`] = `
 <div>
   <div
     class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-    style="position: relative;"
   >
     <div
       class="cxd-Panel-heading"
@@ -884,10 +659,6 @@ exports[`Renderer:rating with readOnly 1`] = `
                 <li
                   class="cxd-Rating-star is-active is-disabled"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -896,10 +667,6 @@ exports[`Renderer:rating with readOnly 1`] = `
                 <li
                   class="cxd-Rating-star is-active is-disabled"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -908,10 +675,6 @@ exports[`Renderer:rating with readOnly 1`] = `
                 <li
                   class="cxd-Rating-star is-active is-disabled"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -920,10 +683,6 @@ exports[`Renderer:rating with readOnly 1`] = `
                 <li
                   class="cxd-Rating-star is-active is-disabled"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -932,10 +691,6 @@ exports[`Renderer:rating with readOnly 1`] = `
                 <li
                   class="cxd-Rating-star is-active is-disabled"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -1016,45 +771,6 @@ exports[`Renderer:rating with readOnly 1`] = `
         </button>
       </div>
     </div>
-    <div
-      class="resize-sensor"
-      style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-    >
-      
-  
-      <div
-        class="resize-sensor-expand"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-shrink"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-appear"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-      />
-    </div>
   </div>
 </div>
 `;
@@ -1063,7 +779,6 @@ exports[`Renderer:rating with texts & textPosition & textClassName 1`] = `
 <div>
   <div
     class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-    style="position: relative;"
   >
     <div
       class="cxd-Panel-heading"
@@ -1123,10 +838,6 @@ exports[`Renderer:rating with texts & textPosition & textClassName 1`] = `
                 <li
                   class="cxd-Rating-star is-active"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -1135,10 +846,6 @@ exports[`Renderer:rating with texts & textPosition & textClassName 1`] = `
                 <li
                   class="cxd-Rating-star is-active"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -1147,10 +854,6 @@ exports[`Renderer:rating with texts & textPosition & textClassName 1`] = `
                 <li
                   class="cxd-Rating-star is-active"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -1159,10 +862,6 @@ exports[`Renderer:rating with texts & textPosition & textClassName 1`] = `
                 <li
                   class="cxd-Rating-star is-active"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -1171,10 +870,6 @@ exports[`Renderer:rating with texts & textPosition & textClassName 1`] = `
                 <li
                   class="cxd-Rating-star is-active"
                 >
-                  <div
-                    class=" Rating-star-icon"
-                    style="display: none;"
-                  />
                   <icon-mock
                     classname="icon icon-star"
                     icon="star"
@@ -1267,45 +962,6 @@ exports[`Renderer:rating with texts & textPosition & textClassName 1`] = `
           </span>
         </button>
       </div>
-    </div>
-    <div
-      class="resize-sensor"
-      style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-    >
-      
-  
-      <div
-        class="resize-sensor-expand"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-shrink"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-      >
-        
-    
-        <div
-          style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-        />
-        
-  
-      </div>
-      
-  
-      <div
-        class="resize-sensor-appear"
-        style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-      />
     </div>
   </div>
 </div>

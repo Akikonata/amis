@@ -1,6 +1,10 @@
 {
   "packages": [
-    "packages/*"
+    "packages/amis-formula",
+    "packages/amis-core",
+    "packages/amis-ui",
+    "packages/amis"
   ],
-  "version": "2.7.2"
+  "useWorkspaces": false,
+  "version": "3.5.3"
 }

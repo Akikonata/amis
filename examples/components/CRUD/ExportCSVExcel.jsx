@@ -4,7 +4,50 @@ export default {
     type: 'crud',
     headerToolbar: ['export-excel', 'export-csv'],
     data: {
+      mapping_type: {
+        '*': '其他'
+      },
       items: [
+        {
+          link: 'https://www.microsoft1.com/',
+          icon: __uri('../../static/ie.png'),
+          browser: 'Internet Explorer 4.2 2',
+          platform: 'Win 95+',
+          notExport: '1',
+          grade: 'A',
+          engine: {
+            name: 'Trident1',
+            version: '4/2'
+          },
+          date: '1591326307',
+          num: '12312334234234523',
+          children: [
+            {
+              link: 'https://www.microsoft2.com/',
+              engine: {
+                name: 'Trident2',
+                version: '4/2'
+              },
+              browser: 'Internet Explorer 4.0',
+              platform: 'Win 95+',
+              version: '4',
+              grade: 'X',
+              id: 1001
+            },
+            {
+              link: 'https://www.microsoft3.com/',
+              engine: {
+                name: 'Trident3',
+                version: '3/2'
+              },
+              browser: 'Internet Explorer 5.0',
+              platform: 'Win 95+',
+              version: '5',
+              grade: 'C',
+              id: 1002
+            }
+          ]
+        },
         {
           link: 'https://www.microsoft.com/',
           icon: __uri('../../static/ie.png'),
@@ -17,7 +60,8 @@ export default {
             version: '4/2'
           },
           date: '1591326307',
-          city: '310100'
+          city: '310100',
+          num: '12312334234234523'
         },
         {
           link: 'https://www.microsoft.com/',
@@ -30,7 +74,8 @@ export default {
           },
           notExport: '1',
           grade: 'B',
-          date: '1591322307'
+          date: '1591322307',
+          num: 1231233423232
         },
         {
           link: 'https://www.microsoft.com/',
@@ -141,7 +186,7 @@ export default {
     columns: [
       {
         name: 'icon',
-        label: '图标',
+        label: '<%= "图标" %>',
         type: 'image'
       },
       {
@@ -158,7 +203,8 @@ export default {
       },
       {
         name: 'engine.name',
-        label: '引擎'
+        label: '引擎',
+        className: 'text-primary'
       },
       {
         name: 'browser',
@@ -170,9 +216,11 @@ export default {
       },
       {
         name: 'engine.version',
-        label: 'CSS版本',
+        label: '引擎版本',
         type: 'tpl',
-        tpl: '<b>${engine.version}</b>'
+        tpl: '<b>${engine.version}</b>',
+        classNameExpr:
+          "<%= data.engine.version > 4 ? 'bg-green-100' : 'bg-red-50' %>"
       },
       {
         name: 'grade',
@@ -186,6 +234,12 @@ export default {
         }
       },
       {
+        name: 'grade',
+        label: 'CSS grade',
+        type: 'mapping',
+        source: '${mapping_type}'
+      },
+      {
         name: 'date',
         label: 'Date',
         type: 'date'
@@ -194,7 +248,44 @@ export default {
         name: 'city',
         label: 'city',
         type: 'input-city'
+      },
+      {
+        name: 'num',
+        label: 'num'
       }
+    ],
+    prefixRow: [
+      {
+        type: 'text',
+        text: '前置总计',
+        colSpan: 2
+      },
+      {
+        type: 'tpl',
+        tpl: '${items|pick:engine.version|sum}'
+      }
+    ],
+    affixRow: [
+      [
+        {
+          type: 'text',
+          text: '总计1'
+        },
+        {
+          type: 'tpl',
+          tpl: '${items|pick:engine.version|sum}'
+        }
+      ],
+      [
+        {
+          type: 'text',
+          text: '总计2'
+        },
+        {
+          type: 'tpl',
+          tpl: '${items|pick:engine.version|sum}'
+        }
+      ]
     ]
   }
 };

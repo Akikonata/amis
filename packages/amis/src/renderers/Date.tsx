@@ -1,12 +1,19 @@
 import React from 'react';
-import {Renderer, RendererProps} from 'amis-core';
-import moment from 'moment';
+import {
+  Renderer,
+  RendererProps,
+  normalizeDate,
+  CustomStyle,
+  setThemeClassName
+} from 'amis-core';
+import moment, {Moment} from 'moment';
+import 'moment-timezone';
 import {BaseSchema} from '../Schema';
 import {getPropValue} from 'amis-core';
 
 /**
  * Date 展示渲染器。
- * 文档：https://baidu.gitee.io/amis/docs/components/date
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/date
  */
 export interface DateSchema extends BaseSchema {
   /**
@@ -24,6 +31,11 @@ export interface DateSchema extends BaseSchema {
    * 展示的时间格式，参考 moment 中的格式说明。
    */
   format?: string;
+
+  /**
+   * 展示的时间格式，参考 moment 中的格式说明。（新：同format）
+   */
+  displayFormat?: string;
 
   /**
    * 占位符
@@ -44,6 +56,11 @@ export interface DateSchema extends BaseSchema {
    * 更新频率， 默认为1分钟
    */
   updateFrequency?: number;
+
+  /**
+   * 时区
+   */
+  displayTimeZone?: string;
 }
 
 export interface DateProps
@@ -59,7 +76,12 @@ export class DateField extends React.Component<DateProps, DateState> {
 
   static defaultProps: Pick<
     DateProps,
-    'placeholder' | 'format' | 'valueFormat' | 'fromNow' | 'updateFrequency'
+    | 'placeholder'
+    | 'format'
+    | 'valueFormat'
+    | 'fromNow'
+    | 'updateFrequency'
+    | 'displayFormat'
   > = {
     placeholder: '-',
     format: 'YYYY-MM-DD',
@@ -93,12 +115,21 @@ export class DateField extends React.Component<DateProps, DateState> {
     const {
       valueFormat,
       format,
+      displayFormat,
       placeholder,
       fromNow,
       className,
       style,
       classnames: cx,
-      translate: __
+      locale,
+      translate: __,
+      displayTimeZone,
+      data,
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss,
+      baseControlClassName
     } = this.props;
     let viewValue: React.ReactNode = (
       <span className="text-muted">{placeholder}</span>
@@ -107,24 +138,23 @@ export class DateField extends React.Component<DateProps, DateState> {
     const value = getPropValue(this.props);
 
     // 主要是给 fromNow 用的
-    let date;
-    if (value) {
-      let ISODate = moment(value, moment.ISO_8601);
-      let NormalDate = moment(value, valueFormat);
+    let date: any = null;
+    if (value && (date = normalizeDate(value, valueFormat))) {
+      let normalizeDate: Moment = date;
 
-      viewValue = ISODate.isValid()
-        ? ISODate.format(format)
-        : NormalDate.isValid()
-        ? NormalDate.format(format)
-        : false;
+      if (displayTimeZone) {
+        normalizeDate = normalizeDate.clone().tz(displayTimeZone);
+      }
+
+      viewValue = normalizeDate.format(displayFormat || format);
 
       if (viewValue) {
         date = viewValue as string;
       }
-    }
 
-    if (fromNow) {
-      viewValue = moment(viewValue as string).fromNow();
+      if (fromNow) {
+        viewValue = normalizeDate.locale(locale).fromNow();
+      }
     }
 
     viewValue = !viewValue ? (
@@ -134,13 +164,33 @@ export class DateField extends React.Component<DateProps, DateState> {
     );
 
     return (
-      <span
-        className={cx('DateField', className)}
-        style={style}
-        title={fromNow ? date : undefined}
-      >
-        {viewValue}
-      </span>
+      <>
+        <span
+          style={style}
+          title={fromNow && date ? date : undefined}
+          className={cx(
+            'DateField',
+            className,
+            setThemeClassName('baseControlClassName', id, themeCss),
+            setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+          )}
+        >
+          {viewValue}
+        </span>
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
+      </>
     );
   }
 }

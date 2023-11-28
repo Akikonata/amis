@@ -1,13 +1,23 @@
 import React from 'react';
 import Dropzone from 'react-dropzone';
-import {autobind, createObject, isObject, resolveEventData} from 'amis-core';
-import {FormItem, FormControlProps, FormBaseControl} from 'amis-core';
-import {FormBaseControlSchema} from '../../Schema';
+import omit from 'lodash/omit';
+import merge from 'lodash/merge';
+import isEmpty from 'lodash/isEmpty';
+import isPlainObject from 'lodash/isPlainObject';
+import {
+  FormItem,
+  FormControlProps,
+  autobind,
+  isObject,
+  resolveEventData,
+  dataMapping
+} from 'amis-core';
+import {FormBaseControlSchema, SchemaTokenizeableString} from '../../Schema';
 import type {CellValue, CellRichTextValue} from 'exceljs';
 
 /**
  * Excel 解析
- * 文档：https://baidu.gitee.io/amis/docs/components/form/input-excel
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/input-excel
  */
 export interface InputExcelControlSchema extends FormBaseControlSchema {
   /**
@@ -42,6 +52,18 @@ export interface InputExcelControlSchema extends FormBaseControlSchema {
 
   /** 图片解析结果使用 data URI 格式 */
   imageDataURI?: boolean;
+
+  /**
+   * 占位文本提示
+   */
+  placeholder?: string;
+
+  /**
+   * 文件解析完成后将字段同步到表单内部
+   */
+  autoFill?: {
+    [propName: string]: SchemaTokenizeableString;
+  };
 }
 
 export interface ExcelProps
@@ -83,55 +105,110 @@ export default class ExcelControl extends React.PureComponent<
   }
 
   @autobind
+  syncAutoFill(filename: string) {
+    const {autoFill, onBulkChange, data, name} = this.props;
+
+    if (autoFill?.hasOwnProperty('api') || !isObject(autoFill)) {
+      return;
+    }
+
+    const excludeSelfAutoFill = name ? omit(autoFill, name) : autoFill;
+
+    if (!isEmpty(excludeSelfAutoFill) && onBulkChange) {
+      const toSync = dataMapping(excludeSelfAutoFill, {filename});
+
+      Object.keys(toSync).forEach(key => {
+        if (isPlainObject(toSync[key]) && isPlainObject(data[key])) {
+          toSync[key] = merge({}, data[key], toSync[key]);
+        }
+      });
+      onBulkChange(toSync);
+    }
+  }
+
+  @autobind
   handleDrop(files: File[]) {
-    const {allSheets, onChange, parseImage} = this.props;
     const excel = files[0];
+    const fileName = excel.name;
     const reader = new FileReader();
     reader.readAsArrayBuffer(excel);
     reader.onload = async () => {
       if (reader.result) {
-        import('exceljs').then(async (ExcelJS: any) => {
-          this.ExcelJS = ExcelJS;
-          const workbook = new ExcelJS.Workbook();
-          await workbook.xlsx.load(reader.result);
-          let sheetsResult: any = [];
-          if (allSheets) {
-            workbook.eachSheet((worksheet: any) => {
-              if (parseImage) {
-                sheetsResult.push({
-                  sheetName: worksheet.name,
-                  data: this.readWorksheet(worksheet),
-                  images: this.readImages(worksheet, workbook)
-                });
-              } else {
-                sheetsResult.push({
-                  sheetName: worksheet.name,
-                  data: this.readWorksheet(worksheet)
-                });
+        // 如果是 xls 就用 xlsx 解析一下转成 xlsx 然后用 exceljs 解析
+        // 为啥不直接用 xlsx 解析内容？因为它的社区版本不支持读图片，只有收费版才支持
+        if (fileName.toLowerCase().endsWith('.xls')) {
+          import('xlsx').then(XLSX => {
+            const workbook = XLSX.read(
+              new Uint8Array(reader.result as ArrayBuffer),
+              {
+                cellDates: true
               }
-            });
-          } else {
-            const worksheet = workbook.worksheets[0];
-
-            if (parseImage) {
-              const images = this.readImages(worksheet, workbook);
-              sheetsResult = {
-                data: this.readWorksheet(worksheet),
-                images
-              };
-            } else {
-              sheetsResult = this.readWorksheet(worksheet);
-            }
-          }
-          const dispatcher = await this.dispatchEvent('change', sheetsResult);
-          if (dispatcher?.prevented) {
-            return;
-          }
-          onChange(sheetsResult);
-          this.setState({filename: files[0].name});
-        });
+            );
+            const xlsxFile = XLSX.writeXLSX(workbook, {type: 'array'});
+            this.processExcelFile(xlsxFile, fileName);
+          });
+        } else {
+          this.processExcelFile(reader.result, fileName);
+        }
       }
     };
+  }
+
+  processExcelFile(excelData: ArrayBuffer | string, fileName: string) {
+    const {allSheets, onChange, parseImage, autoFill} = this.props;
+    import('exceljs').then(async (ExcelJS: any) => {
+      this.ExcelJS = ExcelJS;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(excelData);
+      let sheetsResult: any = [];
+      if (allSheets) {
+        workbook.eachSheet((worksheet: any) => {
+          const sheetState = worksheet.state || 'visible';
+          // hidden 的不处理
+          if (sheetState === 'hidden') {
+            return;
+          }
+          if (parseImage) {
+            sheetsResult.push({
+              sheetName: worksheet.name,
+              data: this.readWorksheet(worksheet),
+              images: this.readImages(worksheet, workbook)
+            });
+          } else {
+            sheetsResult.push({
+              sheetName: worksheet.name,
+              data: this.readWorksheet(worksheet)
+            });
+          }
+        });
+      } else {
+        const worksheet = workbook.worksheets.find(
+          (sheet: any) => sheet.state !== 'hidden'
+        );
+
+        if (parseImage) {
+          const images = this.readImages(worksheet, workbook);
+          sheetsResult = {
+            data: this.readWorksheet(worksheet),
+            images
+          };
+        } else {
+          sheetsResult = this.readWorksheet(worksheet);
+        }
+      }
+      const dispatcher = await this.dispatchEvent('change', sheetsResult);
+      if (dispatcher?.prevented) {
+        return;
+      }
+
+      onChange(sheetsResult);
+
+      if (autoFill) {
+        this.syncAutoFill(fileName);
+      }
+
+      this.setState({filename: fileName});
+    });
   }
 
   /** 读取工作表里的图片 */
@@ -163,7 +240,7 @@ export default class ExcelControl extends React.PureComponent<
     const {dispatchEvent, data} = this.props;
     return await dispatchEvent(
       eventName,
-      resolveEventData(this.props, {value: eventData}, 'value')
+      resolveEventData(this.props, {value: eventData})
     );
   }
 
@@ -238,8 +315,25 @@ export default class ExcelControl extends React.PureComponent<
 
     if (parseMode === 'array') {
       worksheet.eachRow((row: any, rowNumber: number) => {
-        const values = row.values;
+        let values = row.values;
         values.shift(); // excel 返回的值是从 1 开始的，0 节点永远是 null
+        if (plainText) {
+          values = values.map((item: any) => {
+            if (item instanceof Object) {
+              if (item.hyperlink) {
+                if (item.hyperlink.startsWith('mailto:')) {
+                  return item.hyperlink.substring(7);
+                }
+                return item.hyperlink;
+              } else if (item.result) {
+                return item.result;
+              } else if (item.richText) {
+                return this.richText2PlainString(item);
+              }
+            }
+            return item;
+          });
+        }
         result.push(values);
       });
       return result;
@@ -267,12 +361,13 @@ export default class ExcelControl extends React.PureComponent<
                 const ExcelValueType = this.ExcelJS.ValueType;
                 if (cell.type === ExcelValueType.Hyperlink) {
                   value = cell.value.hyperlink;
+                  if (value.startsWith('mailto:')) {
+                    value = value.substring(7);
+                  }
                 } else if (cell.type === ExcelValueType.Formula) {
                   value = cell.value.result;
                 } else if (cell.type === ExcelValueType.RichText) {
-                  value = cell.value.richText
-                    .map((item: any) => item.text)
-                    .join('');
+                  value = this.richText2PlainString(cell.value);
                 } else if (cell.type === ExcelValueType.Error) {
                   value = '';
                 }
@@ -302,12 +397,11 @@ export default class ExcelControl extends React.PureComponent<
   render() {
     const {
       className,
-      style,
       classnames: cx,
       classPrefix: ns,
-      value,
       disabled,
-      translate: __
+      translate: __,
+      placeholder
     } = this.props;
 
     return (
@@ -315,7 +409,7 @@ export default class ExcelControl extends React.PureComponent<
         <Dropzone
           key="drop-zone"
           onDrop={this.handleDrop}
-          accept=".xlsx"
+          accept=".xlsx,.xls"
           multiple={false}
           disabled={disabled}
         >
@@ -328,7 +422,7 @@ export default class ExcelControl extends React.PureComponent<
                     filename: this.state.filename
                   })
                 ) : (
-                  <p>{__('Excel.placeholder')}</p>
+                  <p>{placeholder ?? __('Excel.placeholder')}</p>
                 )}
               </div>
             </section>

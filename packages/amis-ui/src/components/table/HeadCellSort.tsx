@@ -17,22 +17,22 @@ import {ColumnProps} from './index';
 
 export interface Props extends ThemeProps, LocaleProps {
   column: ColumnProps;
-  onSort?: Function;
+  onSort?: (payload: {orderBy: string; orderDir: string}) => any;
   active?: boolean;
   classnames: ClassNamesFn;
 }
 
 export interface State {
-  order: string; // 升序还是降序
+  orderDir: string; // 升序还是降序
   orderBy: string; // 一次只能按一列排序 当前列的key
 }
 
-export class HeadCellSort extends React.Component<Props, State> {
+export class HeadCellSort extends React.PureComponent<Props, State> {
   constructor(props: Props) {
     super(props);
 
     this.state = {
-      order: '',
+      orderDir: '',
       orderBy: ''
     };
   }
@@ -45,7 +45,7 @@ export class HeadCellSort extends React.Component<Props, State> {
       !props?.active &&
       props.active !== prevProps?.active
     ) {
-      this.setState({orderBy: '', order: ''});
+      this.setState({orderBy: '', orderDir: ''});
     }
   }
 
@@ -54,30 +54,31 @@ export class HeadCellSort extends React.Component<Props, State> {
 
     return (
       <span
-        className={cx('TableCell-sortBtn')}
+        className={cx('TableCell-sortBtn', 'aaa')}
         onClick={async () => {
           let sortPayload: State = {
             orderBy: '',
-            order: ''
+            orderDir: ''
           };
           if (column.name === this.state.orderBy) {
-            if (this.state.order === 'desc') {
+            if (this.state.orderDir === 'desc') {
               // 降序改为取消
-              sortPayload = {orderBy: '', order: ''};
+              sortPayload = {orderBy: '', orderDir: ''};
             } else {
               // 升序之后降序
-              sortPayload = {orderBy: column.name, order: 'desc'};
+              sortPayload = {orderBy: column.name, orderDir: 'desc'};
             }
           } else {
             // 默认先升序
-            sortPayload = {orderBy: column.name, order: 'asc'};
+            sortPayload = {orderBy: column.name, orderDir: 'asc'};
           }
 
           if (onSort) {
             const prevented = await onSort({
               orderBy: sortPayload.orderBy,
-              order: sortPayload.order
+              orderDir: sortPayload.orderDir
             });
+
             if (prevented) {
               return;
             }
@@ -89,18 +90,22 @@ export class HeadCellSort extends React.Component<Props, State> {
         <i
           className={cx(
             'TableCell-sortBtn--down',
-            active && this.state.order === 'desc' ? 'is-active' : ''
+            active && this.state.orderDir === 'desc' ? 'is-active' : ''
           )}
         >
-          <Icon icon="sort-desc" className="icon" />
+          <Icon
+            icon="sort-desc"
+            className="icon"
+            iconContent="table-sort-down"
+          />
         </i>
         <i
           className={cx(
             'TableCell-sortBtn--up',
-            active && this.state.order === 'asc' ? 'is-active' : ''
+            active && this.state.orderDir === 'asc' ? 'is-active' : ''
           )}
         >
-          <Icon icon="sort-asc" className="icon" />
+          <Icon icon="sort-asc" className="icon" iconContent="table-sort-up" />
         </i>
         <i
           className={cx(
@@ -108,7 +113,11 @@ export class HeadCellSort extends React.Component<Props, State> {
             active ? '' : 'is-active'
           )}
         >
-          <Icon icon="sort-default" className="icon" />
+          <Icon
+            icon="sort-default"
+            className="icon"
+            iconContent="table-sort-default"
+          />
         </i>
       </span>
     );

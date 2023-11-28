@@ -39,6 +39,8 @@ export class ColumnTogglerRenderer extends React.Component<ColumnTogglerRenderer
       toggleAllColumns,
       toggleToggle,
       data,
+      size,
+      popOverContainer,
       ...rest
     } = this.props;
     const __ = rest.translate;
@@ -62,11 +64,10 @@ export class ColumnTogglerRenderer extends React.Component<ColumnTogglerRenderer
         {...rest}
         render={render}
         tooltip={tooltip || __('Table.columnsVisibility')}
-        tooltipContainer={
-          env && env.getModalContainer ? env.getModalContainer : undefined
-        }
+        tooltipContainer={popOverContainer || env.getModalContainer}
         isActived={cols.findIndex((column: any) => !column.toggled) !== -1}
         align={align ?? 'right'}
+        size={size || 'sm'}
         classnames={cx}
         classPrefix={ns}
         key="columns-toggable"

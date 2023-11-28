@@ -1,35 +1,47 @@
 import React from 'react';
-import {Api} from 'amis-core';
-import {RendererProps} from 'amis-core';
-import {isApiOutdated, isEffectiveApi, normalizeApi} from 'amis-core';
-import {Icon} from 'amis-ui';
-import {Overlay} from 'amis-core';
-import {PopOver} from 'amis-core';
-import {findDOMNode} from 'react-dom';
-import {Checkbox} from 'amis-ui';
 import xor from 'lodash/xor';
+import {findDOMNode} from 'react-dom';
 import {
+  Overlay,
+  PopOver,
+  isApiOutdated,
+  isEffectiveApi,
+  normalizeApi,
   normalizeOptions,
   getVariable,
   createObject,
-  isNumeric
+  isNumeric,
+  isPureVariable,
+  resolveVariableAndFilter
 } from 'amis-core';
-import type {Option} from 'amis-core';
+import {Checkbox, Icon} from 'amis-ui';
+
+import type {RendererProps, Option} from 'amis-core';
 
 export interface QuickFilterConfig {
   options: Array<any>;
-  // source: Api;
+  /** 数据源：API或上下文变量 */
+  source: any;
   multiple: boolean;
   /* 是否开启严格对比模式 */
   strictMode?: boolean;
   [propName: string]: any;
+  refreshOnOpen?: boolean; // 展开是否重新加载数据 当source配置api时才起作用
 }
 
 export interface HeadCellFilterProps extends RendererProps {
+  /** 所在的CRUD的Query数据 */
   data: any;
+  /** 所在的CRUD的数据以及上层数据 */
+  superData: Record<string, any>;
   name: string;
   filterable: QuickFilterConfig;
-  onQuery: (values: object) => void;
+  onQuery: (
+    values: object,
+    forceReload?: boolean,
+    replace?: boolean,
+    resetPage?: boolean
+  ) => void;
 }
 
 export class HeadCellFilterDropDown extends React.Component<
@@ -52,11 +64,21 @@ export class HeadCellFilterDropDown extends React.Component<
   }
 
   componentDidMount() {
-    const {filterable, name, store} = this.props;
+    const {filterable, data} = this.props;
+    const {source, options} = filterable || {};
 
-    if (filterable.source) {
+    if (source && isPureVariable(source)) {
+      const datasource = resolveVariableAndFilter(
+        source,
+        this.props.superData,
+        '| raw'
+      );
+      this.setState({
+        filterOptions: this.alterOptions(datasource)
+      });
+    } else if (source && isEffectiveApi(source, data)) {
       this.fetchOptions();
-    } else if (filterable.options?.length > 0) {
+    } else if (options?.length > 0) {
       this.setState({
         filterOptions: this.alterOptions(filterable.options)
       });
@@ -65,8 +87,9 @@ export class HeadCellFilterDropDown extends React.Component<
 
   componentDidUpdate(prevProps: HeadCellFilterProps, prevState: any) {
     const name = this.props.name;
-
     const props = this.props;
+
+    this.sourceInvalid = false;
 
     if (
       prevProps.name !== props.name ||
@@ -122,9 +145,8 @@ export class HeadCellFilterDropDown extends React.Component<
     this.sourceInvalid && this.fetchOptions();
   }
 
-  fetchOptions() {
+  async fetchOptions() {
     const {env, filterable, data} = this.props;
-
     if (!isEffectiveApi(filterable.source, data)) {
       return;
     }
@@ -132,11 +154,10 @@ export class HeadCellFilterDropDown extends React.Component<
     const api = normalizeApi(filterable.source);
     api.cache = 3000; // 开启 3s 缓存，因为固顶位置渲染1次会额外多次请求。
 
-    env.fetcher(api, data).then(ret => {
-      let options = (ret.data && ret.data.options) || [];
-      this.setState({
-        filterOptions: ret && ret.data && this.alterOptions(options)
-      });
+    const ret = await env.fetcher(api, data);
+    let options = (ret.data && ret.data.options) || [];
+    this.setState({
+      filterOptions: ret && ret.data && this.alterOptions(options)
     });
   }
 
@@ -180,7 +201,24 @@ export class HeadCellFilterDropDown extends React.Component<
     this.close();
   }
 
-  open() {
+  async open() {
+    const {filterable, source} = this.props;
+
+    if (filterable.refreshOnOpen && filterable.source) {
+      if (source && isPureVariable(source)) {
+        const datasource = resolveVariableAndFilter(
+          source,
+          this.props.superData,
+          '| raw'
+        );
+
+        this.setState({
+          filterOptions: this.alterOptions(datasource)
+        });
+      } else {
+        await this.fetchOptions();
+      }
+    }
     this.setState({
       isOpened: true
     });
@@ -207,9 +245,14 @@ export class HeadCellFilterDropDown extends React.Component<
       return;
     }
 
-    onQuery({
-      [name]: value
-    });
+    onQuery(
+      {
+        [name]: value
+      },
+      false,
+      false,
+      true
+    );
     this.close();
   }
 
@@ -241,11 +284,29 @@ export class HeadCellFilterDropDown extends React.Component<
     });
   }
 
-  handleReset() {
-    const {name, onQuery} = this.props;
-    onQuery({
-      [name]: undefined
-    });
+  async handleReset() {
+    const {name, dispatchEvent, data, onQuery} = this.props;
+
+    const rendererEvent = await dispatchEvent(
+      'columnFilter',
+      createObject(data, {
+        filterName: name,
+        filterValue: undefined
+      })
+    );
+
+    if (rendererEvent?.prevented) {
+      return;
+    }
+
+    onQuery(
+      {
+        [name]: undefined
+      },
+      false,
+      false,
+      true
+    );
     this.close();
   }
 

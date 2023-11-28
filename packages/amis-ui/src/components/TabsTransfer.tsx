@@ -1,5 +1,5 @@
 import React from 'react';
-import {autobind} from 'amis-core';
+import {ThemeProps, autobind, createObject, filter} from 'amis-core';
 import Tabs, {Tab} from './Tabs';
 import InputBox from './InputBox';
 import TableCheckboxes from './TableSelection';
@@ -26,7 +26,8 @@ export interface TabsTransferProps
       | 'onSearch'
       | 'optionItemRender'
     >,
-    SpinnerExtraProps {
+    SpinnerExtraProps,
+    ThemeProps {
   onSearch: (
     term: string,
     option: Option,
@@ -50,6 +51,9 @@ export interface TabsTransferProps
   onTabChange: (key: number) => void;
   activeKey: number;
   onlyChildren?: boolean;
+  ctx?: Record<string, any>;
+  selectMode?: 'table' | 'list' | 'tree' | 'chained' | 'associated';
+  searchable?: boolean;
 }
 
 export interface TabsTransferState {
@@ -165,10 +169,13 @@ export class TabsTransfer extends React.Component<
       itemHeight,
       virtualThreshold,
       onlyChildren,
-      loadingConfig
+      selectMode,
+      loadingConfig,
+      valueField = 'value',
+      labelField = 'label'
     } = this.props;
     const options = searchResult || [];
-    const mode = searchResultMode;
+    const mode = searchResultMode || selectMode; // 没有配置时默认和左侧选项展示形式一致
 
     return mode === 'table' ? (
       <TableCheckboxes
@@ -205,6 +212,8 @@ export class TabsTransfer extends React.Component<
                 })
             : undefined
         }
+        valueField={valueField}
+        labelField={labelField}
       />
     ) : mode === 'chained' ? (
       <ChainedCheckboxes
@@ -225,6 +234,8 @@ export class TabsTransfer extends React.Component<
         }
         itemHeight={itemHeight}
         virtualThreshold={virtualThreshold}
+        valueField={valueField}
+        labelField={labelField}
       />
     ) : (
       <ListCheckboxes
@@ -245,6 +256,8 @@ export class TabsTransfer extends React.Component<
         }
         itemHeight={itemHeight}
         virtualThreshold={virtualThreshold}
+        valueField={valueField}
+        labelField={labelField}
       />
     );
   }
@@ -256,7 +269,10 @@ export class TabsTransfer extends React.Component<
       placeholder,
       activeKey,
       classnames: cx,
-      translate: __
+      translate: __,
+      ctx,
+      mobileUI,
+      searchable
     } = this.props;
     const showOptions = options.filter(item => item.visible !== false);
 
@@ -279,11 +295,16 @@ export class TabsTransfer extends React.Component<
           <Tab
             eventKey={index}
             key={index}
-            title={option.label || option.title}
+            title={filter(
+              option.label || option.title,
+              createObject(ctx, option)
+            )}
             className="TabsTransfer-tab"
           >
-            {option.searchable ? (
-              <div className={cx('TabsTransfer-search')}>
+            {option.searchable || searchable ? (
+              <div
+                className={cx('TabsTransfer-search', {'is-mobile': mobileUI})}
+              >
                 <InputBox
                   value={this.state.inputValue}
                   onChange={(text: string) => this.handleSearch(text, option)}
@@ -327,10 +348,14 @@ export class TabsTransfer extends React.Component<
       itemHeight,
       virtualThreshold,
       onlyChildren,
-      loadingConfig
+      loadingConfig,
+      valueField = 'value',
+      labelField = 'label',
+      deferField = 'defer'
     } = this.props;
+    const selectMode = option.selectMode || this.props.selectMode;
 
-    return option.selectMode === 'table' ? (
+    return selectMode === 'table' ? (
       <TableCheckboxes
         className={cx('Transfer-checkboxes')}
         columns={option.columns as any}
@@ -344,8 +369,10 @@ export class TabsTransfer extends React.Component<
         cellRender={cellRender}
         itemHeight={itemHeight}
         virtualThreshold={virtualThreshold}
+        valueField={valueField}
+        labelField={labelField}
       />
-    ) : option.selectMode === 'tree' ? (
+    ) : selectMode === 'tree' ? (
       <Tree
         loadingConfig={loadingConfig}
         className={cx('Transfer-checkboxes')}
@@ -371,8 +398,10 @@ export class TabsTransfer extends React.Component<
         }
         itemHeight={itemHeight}
         virtualThreshold={virtualThreshold}
+        valueField={valueField}
+        labelField={labelField}
       />
-    ) : option.selectMode === 'chained' ? (
+    ) : selectMode === 'chained' ? (
       <ChainedCheckboxes
         className={cx('Transfer-checkboxes')}
         options={option.children || []}
@@ -394,8 +423,10 @@ export class TabsTransfer extends React.Component<
         }
         itemHeight={itemHeight}
         virtualThreshold={virtualThreshold}
+        valueField={valueField}
+        labelField={labelField}
       />
-    ) : option.selectMode === 'associated' ? (
+    ) : selectMode === 'associated' ? (
       <AssociatedCheckboxes
         className={cx('Transfer-checkboxes')}
         options={option.children || []}
@@ -421,6 +452,9 @@ export class TabsTransfer extends React.Component<
         }
         itemHeight={itemHeight}
         virtualThreshold={virtualThreshold}
+        valueField={valueField}
+        labelField={labelField}
+        deferField={deferField}
       />
     ) : (
       <ListCheckboxes
@@ -443,6 +477,8 @@ export class TabsTransfer extends React.Component<
         }
         itemHeight={itemHeight}
         virtualThreshold={virtualThreshold}
+        valueField={valueField}
+        labelField={labelField}
       />
     );
   }
@@ -453,12 +489,14 @@ export class TabsTransfer extends React.Component<
       classnames: cx,
       optionItemRender,
       onSearch,
+      mobileUI,
       ...reset
     } = this.props;
 
     return (
       <Transfer
         {...reset}
+        mobileUI={mobileUI}
         statistics={false}
         classnames={cx}
         className={cx('TabsTransfer', className)}

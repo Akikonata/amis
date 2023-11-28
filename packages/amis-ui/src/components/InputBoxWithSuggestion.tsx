@@ -41,9 +41,12 @@ export class InputBoxWithSuggestion extends React.Component<InputBoxWithSuggesti
   }
 
   filterOptions(options: any[]) {
-    return matchSorter(options, this.props.value, {
-      keys: ['label', 'value']
-    });
+    return this.props.value
+      ? matchSorter(options, this.props.value, {
+          keys: ['label', 'value'],
+          threshold: matchSorter.rankings.CONTAINS
+        })
+      : options;
   }
 
   // 选了值，还原options
@@ -63,9 +66,12 @@ export class InputBoxWithSuggestion extends React.Component<InputBoxWithSuggesti
       searchable,
       popOverContainer,
       clearable,
-      hasError
+      hasError,
+      mobileUI
     } = this.props;
-    const options = this.filterOptions(this.props.options);
+    const options = this.filterOptions(
+      Array.isArray(this.props.options) ? this.props.options : []
+    );
 
     return (
       <PopOverContainer
@@ -99,9 +105,10 @@ export class InputBoxWithSuggestion extends React.Component<InputBoxWithSuggesti
             clearable={clearable}
             onClick={onClick}
             hasError={hasError}
+            mobileUI={mobileUI}
           >
             <span className={cx('InputBox-caret')}>
-              <Icon icon="caret" className="icon" />
+              <Icon icon="right-arrow-bold" className="icon" />
             </span>
           </InputBox>
         )}

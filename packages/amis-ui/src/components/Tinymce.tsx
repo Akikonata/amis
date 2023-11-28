@@ -36,7 +36,12 @@ import 'tinymce/plugins/nonbreaking';
 import 'tinymce/plugins/emoticons';
 import 'tinymce/plugins/emoticons/js/emojis';
 import 'tinymce/plugins/quickbars/plugin';
-import {LocaleProps} from 'amis-core';
+
+import 'tinymce/plugins/help/js/i18n/keynav/zh_CN';
+import 'tinymce/plugins/help/js/i18n/keynav/en';
+import 'tinymce/plugins/help/js/i18n/keynav/de';
+
+import {LocaleProps, autobind} from 'amis-core';
 
 interface TinymceEditorProps extends LocaleProps {
   model: string;
@@ -44,7 +49,10 @@ interface TinymceEditorProps extends LocaleProps {
   onFocus?: () => void;
   onBlur?: () => void;
   disabled?: boolean;
-  config?: any;
+  config?: {
+    onLoaded?: (tinymce: any) => void | Promise<void>;
+    [propName: string]: any;
+  };
   outputFormat?: 'html' | 'text';
   receiver?: string;
 }
@@ -55,13 +63,42 @@ export default class TinymceEditor extends React.Component<TinymceEditorProps> {
   };
   config?: any;
   editor?: any;
+  unmounted = false;
+  editorInitialized?: boolean = false;
   currentContent?: string;
 
   elementRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
 
   componentDidMount() {
+    this.initTiny();
+  }
+
+  componentDidUpdate(prevProps: TinymceEditorProps) {
+    const props = this.props;
+
+    if (
+      props.model !== prevProps.model &&
+      props.model !== this.currentContent
+    ) {
+      this.editorInitialized && this.editor?.setContent(props.model || '');
+    }
+
+    if (this.props.config !== prevProps.config) {
+      tinymce.remove(this.editor);
+      this.initTiny();
+    }
+  }
+
+  componentWillUnmount() {
+    tinymce.remove(this.editor);
+    this.unmounted = true;
+  }
+
+  @autobind
+  async initTiny() {
     const locale = this.props.locale;
 
+    const {onLoaded, ...rest} = this.props.config || {};
     this.config = {
       inline: false,
       skin: false,
@@ -136,7 +173,9 @@ export default class TinymceEditor extends React.Component<TinymceEditorProps> {
         help: {title: 'Help', items: 'help'}
       },
       paste_data_images: true,
-      ...this.props.config,
+      // 很诡异的问题，video 会被复制放在光标上，直接用样式隐藏先
+      content_style: '[data-mce-bogus] video {display:none;}',
+      ...rest,
       target: this.elementRef.current,
       readOnly: this.props.disabled,
       promotion: false,
@@ -144,27 +183,14 @@ export default class TinymceEditor extends React.Component<TinymceEditorProps> {
         this.editor = editor;
 
         editor.on('init', (e: Event) => {
+          this.editorInitialized = true;
           this.initEditor(e, editor);
         });
       }
     };
 
-    tinymce.init(this.config);
-  }
-
-  componentDidUpdate(prevProps: TinymceEditorProps) {
-    const props = this.props;
-
-    if (
-      props.model !== prevProps.model &&
-      props.model !== this.currentContent
-    ) {
-      this.editor?.setContent(props.model || '');
-    }
-  }
-
-  componentWillUnmount() {
-    tinymce.remove(this.editor);
+    await onLoaded?.(tinymce);
+    this.unmounted || tinymce.init(this.config);
   }
 
   initEditor(e: any, editor: any) {

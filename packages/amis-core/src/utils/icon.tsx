@@ -3,15 +3,22 @@
  */
 
 import React from 'react';
-import {isObject} from 'lodash';
+import isObject from 'lodash/isObject';
 import {ClassNamesFn} from '../theme';
 
-export interface IconCheckedSchema {
+interface IconCheckedSchema {
   id: string;
   name?: string;
+  svg?: string;
+}
+
+interface IconCheckedSchemaNew {
+  type: 'icon';
+  icon: IconCheckedSchema;
 }
 
 /**
+ * 废弃，不建议使用
  * 判断字符串来生成 i 或 img
  * @param icon icon 设置
  * @param className 内部用的 className
@@ -19,10 +26,18 @@ export interface IconCheckedSchema {
  */
 export const generateIcon = (
   cx: ClassNamesFn,
-  icon?: string | IconCheckedSchema | React.ReactNode,
+  icon?: string | IconCheckedSchema | React.ReactNode | IconCheckedSchemaNew,
   className?: string,
   classNameProp?: string
 ) => {
+  if (
+    isObject(icon) &&
+    (icon as IconCheckedSchemaNew).type === 'icon' &&
+    (icon as IconCheckedSchemaNew).icon
+  ) {
+    icon = (icon as IconCheckedSchemaNew).icon;
+  }
+
   if (React.isValidElement(icon)) {
     return icon;
   }

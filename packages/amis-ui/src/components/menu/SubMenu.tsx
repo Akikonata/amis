@@ -9,12 +9,11 @@ import pick from 'lodash/pick';
 import {SubMenu as RcSubMenu, SubMenuProps as RcSubMenuProps} from 'rc-menu';
 import {ClassNamesFn, themeable, autobind, createObject} from 'amis-core';
 
-import {getIcon} from '../icons';
+import {getIcon, Icon} from '../icons';
 import {Badge} from '../Badge';
 import {MenuContextProps, MenuContext} from './MenuContext';
 import type {NavigationItem} from './';
 
-const CaretIcon = getIcon('caret') as any;
 const DragIcon = getIcon('drag-bar') as any;
 
 interface MenuItemTitleInfo {
@@ -82,28 +81,6 @@ export class SubMenu extends React.Component<SubMenuProps> {
     stacked && onSubmenuClick?.({key, domEvent, props: this.props});
   }
 
-  getDynamicStyle(hasIcon: boolean) {
-    const {stacked} = this.context;
-    const {depth} = this.props;
-    const isHorizontal = !stacked;
-    const indentWidth = `(
-      ${hasIcon ? 'var(--Menu-icon-size) + var(--gap-sm) +' : ''}
-      ${
-        isHorizontal
-          ? 'var(--Menu-Submenu-title-paddingX) * 2'
-          : depth === 1
-          ? '0px'
-          : 'var(--Menu-Submenu-title-paddingX)'
-      }
-    )`;
-
-    return {
-      maxWidth: isHorizontal
-        ? `calc(var(--Menu-width) - ${indentWidth})`
-        : `calc(100% - ${indentWidth})`
-    };
-  }
-
   /** 检查icon参数值是否为文件路径 */
   isImgPath(raw: string) {
     return (
@@ -118,6 +95,7 @@ export class SubMenu extends React.Component<SubMenuProps> {
       classnames: cx,
       id,
       label,
+      labelExtra,
       icon,
       path,
       depth,
@@ -136,36 +114,35 @@ export class SubMenu extends React.Component<SubMenuProps> {
     const iconNode = icon ? (
       typeof icon === 'string' ? (
         this.isImgPath(icon) ? (
-          <div className={cx(`Menu-item-icon`)}>
+          <div className={cx(`Nav-Menu-item-icon`)}>
             <img width="14px" src={icon} />
           </div>
         ) : (
           <i
             key="icon"
-            className={cx(`Menu-item-icon`, icon, {
-              ['Menu-item-icon-collapsed']: isCollapsedNode
+            className={cx(`Nav-Menu-item-icon`, icon, {
+              ['Nav-Menu-item-icon-collapsed']: isCollapsedNode
             })}
           />
         )
       ) : React.isValidElement(icon) ? (
         React.cloneElement(icon as React.ReactElement, {
-          className: cx(`Menu-item-icon`, icon.props?.className, {
-            ['Menu-item-icon-svg-collapsed']: isCollapsedNode
+          className: cx(`Nav-Menu-item-icon`, icon.props?.className, {
+            ['Nav-Menu-item-icon-svg-collapsed']: isCollapsedNode
           })
         })
       ) : null
     ) : null;
     const labelNode =
-      label && typeof label === 'string' ? (
+      label && (typeof label === 'string' || Array.isArray(label)) ? (
         <span
           className={cx('Nav-Menu-item-label', {
             ['Nav-Menu-item-label-collapsed']: isCollapsedNode,
             ['Nav-Menu-item-label-subTitle']: !isCollapsedNode
           })}
-          title={isCollapsedNode ? '' : label}
-          style={this.getDynamicStyle(!!iconNode)}
+          title={isCollapsedNode || Array.isArray(label) ? '' : label}
         >
-          {label}
+          {isCollapsedNode ? label.slice(0, 1) : label}
         </span>
       ) : React.isValidElement(label) ? (
         React.cloneElement(label as any, {
@@ -176,8 +153,7 @@ export class SubMenu extends React.Component<SubMenuProps> {
               ['Nav-Menu-item-label-collapsed']: isCollapsedNode,
               ['Nav-Menu-item-label-subTitle']: !isCollapsedNode
             }
-          ),
-          style: this.getDynamicStyle(!!iconNode)
+          )
         })
       ) : null;
     const dragNode =
@@ -195,9 +171,10 @@ export class SubMenu extends React.Component<SubMenuProps> {
           {dragNode}
           {iconNode}
           {labelNode}
-          {!stacked ? (
+          {labelExtra}
+          {!stacked && depth === 1 ? (
             <span key="expand-toggle" className={cx('Nav-Menu-submenu-arrow')}>
-              <CaretIcon />
+              <Icon icon="right-arrow-bold" className="icon" />
             </span>
           ) : null}
         </>
@@ -208,7 +185,11 @@ export class SubMenu extends React.Component<SubMenuProps> {
       <div className={cx('Nav-Menu-item-wrap')}>
         <Badge
           classnames={cx}
-          badge={badge ? {...badge, className: badgeClassName} : null}
+          badge={
+            badge && !isCollapsedNode // 收起模式下 不展示角标
+              ? {...badge, className: badgeClassName}
+              : null
+          }
           data={createObject(defaultData, link)}
         >
           <a
@@ -228,14 +209,7 @@ export class SubMenu extends React.Component<SubMenuProps> {
   }
 
   render() {
-    const {
-      className,
-      popupClassName,
-      classnames: cx,
-      hidden,
-      active
-    } = this.props;
-
+    const {popupClassName, classnames: cx, hidden, className} = this.props;
     const isDarkTheme = this.context.themeColor === 'dark';
     return hidden ? null : (
       <RcSubMenu
@@ -243,13 +217,11 @@ export class SubMenu extends React.Component<SubMenuProps> {
         className={cx(
           'Nav-Menu-submenu',
           {
-            ['Nav-Menu-submenu-dark']: isDarkTheme,
-            ['Nav-Menu-submenu-actived']: active
+            ['Nav-Menu-submenu-dark']: isDarkTheme
           },
           className
         )}
         popupClassName={cx(
-          'Nav-Menu-submenu-popup',
           {
             ['Nav-Menu-submenu-popup-dark']: isDarkTheme
           },

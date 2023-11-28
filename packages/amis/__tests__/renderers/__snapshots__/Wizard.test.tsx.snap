@@ -10,32 +10,100 @@ exports[`Renderer:Wizard actionPrevLabel actionNextLabel actionFinishLabel class
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
       >
-        <ul>
+        <ul
+          class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+        >
           <li
-            class="is-complete"
+            class="cxd-StepsItem is-finish is-clickable"
           >
-            <span
-              class="cxd-Badge is-complete is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              <icon-mock
-                classname="icon icon-check"
-                icon="check"
+              <div
+                class="cxd-StepsItem-containerTail"
               />
-            </span>
-            Step 1
+              <div
+                class="cxd-StepsItem-containerIcon is-success"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  <icon-mock
+                    classname="icon icon-check"
+                    icon="check"
+                  />
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem- is-success"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 1"
+                    >
+                      Step 1
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class="is-complete is-active"
+            class="cxd-StepsItem is-process"
           >
-            <span
-              class="cxd-Badge is-complete is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              2
-            </span>
-            Step 2
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  2
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 2"
+                    >
+                      Step 2
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -61,7 +129,7 @@ exports[`Renderer:Wizard actionPrevLabel actionNextLabel actionFinishLabel class
         </form>
       </div>
       <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
+        class="cxd-Wizard-footer cxd-Panel-footer"
         role="wizard-footer"
       >
         <button
@@ -135,32 +203,97 @@ exports[`Renderer:Wizard actionPrevLabel actionNextLabel actionFinishLabel class
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
       >
-        <ul>
+        <ul
+          class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+        >
           <li
-            class="is-complete is-active"
+            class="cxd-StepsItem is-process"
           >
-            <span
-              class="cxd-Badge is-complete is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              1
-            </span>
-            Step 1
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  1
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 1"
+                    >
+                      Step 1
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class="is-complete"
+            class="cxd-StepsItem is-wait"
           >
-            <span
-              class="cxd-Badge is-complete"
+            <div
+              class="cxd-StepsItem-container"
             >
-              <icon-mock
-                classname="icon icon-check"
-                icon="check"
+              <div
+                class="cxd-StepsItem-containerTail"
               />
-            </span>
-            Step 2
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  2
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 2"
+                    >
+                      Step 2
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -249,19 +382,11 @@ exports[`Renderer:Wizard actionPrevLabel actionNextLabel actionFinishLabel class
         </form>
       </div>
       <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
+        class="cxd-Wizard-footer cxd-Panel-footer"
         role="wizard-footer"
       >
-        <div
-          class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled btn-lg btn-primary"
-          disabled=""
-        >
-          <span>
-            PrevStep
-          </span>
-        </div>
         <button
-          class="cxd-Button cxd-Button--default cxd-Button--size-default btn-lg btn-primary"
+          class="cxd-Button cxd-Button--primary cxd-Button--size-default btn-lg btn-primary"
           type="button"
         >
           <span>
@@ -323,42 +448,9 @@ exports[`Renderer:Wizard default 1`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
-      >
-        <ul>
-          <li
-            class="is-active"
-          >
-            <span
-              class="cxd-Badge is-active"
-            >
-              1
-            </span>
-            Step 1
-          </li>
-          <li
-            class=""
-          >
-            <span
-              class="cxd-Badge"
-            >
-              2
-            </span>
-            Step 2
-          </li>
-          <li
-            class=""
-          >
-            <span
-              class="cxd-Badge"
-            >
-              3
-            </span>
-            Step 3
-          </li>
-        </ul>
-      </div>
+      />
       <div
         class="cxd-Wizard-stepContent clearfix"
         role="wizard-body"
@@ -452,27 +544,6 @@ exports[`Renderer:Wizard default 1`] = `
             </div>
           </div>
         </form>
-      </div>
-      <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
-        role="wizard-footer"
-      >
-        <div
-          class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled"
-          disabled=""
-        >
-          <span>
-            上一步
-          </span>
-        </div>
-        <button
-          class="cxd-Button cxd-Button--default cxd-Button--size-default"
-          type="button"
-        >
-          <span>
-            下一步
-          </span>
-        </button>
       </div>
     </div>
     <div
@@ -541,29 +612,97 @@ exports[`Renderer:Wizard dialog 1`] = `
               class="cxd-Wizard-step"
             >
               <div
-                class="cxd-Wizard-steps"
+                class="cxd--Wizard-steps"
                 id="form-wizard"
               >
-                <ul>
+                <ul
+                  class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+                >
                   <li
-                    class="is-active"
+                    class="cxd-StepsItem is-process"
                   >
-                    <span
-                      class="cxd-Badge is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      1
-                    </span>
-                    Step 1
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          1
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 1"
+                            >
+                              Step 1
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                   <li
-                    class=""
+                    class="cxd-StepsItem is-wait"
                   >
-                    <span
-                      class="cxd-Badge"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      2
-                    </span>
-                    Step 2
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          2
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 2"
+                            >
+                              Step 2
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                 </ul>
               </div>
@@ -665,19 +804,11 @@ exports[`Renderer:Wizard dialog 1`] = `
                 </form>
               </div>
               <div
-                class="cxd-Panel-footer cxd-Wizard-footer"
+                class="cxd-Wizard-footer cxd-Panel-footer"
                 role="wizard-footer"
               >
-                <div
-                  class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled"
-                  disabled=""
-                >
-                  <span>
-                    上一步
-                  </span>
-                </div>
                 <button
-                  class="cxd-Button cxd-Button--default cxd-Button--size-default"
+                  class="cxd-Button cxd-Button--primary cxd-Button--size-default"
                   type="button"
                 >
                   <span>
@@ -860,29 +991,97 @@ exports[`Renderer:Wizard dialog 2`] = `
               class="cxd-Wizard-step"
             >
               <div
-                class="cxd-Wizard-steps"
+                class="cxd--Wizard-steps"
                 id="form-wizard"
               >
-                <ul>
+                <ul
+                  class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+                >
                   <li
-                    class="is-active"
+                    class="cxd-StepsItem is-process"
                   >
-                    <span
-                      class="cxd-Badge is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      1
-                    </span>
-                    Step 1
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          1
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 1"
+                            >
+                              Step 1
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                   <li
-                    class=""
+                    class="cxd-StepsItem is-wait"
                   >
-                    <span
-                      class="cxd-Badge"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      2
-                    </span>
-                    Step 2
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          2
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 2"
+                            >
+                              Step 2
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                 </ul>
               </div>
@@ -984,19 +1183,11 @@ exports[`Renderer:Wizard dialog 2`] = `
                 </form>
               </div>
               <div
-                class="cxd-Panel-footer cxd-Wizard-footer"
+                class="cxd-Wizard-footer cxd-Panel-footer"
                 role="wizard-footer"
               >
-                <div
-                  class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled"
-                  disabled=""
-                >
-                  <span>
-                    上一步
-                  </span>
-                </div>
                 <button
-                  class="cxd-Button cxd-Button--default cxd-Button--size-default"
+                  class="cxd-Button cxd-Button--primary cxd-Button--size-default"
                   type="button"
                 >
                   <span>
@@ -1062,39 +1253,140 @@ exports[`Renderer:Wizard initApi default 1`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
       >
-        <ul>
+        <ul
+          class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+        >
           <li
-            class="is-active"
+            class="cxd-StepsItem is-process"
           >
-            <span
-              class="cxd-Badge is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              1
-            </span>
-            Step 1
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  1
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 1"
+                    >
+                      Step 1
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class=""
+            class="cxd-StepsItem is-wait"
           >
-            <span
-              class="cxd-Badge"
+            <div
+              class="cxd-StepsItem-container"
             >
-              2
-            </span>
-            Step 2
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  2
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 2"
+                    >
+                      Step 2
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class=""
+            class="cxd-StepsItem is-wait"
           >
-            <span
-              class="cxd-Badge"
+            <div
+              class="cxd-StepsItem-container"
             >
-              3
-            </span>
-            Step 3
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  3
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 3"
+                    >
+                      Step 3
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -1193,19 +1485,11 @@ exports[`Renderer:Wizard initApi default 1`] = `
         </form>
       </div>
       <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
+        class="cxd-Wizard-footer cxd-Panel-footer"
         role="wizard-footer"
       >
-        <div
-          class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled"
-          disabled=""
-        >
-          <span>
-            上一步
-          </span>
-        </div>
         <button
-          class="cxd-Button cxd-Button--default cxd-Button--size-default"
+          class="cxd-Button cxd-Button--primary cxd-Button--size-default"
           type="button"
         >
           <span>
@@ -1291,29 +1575,97 @@ exports[`Renderer:Wizard initApi reload 1`] = `
               class="cxd-Wizard-step"
             >
               <div
-                class="cxd-Wizard-steps"
+                class="cxd--Wizard-steps"
                 id="form-wizard"
               >
-                <ul>
+                <ul
+                  class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+                >
                   <li
-                    class="is-active"
+                    class="cxd-StepsItem is-process"
                   >
-                    <span
-                      class="cxd-Badge is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      1
-                    </span>
-                    Step 1
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          1
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 1"
+                            >
+                              Step 1
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                   <li
-                    class=""
+                    class="cxd-StepsItem is-wait"
                   >
-                    <span
-                      class="cxd-Badge"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      2
-                    </span>
-                    Step 2
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          2
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 2"
+                            >
+                              Step 2
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                 </ul>
               </div>
@@ -1402,19 +1754,11 @@ exports[`Renderer:Wizard initApi reload 1`] = `
                 </form>
               </div>
               <div
-                class="cxd-Panel-footer cxd-Wizard-footer"
+                class="cxd-Wizard-footer cxd-Panel-footer"
                 role="wizard-footer"
               >
-                <div
-                  class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled"
-                  disabled=""
-                >
-                  <span>
-                    上一步
-                  </span>
-                </div>
                 <button
-                  class="cxd-Button cxd-Button--default cxd-Button--size-default"
+                  class="cxd-Button cxd-Button--primary cxd-Button--size-default"
                   type="button"
                 >
                   <span>
@@ -1493,32 +1837,100 @@ exports[`Renderer:Wizard initApi reload 2`] = `
               class="cxd-Wizard-step"
             >
               <div
-                class="cxd-Wizard-steps"
+                class="cxd--Wizard-steps"
                 id="form-wizard"
               >
-                <ul>
+                <ul
+                  class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+                >
                   <li
-                    class="is-complete"
+                    class="cxd-StepsItem is-finish is-clickable"
                   >
-                    <span
-                      class="cxd-Badge is-complete is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      <icon-mock
-                        classname="icon icon-check"
-                        icon="check"
+                      <div
+                        class="cxd-StepsItem-containerTail"
                       />
-                    </span>
-                    Step 1
+                      <div
+                        class="cxd-StepsItem-containerIcon is-success"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          <icon-mock
+                            classname="icon icon-check"
+                            icon="check"
+                          />
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem- is-success"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 1"
+                            >
+                              Step 1
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                   <li
-                    class="is-active"
+                    class="cxd-StepsItem is-process"
                   >
-                    <span
-                      class="cxd-Badge is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      2
-                    </span>
-                    Step 2
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          2
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 2"
+                            >
+                              Step 2
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                 </ul>
               </div>
@@ -1544,7 +1956,7 @@ exports[`Renderer:Wizard initApi reload 2`] = `
                 </form>
               </div>
               <div
-                class="cxd-Panel-footer cxd-Wizard-footer"
+                class="cxd-Wizard-footer cxd-Panel-footer"
                 role="wizard-footer"
               >
                 <button
@@ -1635,32 +2047,100 @@ exports[`Renderer:Wizard initApi reload 3`] = `
               class="cxd-Wizard-step"
             >
               <div
-                class="cxd-Wizard-steps"
+                class="cxd--Wizard-steps"
                 id="form-wizard"
               >
-                <ul>
+                <ul
+                  class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+                >
                   <li
-                    class="is-complete"
+                    class="cxd-StepsItem is-finish is-clickable"
                   >
-                    <span
-                      class="cxd-Badge is-complete is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      <icon-mock
-                        classname="icon icon-check"
-                        icon="check"
+                      <div
+                        class="cxd-StepsItem-containerTail"
                       />
-                    </span>
-                    Step 1
+                      <div
+                        class="cxd-StepsItem-containerIcon is-success"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          <icon-mock
+                            classname="icon icon-check"
+                            icon="check"
+                          />
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem- is-success"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 1"
+                            >
+                              Step 1
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                   <li
-                    class="is-complete is-active"
+                    class="cxd-StepsItem is-process"
                   >
-                    <span
-                      class="cxd-Badge is-complete is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      2
-                    </span>
-                    Step 2
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          2
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 2"
+                            >
+                              Step 2
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                 </ul>
               </div>
@@ -1686,7 +2166,7 @@ exports[`Renderer:Wizard initApi reload 3`] = `
                 </form>
               </div>
               <div
-                class="cxd-Panel-footer cxd-Wizard-footer"
+                class="cxd-Wizard-footer cxd-Panel-footer"
                 role="wizard-footer"
               >
                 <button
@@ -1764,42 +2244,9 @@ exports[`Renderer:Wizard initApi show loading 1`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
-      >
-        <ul>
-          <li
-            class=""
-          >
-            <span
-              class="cxd-Badge"
-            >
-              1
-            </span>
-            Step 1
-          </li>
-          <li
-            class=""
-          >
-            <span
-              class="cxd-Badge"
-            >
-              2
-            </span>
-            Step 2
-          </li>
-          <li
-            class=""
-          >
-            <span
-              class="cxd-Badge"
-            >
-              3
-            </span>
-            Step 3
-          </li>
-        </ul>
-      </div>
+      />
       <div
         class="cxd-Wizard-stepContent clearfix"
         role="wizard-body"
@@ -1871,39 +2318,140 @@ exports[`Renderer:Wizard initApi show loading 2`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
       >
-        <ul>
+        <ul
+          class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+        >
           <li
-            class="is-active"
+            class="cxd-StepsItem is-process"
           >
-            <span
-              class="cxd-Badge is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              1
-            </span>
-            Step 1
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  1
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 1"
+                    >
+                      Step 1
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class=""
+            class="cxd-StepsItem is-wait"
           >
-            <span
-              class="cxd-Badge"
+            <div
+              class="cxd-StepsItem-container"
             >
-              2
-            </span>
-            Step 2
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  2
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 2"
+                    >
+                      Step 2
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class=""
+            class="cxd-StepsItem is-wait"
           >
-            <span
-              class="cxd-Badge"
+            <div
+              class="cxd-StepsItem-container"
             >
-              3
-            </span>
-            Step 3
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  3
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 3"
+                    >
+                      Step 3
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -2002,19 +2550,11 @@ exports[`Renderer:Wizard initApi show loading 2`] = `
         </form>
       </div>
       <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
+        class="cxd-Wizard-footer cxd-Panel-footer"
         role="wizard-footer"
       >
-        <div
-          class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled"
-          disabled=""
-        >
-          <span>
-            上一步
-          </span>
-        </div>
         <button
-          class="cxd-Button cxd-Button--default cxd-Button--size-default"
+          class="cxd-Button cxd-Button--primary cxd-Button--size-default"
           type="button"
         >
           <span>
@@ -2076,42 +2616,9 @@ exports[`Renderer:Wizard readOnly 1`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
-      >
-        <ul>
-          <li
-            class="is-active"
-          >
-            <span
-              class="cxd-Badge is-active"
-            >
-              1
-            </span>
-            Step 1
-          </li>
-          <li
-            class=""
-          >
-            <span
-              class="cxd-Badge"
-            >
-              2
-            </span>
-            Step 2
-          </li>
-          <li
-            class=""
-          >
-            <span
-              class="cxd-Badge"
-            >
-              3
-            </span>
-            Step 3
-          </li>
-        </ul>
-      </div>
+      />
       <div
         class="cxd-Wizard-stepContent clearfix"
         role="wizard-body"
@@ -2142,7 +2649,7 @@ exports[`Renderer:Wizard readOnly 1`] = `
               </span>
             </label>
             <div
-              class="cxd-Form-control cxd-TextControl"
+              class="cxd-Form-control cxd-TextControl is-disabled"
             >
               <div
                 class="cxd-TextControl-input"
@@ -2196,27 +2703,6 @@ exports[`Renderer:Wizard readOnly 1`] = `
             </div>
           </div>
         </form>
-      </div>
-      <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
-        role="wizard-footer"
-      >
-        <div
-          class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled"
-          disabled=""
-        >
-          <span>
-            上一步
-          </span>
-        </div>
-        <button
-          class="cxd-Button cxd-Button--default cxd-Button--size-default"
-          type="button"
-        >
-          <span>
-            下一步
-          </span>
-        </button>
       </div>
     </div>
     <div
@@ -2272,32 +2758,100 @@ exports[`Renderer:Wizard send data 1`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
       >
-        <ul>
+        <ul
+          class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+        >
           <li
-            class="is-complete"
+            class="cxd-StepsItem is-finish is-clickable"
           >
-            <span
-              class="cxd-Badge is-complete is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              <icon-mock
-                classname="icon icon-check"
-                icon="check"
+              <div
+                class="cxd-StepsItem-containerTail"
               />
-            </span>
-            Step 1
+              <div
+                class="cxd-StepsItem-containerIcon is-success"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  <icon-mock
+                    classname="icon icon-check"
+                    icon="check"
+                  />
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem- is-success"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 1"
+                    >
+                      Step 1
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class="is-complete is-active"
+            class="cxd-StepsItem is-process"
           >
-            <span
-              class="cxd-Badge is-complete is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              2
-            </span>
-            Step 2
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  2
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 2"
+                    >
+                      Step 2
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -2323,7 +2877,7 @@ exports[`Renderer:Wizard send data 1`] = `
         </form>
       </div>
       <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
+        class="cxd-Wizard-footer cxd-Panel-footer"
         role="wizard-footer"
       >
         <button
@@ -2397,42 +2951,143 @@ exports[`Renderer:Wizard step initApi 1`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
       >
-        <ul>
+        <ul
+          class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+        >
           <li
-            class="is-complete"
+            class="cxd-StepsItem is-finish is-clickable"
           >
-            <span
-              class="cxd-Badge is-complete is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              <icon-mock
-                classname="icon icon-check"
-                icon="check"
+              <div
+                class="cxd-StepsItem-containerTail"
               />
-            </span>
-            Step 1
+              <div
+                class="cxd-StepsItem-containerIcon is-success"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  <icon-mock
+                    classname="icon icon-check"
+                    icon="check"
+                  />
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem- is-success"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 1"
+                    >
+                      Step 1
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class="is-active"
+            class="cxd-StepsItem is-process"
           >
-            <span
-              class="cxd-Badge is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              2
-            </span>
-            Step 2
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  2
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 2"
+                    >
+                      Step 2
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class=""
+            class="cxd-StepsItem is-wait"
           >
-            <span
-              class="cxd-Badge"
+            <div
+              class="cxd-StepsItem-container"
             >
-              3
-            </span>
-            Step 3
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  3
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 3"
+                    >
+                      Step 3
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -2491,7 +3146,7 @@ exports[`Renderer:Wizard step initApi 1`] = `
         </form>
       </div>
       <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
+        class="cxd-Wizard-footer cxd-Panel-footer"
         role="wizard-footer"
       >
         <button
@@ -2503,7 +3158,7 @@ exports[`Renderer:Wizard step initApi 1`] = `
           </span>
         </button>
         <button
-          class="cxd-Button cxd-Button--default cxd-Button--size-default"
+          class="cxd-Button cxd-Button--primary cxd-Button--size-default"
           type="button"
         >
           <span>
@@ -2565,7 +3220,7 @@ exports[`Renderer:Wizard steps not array 1`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
       />
       <div
@@ -2645,32 +3300,100 @@ exports[`Renderer:Wizard target 1`] = `
               class="cxd-Wizard-step"
             >
               <div
-                class="cxd-Wizard-steps"
+                class="cxd--Wizard-steps"
                 id="form-wizard"
               >
-                <ul>
+                <ul
+                  class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+                >
                   <li
-                    class="is-complete"
+                    class="cxd-StepsItem is-finish is-clickable"
                   >
-                    <span
-                      class="cxd-Badge is-complete is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      <icon-mock
-                        classname="icon icon-check"
-                        icon="check"
+                      <div
+                        class="cxd-StepsItem-containerTail"
                       />
-                    </span>
-                    Step 1
+                      <div
+                        class="cxd-StepsItem-containerIcon is-success"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          <icon-mock
+                            classname="icon icon-check"
+                            icon="check"
+                          />
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem- is-success"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 1"
+                            >
+                              Step 1
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                   <li
-                    class="is-complete is-active"
+                    class="cxd-StepsItem is-process"
                   >
-                    <span
-                      class="cxd-Badge is-complete is-active"
+                    <div
+                      class="cxd-StepsItem-container"
                     >
-                      2
-                    </span>
-                    Step 2
+                      <div
+                        class="cxd-StepsItem-containerTail"
+                      />
+                      <div
+                        class="cxd-StepsItem-containerIcon"
+                      >
+                        <span
+                          class="cxd-StepsItem-icon"
+                        >
+                          2
+                        </span>
+                      </div>
+                      <div
+                        class="cxd-StepsItem-containerWrapper"
+                      >
+                        <div
+                          class="cxd-StepsItem-body"
+                        >
+                          <div
+                            class="cxd-StepsItem-title cxd-StepsItem-"
+                          >
+                            <span
+                              class="cxd-StepsItem-ellText"
+                              title="Step 2"
+                            >
+                              Step 2
+                            </span>
+                          </div>
+                          <div
+                            class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                          >
+                            <span />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </li>
                 </ul>
               </div>
@@ -2696,7 +3419,7 @@ exports[`Renderer:Wizard target 1`] = `
                 </form>
               </div>
               <div
-                class="cxd-Panel-footer cxd-Wizard-footer"
+                class="cxd-Wizard-footer cxd-Panel-footer"
                 role="wizard-footer"
               >
                 <button
@@ -2759,7 +3482,6 @@ exports[`Renderer:Wizard target 1`] = `
           </div>
           <div
             class="cxd-Panel cxd-Panel--default cxd-Panel--form"
-            style="position: relative;"
           >
             <div
               class="cxd-Panel-heading"
@@ -2875,45 +3597,6 @@ exports[`Renderer:Wizard target 1`] = `
                 </button>
               </div>
             </div>
-            <div
-              class="resize-sensor"
-              style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px; overflow: scroll; z-index: -1; visibility: hidden;"
-            >
-              
-  
-              <div
-                class="resize-sensor-expand"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-              >
-                
-    
-                <div
-                  style="position: absolute; left: 0px; top: 0px; width: 10px; height: 10px;"
-                />
-                
-  
-              </div>
-              
-  
-              <div
-                class="resize-sensor-shrink"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;"
-              >
-                
-    
-                <div
-                  style="position: absolute; left: 0; top: 0; width: 200%; height: 200%"
-                />
-                
-  
-              </div>
-              
-  
-              <div
-                class="resize-sensor-appear"
-                style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: scroll; z-index: -1; visibility: hidden;animation-name: apearSensor; animation-duration: 0.2s;"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -2932,39 +3615,140 @@ exports[`Renderer:Wizard validate 1`] = `
       class="cxd-Wizard-step"
     >
       <div
-        class="cxd-Wizard-steps"
+        class="cxd--Wizard-steps"
         id="form-wizard"
       >
-        <ul>
+        <ul
+          class="cxd-Steps cxd-Steps--Placement- cxd-Steps-- cxd-Steps--horizontal"
+        >
           <li
-            class="is-active"
+            class="cxd-StepsItem is-process"
           >
-            <span
-              class="cxd-Badge is-active"
+            <div
+              class="cxd-StepsItem-container"
             >
-              1
-            </span>
-            Step 1
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  1
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 1"
+                    >
+                      Step 1
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class=""
+            class="cxd-StepsItem is-wait"
           >
-            <span
-              class="cxd-Badge"
+            <div
+              class="cxd-StepsItem-container"
             >
-              2
-            </span>
-            Step 2
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  2
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 2"
+                    >
+                      Step 2
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
           <li
-            class=""
+            class="cxd-StepsItem is-wait"
           >
-            <span
-              class="cxd-Badge"
+            <div
+              class="cxd-StepsItem-container"
             >
-              3
-            </span>
-            Step 3
+              <div
+                class="cxd-StepsItem-containerTail"
+              />
+              <div
+                class="cxd-StepsItem-containerIcon"
+              >
+                <span
+                  class="cxd-StepsItem-icon"
+                >
+                  3
+                </span>
+              </div>
+              <div
+                class="cxd-StepsItem-containerWrapper"
+              >
+                <div
+                  class="cxd-StepsItem-body"
+                >
+                  <div
+                    class="cxd-StepsItem-title cxd-StepsItem-"
+                  >
+                    <span
+                      class="cxd-StepsItem-ellText"
+                      title="Step 3"
+                    >
+                      Step 3
+                    </span>
+                  </div>
+                  <div
+                    class="cxd-StepsItem-description cxd-StepsItem-ellText"
+                  >
+                    <span />
+                  </div>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -3077,19 +3861,11 @@ exports[`Renderer:Wizard validate 1`] = `
         </form>
       </div>
       <div
-        class="cxd-Panel-footer cxd-Wizard-footer"
+        class="cxd-Wizard-footer cxd-Panel-footer"
         role="wizard-footer"
       >
-        <div
-          class="cxd-Button cxd-Button--default cxd-Button--size-default is-disabled"
-          disabled=""
-        >
-          <span>
-            上一步
-          </span>
-        </div>
         <button
-          class="cxd-Button cxd-Button--default cxd-Button--size-default"
+          class="cxd-Button cxd-Button--primary cxd-Button--size-default"
           type="button"
         >
           <span>

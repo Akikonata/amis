@@ -2,15 +2,11 @@ import React from 'react';
 import {findDOMNode} from 'react-dom';
 import {
   ConditionBuilderFields,
-  ConditionRule,
   ConditionBuilderFuncs,
-  ExpressionFunc,
   ConditionFieldFunc,
   ConditionBuilderField,
   FieldSimple,
-  ExpressionField,
-  OperatorType,
-  ExpressionComplex
+  CustomField
 } from './types';
 import {
   ThemeProps,
@@ -19,7 +15,8 @@ import {
   localeable,
   LocaleProps,
   findTree,
-  noop
+  noop,
+  getVariable
 } from 'amis-core';
 import {Icon} from '../icons';
 
@@ -30,7 +27,14 @@ import GroupedSelection from '../GroupedSelection';
 import ResultBox from '../ResultBox';
 
 import {FormulaPickerProps} from '../formula/Picker';
-import type {PlainObject} from 'amis-core';
+import type {
+  PlainObject,
+  ConditionRule,
+  OperatorType,
+  ExpressionFunc,
+  ExpressionField,
+  ExpressionComplex
+} from 'amis-core';
 
 const option2value = (item: any) => item.value;
 
@@ -48,7 +52,7 @@ export interface ConditionItemProps extends ThemeProps, LocaleProps {
   formula?: FormulaPickerProps;
   popOverContainer?: any;
   renderEtrValue?: any;
-  selectMode?: 'list' | 'tree';
+  selectMode?: 'list' | 'tree' | 'chained';
 }
 
 export class ConditionItem extends React.Component<ConditionItemProps> {
@@ -76,10 +80,13 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
 
   @autobind
   handleLeftChange(leftValue: any) {
+    const {fields, config} = this.props;
+    // 获取默认Op
+    const field: any = findTree(fields, (f: any) => f.name === leftValue.field);
     const value = {
       ...this.props.value,
       left: leftValue,
-      op: undefined,
+      op: field?.defaultOp || config.types[field?.type]?.defaultOp || undefined,
       right: undefined
     };
     const onChange = this.props.onChange;
@@ -89,8 +96,18 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
 
   @autobind
   handleOperatorChange(op: OperatorType) {
-    const value = {...this.props.value, op: op, right: undefined};
-    this.props.onChange(value, this.props.index);
+    const {fields, value, index, onChange} = this.props;
+    const leftFieldSchema: FieldSimple = findTree(
+      fields,
+      (i: FieldSimple) => i.name === (value?.left as ExpressionField)?.field
+    ) as FieldSimple;
+    const result = {
+      ...value,
+      op: op,
+      right: value.right ?? leftFieldSchema?.defaultValue
+    };
+
+    onChange(result, index);
   }
 
   @autobind
@@ -101,13 +118,9 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
     onChange(value, this.props.index);
   }
 
-  handleRightSubChange(
-    isCustom: boolean,
-    index: number | string,
-    rightValue: any
-  ) {
+  handleRightSubChange(index: number | string, rightValue: any) {
     let origin;
-    if (isCustom) {
+    if (typeof index === 'string') {
       origin = Object.assign({}, this.props.value?.right) as PlainObject;
       origin[index] = rightValue;
     } else {
@@ -164,7 +177,8 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
       value,
       classnames: cx,
       disabled,
-      popOverContainer
+      popOverContainer,
+      mobileUI
     } = this.props;
     const left = value?.left;
     let operators: any[] = [];
@@ -203,6 +217,7 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
       });
       return (
         <PopOverContainer
+          mobileUI={mobileUI}
           popOverContainer={popOverContainer || (() => findDOMNode(this))}
           popOverRender={({onClose}) => (
             <GroupedSelection
@@ -232,10 +247,13 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
                 onResultClick={onClick}
                 disabled={disabled}
                 placeholder={__('Condition.cond_placeholder')}
+                mobileUI={mobileUI}
               >
-                <span className={cx('CBGroup-operatorCaret')}>
-                  <Icon icon="caret" className="icon" />
-                </span>
+                {!mobileUI ? (
+                  <span className={cx('CBGroup-operatorCaret')}>
+                    <Icon icon="right-arrow-bold" className="icon" />
+                  </span>
+                ) : null}
               </ResultBox>
             </div>
           )}
@@ -331,11 +349,11 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
             valueField={field}
             value={(value.right as Array<ExpressionComplex>)?.[0]}
             data={data}
-            onChange={this.handleRightSubChange.bind(this, false, 0)}
+            onChange={this.handleRightSubChange.bind(this, 0)}
             fields={fields}
             allowedTypes={
               field?.valueTypes ||
-              config.valueTypes || ['value', 'field', 'func', 'formula']
+              config.valueTypes || ['value', 'field', 'func']
             }
             disabled={disabled}
             formula={formula}
@@ -351,11 +369,11 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
             valueField={field}
             value={(value.right as Array<ExpressionComplex>)?.[1]}
             data={data}
-            onChange={this.handleRightSubChange.bind(this, false, 1)}
+            onChange={this.handleRightSubChange.bind(this, 1)}
             fields={fields}
             allowedTypes={
               field?.valueTypes ||
-              config.valueTypes || ['value', 'field', 'func', 'formula']
+              config.valueTypes || ['value', 'field', 'func']
             }
             disabled={disabled}
             formula={formula}
@@ -372,14 +390,14 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
               config={config}
               op={op}
               funcs={funcs}
-              valueField={schema}
-              value={value.right}
+              valueField={{...field, value: schema} as CustomField}
+              value={getVariable(value.right as any, schema.name)}
               data={data}
-              onChange={this.handleRightSubChange.bind(this, true, schema.name)}
+              onChange={this.handleRightSubChange.bind(this, schema.name)}
               fields={fields}
               allowedTypes={
                 field?.valueTypes ||
-                config.valueTypes || ['value', 'field', 'func', 'formula']
+                config.valueTypes || ['value', 'field', 'func']
               }
               disabled={disabled}
               formula={formula}
@@ -401,8 +419,7 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
         onChange={this.handleRightChange}
         fields={fields}
         allowedTypes={
-          field?.valueTypes ||
-          config.valueTypes || ['value', 'field', 'func', 'formula']
+          field?.valueTypes || config.valueTypes || ['value', 'field', 'func']
         }
         disabled={disabled}
         formula={formula}

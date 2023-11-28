@@ -18,7 +18,7 @@
     display: flex;
     align-items: center;
     background: var(--transfer-base-title-bg);
-    color: var(--transfer-base-title-font-color);
+    color: var(--transfer-base-title-color);
     line-height: var(--transfer-base-title-lineHeight);
     font-size: var(--transfer-base-title-fontSize);
     font-weight: var(--transfer-base-title-fontWeight);
@@ -27,10 +27,6 @@
       var(--transfer-base-header-paddingRight)
       var(--transfer-base-header-paddingBottom)
       var(--transfer-base-header-paddingLeft);
-    margin: var(--transfer-base-header-marginTop)
-      var(--transfer-base-header-marginRight)
-      var(--transfer-base-header-marginBottom)
-      var(--transfer-base-header-marginLeft);
     flex-direction: row;
     width: 100%;
 
@@ -40,6 +36,42 @@
 
     > span {
       flex-grow: 1;
+    }
+  }
+
+  &-footer {
+    border-top: 1px solid var(--transfer-base-footer-border-color);
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: flex-end;
+    padding: var(--gap-sm);
+
+    /* 底部空间较小，让Pagination紧凑一些 */
+    &-pagination {
+      & > ul {
+        &.#{$ns}Pagination-item {
+          margin-left: 0;
+        }
+
+        & > li {
+          --Pagination-minWidth: #{px2rem(22px)};
+          --Pagination-height: #{px2rem(22px)};
+          --Pagination-padding: 0 #{px2rem(6px)};
+        }
+      }
+
+      .#{$ns}Pagination-perpage {
+        --select-base-default-paddingTop: 0;
+        --select-base-default-paddingBottom: 0;
+        --select-base-default-paddingLeft: #{px2rem(6px)};
+        --select-base-default-paddingRight: #{px2rem(6px)};
+
+        margin-left: 0;
+
+        .#{$ns}Select-valueWrap {
+          line-height: #{px2rem(22px)};
+        }
+      }
     }
   }
 
@@ -68,6 +100,10 @@
       var(--transfer-base-top-right-border-radius)
       var(--transfer-base-bottom-right-border-radius)
       var(--transfer-base-bottom-left-border-radius);
+
+    &--pagination {
+      max-height: px2rem(475px);
+    }
   }
 
   &-select > &-selection,
@@ -80,10 +116,6 @@
       var(--transfer-base-body-paddingRight)
       var(--transfer-base-body-paddingBottom)
       var(--transfer-base-body-paddingLeft);
-    margin: var(--transfer-base-body-marginTop)
-      var(--transfer-base-body-marginRight)
-      var(--transfer-base-body-marginBottom)
-      var(--transfer-base-body-marginLeft);
     width: 100%;
   }
 
@@ -101,7 +133,7 @@
     font-size: var(--transfer-base-content-fontSize);
     font-weight: var(--transfer-base-content-fontWeight);
 
-    color: var(--transfer-base-content-font-color);
+    color: var(--transfer-base-content-color);
   }
 
   .#{$ns}ChainedSelection-item {
@@ -115,15 +147,14 @@
     font-size: var(--transfer-base-content-fontSize);
     font-weight: var(--transfer-base-content-fontWeight);
 
-    color: var(--transfer-base-content-font-color);
+    color: var(--transfer-base-content-color);
   }
 
   .#{$ns}GroupedSelection-group > .#{$ns}GroupedSelection-itemLabel {
-    font-size: var(--transfer-group-font-size);
-    font-weight: var(--transfer-group-font-weight);
-    line-height: var(--transfer-group-font-lineHeight);
-    font-family: var(--transfer-group-font-family);
-    color: var(--transfer-group-font-color);
+    font-size: var(--transfer-group-fontSize);
+    font-weight: var(--transfer-group-fontWeight);
+    line-height: var(--transfer-group-lineHeight);
+    color: var(--transfer-group-color);
   }
 
   &-select > .#{$ns}ChainedSelection {
@@ -197,14 +228,12 @@
     padding: var(--transfer-search-paddingTop)
       var(--transfer-search-paddingRight) var(--transfer-search-paddingBottom)
       var(--transfer-search-paddingLeft);
-    margin: var(--transfer-search-marginTop) var(--transfer-search-marginRight)
-      var(--transfer-search-marginBottom) var(--transfer-search-marginLeft);
     width: 100%;
-    .#{$ns}InputBox {
+    .#{$ns}InputBox:not(.is-mobile) {
       font-size: var(--transfer-search-fontSize);
       font-weight: var(--transfer-search-fontWeight);
       line-height: var(--transfer-search-lineHeight);
-      color: var(--transfer-search-font-color);
+      color: var(--transfer-search-color);
       border-width: var(--transfer-search-top-border-width)
         var(--transfer-search-right-border-width)
         var(--transfer-search-bottom-border-width)
@@ -226,10 +255,6 @@
         var(--transfer-search-input-paddingRight)
         var(--transfer-search-input-paddingBottom)
         var(--transfer-search-input-paddingLeft);
-      margin: var(--transfer-search-input-marginTop)
-        var(--transfer-search-input-marginRight)
-        var(--transfer-search-input-marginBottom)
-        var(--transfer-search-input-marginLeft);
 
       &:hover {
         border-color: var(--transfer-search-border-hover-color);
@@ -240,7 +265,7 @@
       }
 
       input {
-        color: var(--transfer-search-font-color);
+        color: var(--transfer-search-color);
         font-size: var(--transfer-search-fontSize);
         font-weight: var(--transfer-search-fontWeight);
         line-height: var(--transfer-search-lineHeight);
@@ -252,6 +277,16 @@
         color: var(--transfer-search-placeholder-font-color);
       }
     }
+
+    &.is-mobile {
+      .#{$ns}InputBox {
+        border: none;
+        border-bottom: var(--transfer-search-bottom-border-width)
+          var(--transfer-search-bottom-border-style)
+          var(--transfer-search-bottom-border-color);
+        border-radius: 0;
+      }
+    }
   }
 
   &-mid {
@@ -259,6 +294,10 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+
+    &.is-mobile {
+      display: none;
+    }
   }
 
   &-arrow {
@@ -312,13 +351,20 @@
         var(--transfer-tree-top-right-border-radius)
         var(--transfer-tree-bottom-right-border-radius)
         var(--transfer-tree-bottom-left-border-radius);
+      overflow: hidden;
 
       &:hover {
         background: var(--transfer-tree-bg-hover-color);
+        .#{$ns}Tree-itemLabel-item {
+          background: var(--transfer-tree-bg-hover-color);
+        }
       }
 
       &.is-checked {
         background: var(--transfer-tree-bg-active-color);
+        .#{$ns}Tree-itemLabel-item {
+          background: var(--transfer-tree-bg-active-color);
+        }
       }
     }
 
@@ -327,7 +373,7 @@
       font-size: var(--transfer-base-content-fontSize);
       font-weight: var(--transfer-base-content-fontWeight);
 
-      color: var(--transfer-base-content-font-color);
+      color: var(--transfer-base-content-color);
     }
   }
 
@@ -338,7 +384,7 @@
         var(--transfer-table-header-paddingBottom)
         var(--transfer-table-header-paddingLeft);
       background: var(--transfer-base-title-bg);
-      color: var(--transfer-base-title-font-color);
+      color: var(--transfer-base-title-color);
       line-height: var(--transfer-base-title-lineHeight);
       font-size: var(--transfer-base-content-fontSize);
 
@@ -369,6 +415,25 @@
     .#{$ns}Table-table > thead > tr,
     .#{$ns}Table-table > tbody > tr {
       height: auto;
+    }
+  }
+
+  .#{$ns}Transfer-result {
+    .#{$ns}Transfer-title {
+      height: px2rem(40px);
+      line-height: px2rem(40px);
+    }
+
+    &.is-mobile {
+      .#{$ns}Transfer-search {
+        .#{$ns}InputBox {
+          border: none;
+          border-bottom: var(--transfer-search-bottom-border-width)
+            var(--transfer-search-bottom-border-style)
+            var(--transfer-search-bottom-border-color);
+          border-radius: 0;
+        }
+      }
     }
   }
 }
@@ -471,6 +536,16 @@
           }
         }
       }
+
+      .#{$ns}TabsTransfer-search {
+        &.is-mobile {
+          .#{$ns}InputBox {
+            border: none;
+            border-bottom: 1px solid var(--TabsTransfer-border-color);
+            border-radius: 0;
+          }
+        }
+      }
     }
   }
 }
@@ -529,14 +604,20 @@
   }
 }
 .#{$ns}TransferDropDown-content {
-  min-width: px2rem(400px);
+  min-width: px2rem(40px);
   display: flex;
   flex-direction: column;
   padding: var(--gap-xs) 0;
 
   &.is-mobile {
     width: 100%;
+    min-width: auto;
+
+    .#{$ns}Table-table > thead > tr > th:first-child.#{$ns}Table-checkCell {
+      padding-left: var(--select-table-option-paddingLeft);
+    }
   }
+
   & > .#{$ns}Transfer-selection {
     flex-grow: 1;
     max-height: var(--Transfer-selection-maxHeight);

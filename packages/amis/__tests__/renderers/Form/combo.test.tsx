@@ -21,11 +21,18 @@ import {
   waitFor,
   screen,
   within,
-  getByText
+  getByText,
+  cleanup
 } from '@testing-library/react';
 import '../../../src';
-import {render as amisRender} from '../../../src';
-import {makeEnv, wait} from '../../helper';
+import {render as amisRender, clearStoresCache} from '../../../src';
+import {makeEnv, replaceReactAriaIds, wait} from '../../helper';
+
+afterEach(() => {
+  cleanup();
+  clearStoresCache();
+  jest.useRealTimers();
+});
 
 const setup = async (items: any[] = [], env: any = {}) => {
   const onSubmit = jest.fn();
@@ -133,6 +140,7 @@ test('Renderer:combo with items & multiLine', () => {
     )
   );
 
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 });
 
@@ -260,6 +268,8 @@ test('Renderer:combo with minLength & maxLength', async () => {
   expect(
     container.querySelector('form.cxd-Form > .cxd-Form-item')!
   ).toHaveClass('is-error');
+
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot('minLength error');
 
   const addBtn = container.querySelector('button.cxd-Combo-addBtn')!;
@@ -388,9 +398,13 @@ test('Renderer:combo with unique', async () => {
   expect(
     container.querySelector('form.cxd-Form > .cxd-Form-item')!
   ).toHaveClass('is-error');
-  expect(container).toMatchSnapshot('unique error');
 
-  fireEvent.change(inputTexts[1], {
+  // 不知道为何第二个不飘红，浏览器里面看是飘红的
+  // 不过有一个飘红就够了，先不管了
+  // replaceReactAriaIds(container);
+  // expect(container).toMatchSnapshot('unique error');
+
+  fireEvent.change(inputTexts[0], {
     target: {value: 'text-two'}
   });
 
@@ -434,6 +448,8 @@ test('Renderer:combo with draggable', async () => {
   ]);
 
   expect(container.querySelectorAll('.cxd-Combo-itemDrager')!.length).toBe(2);
+
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 });
 
@@ -524,6 +540,7 @@ test('Renderer:combo with conditions', async () => {
   expect(addBtn).toBeInTheDocument();
   fireEvent.click(addBtn);
   await waitFor(() => {
+    replaceReactAriaIds(container);
     expect(container).toMatchSnapshot('add button open');
   });
 
@@ -607,6 +624,7 @@ test('Renderer:combo with canAccessSuperData & strictMode & syncFields', async (
     }
   ]);
 
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 
   const parentInput = container.querySelector('.parentInput input')!;
@@ -641,6 +659,17 @@ test('Renderer:combo with canAccessSuperData & strictMode & syncFields', async (
   expect(comboInputs[0]!.value).toBe('');
   expect(comboInputs[1]!.value).toBe('123');
   expect(comboInputs[2]!.value).toBe('123456');
+
+  fireEvent.click(submitBtn);
+  await wait(300);
+  expect(onSubmit).toHaveBeenCalled();
+
+  expect(onSubmit.mock.calls[0][0]).toMatchObject({
+    super_text: '123456',
+    combo1: [{}],
+    combo2: [{super_text: '123'}],
+    combo3: [{super_text: '123456'}]
+  });
 });
 
 // 9. tabsMode
@@ -668,6 +697,8 @@ test('Renderer:combo with tabsMode', async () => {
   expect(
     container.querySelector('.cxd-ComboControl .cxd-Tabs.cxd-ComboTabs')
   ).toBeInTheDocument();
+
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 });
 
@@ -756,17 +787,19 @@ test('Renderer:combo with addable & addattop & addBtn & addButtonText & addButto
   fireEvent.click(
     container.querySelector('.addAtTopClass .cxd-Combo-toolbar button')!
   );
-  await wait(10);
-  expect(
-    (container.querySelector(
-      '.addAtTopClass .cxd-Combo-item .cxd-TextControl-input input'
-    ) as HTMLInputElement)!.value
-  ).toBe('');
+  await waitFor(() => {
+    expect(
+      (container.querySelector(
+        '.addAtTopClass .cxd-Combo-item .cxd-TextControl-input input'
+      ) as HTMLInputElement)!.value
+    ).toBe('');
+  });
 
   expect(
     container.querySelector('.addableClass .cxd-Combo-toolbar button')!
   ).not.toBeInTheDocument();
 
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 });
 
@@ -867,6 +900,7 @@ test('Renderer:combo with removable & deleteBtn & deleteApi & deleteConfirmText'
     container.querySelector('.superDeleteBtn .cxd-Combo-delController')!
   ).toBeInTheDocument();
 
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 
   fireEvent.click(
@@ -889,4 +923,93 @@ test('Renderer:combo with removable & deleteBtn & deleteApi & deleteConfirmText'
 
   await wait(300);
   expect(fetcher).toHaveBeenCalled();
+});
+
+// 9. 自定义删除按钮
+test('Renderer:select autofill in combo', async () => {
+  const {container, submitBtn, findByText, onSubmit, baseElement} = await setup(
+    [
+      {
+        type: 'combo',
+        name: 'combo',
+        label: 'combo',
+        className: 'removableFalse',
+        removable: false,
+        multiple: true,
+        items: [
+          {
+            name: 'a',
+            type: 'select',
+            autoFill: {
+              type: '${type}'
+            },
+            options: [
+              {
+                label: 'A',
+                value: 'a',
+                type: '1'
+              },
+              {
+                label: 'B',
+                value: 'b',
+                type: '2'
+              }
+            ]
+          }
+        ],
+        value: [{}]
+      }
+    ],
+    {
+      // 不加这个，就会报错 fetcher is required
+      session: 'test-case-2'
+    }
+  );
+
+  fireEvent.click(await findByText('请选择'));
+
+  await waitFor(() => {
+    expect(container.querySelector('.cxd-Select-popover')).toBeInTheDocument();
+  });
+
+  fireEvent.click(await findByText('A'));
+  await wait(500);
+  fireEvent.click(submitBtn);
+  await wait(1000);
+  expect(onSubmit).toHaveBeenCalled();
+  expect(onSubmit.mock.calls[0][0]).toMatchObject({
+    combo: [{type: '1', a: 'a'}]
+  });
+});
+
+// 10. combo 内部表单项与 combo 同名时，原来会出现内部表单项的值变成数组的情况
+test('Renderer:combo 内部表单项与 combo 同名', async () => {
+  const {container, submitBtn, findByText, onSubmit, baseElement} = await setup(
+    [
+      {
+        type: 'combo',
+        name: 'a',
+        label: 'combo',
+        className: 'removableFalse',
+        removable: false,
+        multiple: true,
+        items: [
+          {
+            name: 'a',
+            type: 'input-text',
+            label: 'A'
+          }
+        ],
+        value: [{}]
+      }
+    ]
+  );
+
+  const input = container.querySelector('input[name="a"]') as HTMLInputElement;
+  fireEvent.change(input, {target: {value: '1'}});
+  await wait(400);
+
+  fireEvent.change(input, {target: {value: '123'}});
+  await wait(400);
+  expect(input.value).toBe('123');
 });

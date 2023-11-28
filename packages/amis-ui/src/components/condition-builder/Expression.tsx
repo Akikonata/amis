@@ -1,13 +1,8 @@
 import {
-  ExpressionComplex,
   ConditionBuilderField,
   ConditionBuilderFuncs,
   ConditionFieldFunc,
-  ExpressionFunc,
-  ConditionBuilderType,
-  FieldSimple,
-  FieldGroup,
-  OperatorType
+  FieldSimple
 } from './types';
 import React from 'react';
 import ConditionField from './Field';
@@ -27,6 +22,7 @@ import ConditionFunc from './Func';
 import {ConditionBuilderConfig} from './config';
 import Formula from './Formula';
 import {FormulaPickerProps} from '../formula/Picker';
+import type {ExpressionComplex, OperatorType, ExpressionFunc} from 'amis-core';
 
 /**
  * 支持4中表达式设置方式
@@ -45,7 +41,7 @@ export interface ExpressionProps extends ThemeProps, LocaleProps {
   valueField?: FieldSimple;
   fields?: ConditionBuilderField[];
   funcs?: ConditionBuilderFuncs;
-  allowedTypes?: Array<'value' | 'field' | 'func' | 'formula'>;
+  allowedTypes?: Array<'value' | 'field' | 'func'>;
   op?: OperatorType;
   config: ConditionBuilderConfig;
   disabled?: boolean;
@@ -54,19 +50,18 @@ export interface ExpressionProps extends ThemeProps, LocaleProps {
   formula?: FormulaPickerProps;
   popOverContainer?: any;
   renderEtrValue?: any;
-  selectMode?: 'list' | 'tree';
+  selectMode?: 'list' | 'tree' | 'chained';
 }
 
 const fieldMap = {
   value: '值',
   field: '字段',
-  func: '函数',
-  formula: '公式'
+  func: '函数'
 };
 
 export class Expression extends React.Component<ExpressionProps> {
   @autobind
-  handleInputTypeChange(type: 'value' | 'field' | 'func' | 'formula') {
+  handleInputTypeChange(type: 'value' | 'field' | 'func') {
     let value = this.props.value;
     const onChange = this.props.onChange;
 
@@ -87,11 +82,6 @@ export class Expression extends React.Component<ExpressionProps> {
       value = {
         type: 'field',
         field: ''
-      };
-    } else if (type === 'formula') {
-      value = {
-        type: 'formula',
-        value: ''
       };
     }
     onChange(value, this.props.index);
@@ -124,17 +114,6 @@ export class Expression extends React.Component<ExpressionProps> {
     onChange(value, this.props.index);
   }
 
-  @autobind
-  handleFormulaChange(formula: string) {
-    let value = this.props.value;
-    const onChange = this.props.onChange;
-    value = {
-      type: 'formula',
-      value: formula
-    };
-    onChange(value, this.props.index);
-  }
-
   render() {
     const {
       value,
@@ -159,8 +138,6 @@ export class Expression extends React.Component<ExpressionProps> {
         ? 'field'
         : (value as any)?.type === 'func'
         ? 'func'
-        : (value as any)?.type === 'formula'
-        ? 'formula'
         : value !== undefined
         ? 'value'
         : undefined) ||
@@ -219,14 +196,6 @@ export class Expression extends React.Component<ExpressionProps> {
             funcs={funcs}
             fields={fields}
             allowedTypes={allowedTypes}
-            disabled={disabled}
-          />
-        ) : null}
-
-        {inputType === 'formula' ? (
-          <Formula
-            value={(value as any)?.value}
-            onChange={this.handleFormulaChange}
             disabled={disabled}
           />
         ) : null}

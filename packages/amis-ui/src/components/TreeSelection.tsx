@@ -39,10 +39,9 @@ export class TreeSelection extends BaseSelection<
 
   componentDidUpdate(prevProps: TreeSelectionProps) {
     const props = this.props;
-
     if (
-      !this.state.expanded.length &&
-      (props.expand !== prevProps.expand || props.options !== prevProps.options)
+      props.expand !== prevProps.expand ||
+      props.options !== prevProps.options
     ) {
       this.syncExpanded();
     }
@@ -51,7 +50,7 @@ export class TreeSelection extends BaseSelection<
   syncExpanded() {
     const options = this.props.options;
     const mode = this.props.expand;
-    const expanded: Array<string> = [];
+    let expanded: Array<string> = [];
 
     if (!Array.isArray(options)) {
       return;
@@ -86,17 +85,24 @@ export class TreeSelection extends BaseSelection<
       onDeferLoad,
       disabled,
       multiple,
-      clearable
+      clearable,
+      valueField,
+      deferField = 'defer'
     } = this.props;
 
     if (disabled || option.disabled) {
       return;
-    } else if (option.defer && !option.loaded) {
+    } else if (option[deferField] && !option.loaded) {
       onDeferLoad?.(option);
       return;
     }
 
-    let valueArray = BaseSelection.value2array(value, options, option2value);
+    let valueArray = BaseSelection.value2array(
+      value,
+      options,
+      option2value,
+      valueField
+    );
 
     if (
       option.value === void 0 &&
@@ -146,7 +152,7 @@ export class TreeSelection extends BaseSelection<
   }
 
   toggleCollapsed(option: Option, index: string) {
-    const onDeferLoad = this.props.onDeferLoad;
+    const {onDeferLoad, deferField = 'defer'} = this.props;
     const expanded = this.state.expanded.concat();
     const idx = expanded.indexOf(index);
 
@@ -160,7 +166,7 @@ export class TreeSelection extends BaseSelection<
       {
         expanded: expanded
       },
-      option.defer && onDeferLoad ? () => onDeferLoad(option) : undefined
+      option[deferField] && onDeferLoad ? () => onDeferLoad(option) : undefined
     );
   }
 
@@ -172,7 +178,8 @@ export class TreeSelection extends BaseSelection<
       itemClassName,
       itemRender,
       multiple,
-      loadingConfig
+      loadingConfig,
+      deferField = 'defer'
     } = this.props;
     const id = indexes.join('-');
     const valueArray = this.valueArray;
@@ -214,7 +221,7 @@ export class TreeSelection extends BaseSelection<
         key={index}
         className={cx(
           'TreeSelection-item',
-          disabled || option.disabled || (option.defer && option.loading)
+          disabled || option.disabled || (option[deferField] && option.loading)
             ? 'is-disabled'
             : '',
           expaned ? 'is-expanded' : ''
@@ -229,7 +236,7 @@ export class TreeSelection extends BaseSelection<
           )}
           onClick={() => this.toggleOption(option)}
         >
-          {hasChildren || option.defer ? (
+          {hasChildren || option[deferField] ? (
             <a
               onClick={(e: React.MouseEvent<any>) => {
                 e.stopPropagation();
@@ -241,11 +248,11 @@ export class TreeSelection extends BaseSelection<
             </a>
           ) : null}
 
-          {option.defer && option.loading ? (
+          {option[deferField] && option.loading ? (
             <Spinner loadingConfig={loadingConfig} show size="sm" />
           ) : null}
 
-          {multiple && (!option.defer || option.loaded) ? (
+          {multiple && (!option[deferField] || option.loaded) ? (
             <Checkbox
               size="sm"
               checked={checked}
@@ -262,11 +269,12 @@ export class TreeSelection extends BaseSelection<
               multiple: multiple,
               checked: checked,
               onChange: () => this.toggleOption(option),
-              disabled: disabled || option.disabled
+              disabled: disabled || option.disabled,
+              classnames: cx
             })}
           </div>
 
-          {option.defer && option.loading ? (
+          {option[deferField] && option.loading ? (
             <Spinner loadingConfig={loadingConfig} show size="sm" />
           ) : null}
         </div>
@@ -290,10 +298,16 @@ export class TreeSelection extends BaseSelection<
       classnames: cx,
       option2value,
       placeholderRender,
+      valueField,
       translate: __
     } = this.props;
 
-    this.valueArray = BaseSelection.value2array(value, options, option2value);
+    this.valueArray = BaseSelection.value2array(
+      value,
+      options,
+      option2value,
+      valueField
+    );
     let body: Array<React.ReactNode> = [];
 
     if (Array.isArray(options) && options.length) {

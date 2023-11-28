@@ -29,7 +29,7 @@
       color: #fff;
     }
 
-    > svg {
+    svg {
       width: px2rem(16px);
       height: px2rem(16px);
     }
@@ -54,27 +54,36 @@
     justify-content: center;
     align-items: center;
     user-select: none;
+    overflow: hidden;
 
     > img {
+      cursor: move;
+      cursor: -webkit-grab;
       display: block;
       max-width: 100%;
       max-height: 100%;
       transition: transform 0.3s cubic-bezier(0, 0, 0.25, 1) 0s;
     }
+
+    &.is-dragging > img {
+      transition: none;
+      user-select: none;
+      cursor: -webkit-grabbing;
+    }
   }
 
   &-prevBtn,
   &-nextBtn {
-    > svg {
-      width: px2rem(48px);
-      height: px2rem(48px);
+    svg {
+      width: var(--image-images-item-size);
+      height: var(--image-images-item-size);
     }
 
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
-    color: #999;
+    color: var(--image-images-item-color);
     text-shadow: rgba(0, 0, 0, 0.3) 0px 0px 4px;
 
     &:hover {
@@ -205,12 +214,24 @@
   }
 }
 
+.ImageGallery-prevBtn {
+  content: var(--image-images-prev-icon);
+}
+
+.ImageGallery-nextBtn {
+  content: var(--image-images-next-icon);
+}
+
 .#{$ns}ImageGallery-toolbar {
-  background-color: var(--white);
-  border-radius: px2rem(4px);
+  background-color: var(--image-images-preview-bgColor);
+  border-radius: var(--image-images-preview-radius);
+  box-shadow: 0 2px 6px 0 rgba(211, 211, 211, 0.5);
   display: flex;
   align-items: flex-start;
-  padding: px2rem(4px) px2rem(16px);
+  padding: var(--image-images-preview-paddingTop)
+    var(--image-images-preview-paddingRight)
+    var(--image-images-preview-paddingBottom)
+    var(--image-images-preview-paddingLeft);
   position: absolute;
   bottom: px2rem(20px);
   left: 50%;
@@ -234,7 +255,7 @@
       display: block;
       color: var(--black);
 
-      & > svg {
+      svg {
         fill: var(--black);
       }
     }
@@ -246,7 +267,7 @@
       .#{$ns}ImageGallery-toolbar-action-icon {
         color: var(--icon-onDisabled-color);
 
-        & > svg {
+        svg {
           color: var(--icon-onDisabled-color);
         }
       }
@@ -258,7 +279,7 @@
       .#{$ns}ImageGallery-toolbar-action-icon {
         color: var(--primary);
 
-        & > svg {
+        svg {
           fill: var(--primary);
         }
       }

@@ -12,10 +12,11 @@ import {autobind, isEmpty, createObject} from 'amis-core';
 import {ActionObject} from 'amis-core';
 import {FormOptionsSchema} from '../../Schema';
 import {supportStatic} from './StaticHoc';
+import {filter} from 'amis-core';
 
 /**
  * Radio 单选框。
- * 文档：https://baidu.gitee.io/amis/docs/components/form/radios
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/radios
  */
 export interface RadiosControlSchema extends FormOptionsSchema {
   type: 'radios';
@@ -73,16 +74,12 @@ export default class RadiosControl extends React.Component<RadiosProps, any> {
 
     const rendererEvent = await dispatchEvent(
       'change',
-      resolveEventData(
-        this.props,
-        {
-          value,
-          options,
-          items: options, // 为了保持名字统一
-          selectedItems: option
-        },
-        'value'
-      )
+      resolveEventData(this.props, {
+        value,
+        options,
+        items: options, // 为了保持名字统一
+        selectedItems: option
+      })
     );
     if (rendererEvent?.prevented) {
       return;
@@ -94,6 +91,13 @@ export default class RadiosControl extends React.Component<RadiosProps, any> {
   reload() {
     const reload = this.props.reloadOptions;
     reload && reload();
+  }
+
+  @autobind
+  renderLabel(option: Option, {labelField}: any) {
+    const {data} = this.props;
+    const label = option[labelField || 'label'];
+    return <>{typeof label === 'string' ? filter(label, data) : `${label}`}</>;
   }
 
   @supportStatic()
@@ -119,6 +123,7 @@ export default class RadiosControl extends React.Component<RadiosProps, any> {
       optionClassName,
       labelField,
       valueField,
+      data,
       translate: __,
       optionType,
       level
@@ -140,6 +145,7 @@ export default class RadiosControl extends React.Component<RadiosProps, any> {
         valueField={valueField}
         placeholder={__(placeholder)}
         options={options}
+        renderLabel={this.renderLabel}
         columnsCount={columnsCount}
         classPrefix={classPrefix}
         itemClassName={itemClassName}

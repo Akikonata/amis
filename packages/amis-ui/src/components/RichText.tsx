@@ -49,6 +49,7 @@ export interface FroalaEditorComponentProps {
   config: any;
   model: string;
   onModelChange: (value: string) => void;
+  children?: React.ReactNode;
 }
 
 // 代码来源于：https://github.com/froala/react-froala-wysiwyg/blob/master/lib/FroalaEditorFunctionality.jsx
@@ -91,11 +92,17 @@ class FroalaEditorComponent extends React.Component<FroalaEditorComponentProps> 
     this.destroyEditor();
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps: Readonly<FroalaEditorComponentProps>) {
+    if (this.props.config !== prevProps.config) {
+      this.editor?.destroy();
+      this.config = this.clone(this.props.config || this.config);
+      this.config = {...this.config};
+      this.editor = new FroalaEditor(this.element, this.config);
+    }
+
     if (JSON.stringify(this.oldModel) == JSON.stringify(this.props.model)) {
       return;
     }
-
     this.setContent();
   }
 

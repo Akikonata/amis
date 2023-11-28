@@ -225,7 +225,8 @@ export function isNeedFormula(
     const variables = FormulaExec.collect(expression);
     return variables.some(
       (variable: string) =>
-        FormulaExec.var(variable, prevData) !== FormulaExec.var(variable, curData)
+        FormulaExec.var(variable, prevData) !==
+        FormulaExec.var(variable, curData)
     );
   } catch (e) {
     console.warn(

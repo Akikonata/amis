@@ -5,7 +5,8 @@ import {
   SchemaNode,
   ActionObject,
   LocaleProps,
-  OnEventProps
+  OnEventProps,
+  RendererEvent
 } from 'amis-core';
 import {TableBody} from './TableBody';
 import {observer} from 'mobx-react';
@@ -14,7 +15,8 @@ import ItemActionsWrapper from './ItemActionsWrapper';
 import {SchemaTpl} from '../../Schema';
 import {Icon} from 'amis-ui';
 
-import type {IColumn, IRow} from 'amis-core/lib/store/table';
+import type {IColumn, IRow} from 'amis-core';
+import ColGroup from './ColGroup';
 
 export interface TableContentProps extends LocaleProps {
   className?: string;
@@ -31,7 +33,7 @@ export interface TableContentProps extends LocaleProps {
   rows: Array<IRow>;
   placeholder?: string | SchemaTpl;
   render: (region: string, node: SchemaNode, props?: any) => JSX.Element;
-  onMouseMove: (event: React.MouseEvent) => void;
+  onMouseMove?: (event: React.MouseEvent) => void;
   onScroll: (event: React.UIEvent) => void;
   tableRef: (table?: HTMLTableElement | null) => void;
   renderHeadCell: (column: IColumn, props?: any) => JSX.Element;
@@ -42,6 +44,19 @@ export interface TableContentProps extends LocaleProps {
     props: any
   ) => React.ReactNode;
   onCheck: (item: IRow, value: boolean, shift?: boolean) => void;
+  onRowClick: (item: IRow, index: number) => Promise<RendererEvent<any> | void>;
+  onRowDbClick: (
+    item: IRow,
+    index: number
+  ) => Promise<RendererEvent<any> | void>;
+  onRowMouseEnter: (
+    item: IRow,
+    index: number
+  ) => Promise<RendererEvent<any> | void>;
+  onRowMouseLeave: (
+    item: IRow,
+    index: number
+  ) => Promise<RendererEvent<any> | void>;
   onQuickChange?: (
     item: IRow,
     values: object,
@@ -66,53 +81,60 @@ export interface TableContentProps extends LocaleProps {
   dispatchEvent?: Function;
   onEvent?: OnEventProps;
   loading?: boolean;
+  columnWidthReady?: boolean;
+
+  // 以下纯粹是为了监控
+  someChecked?: boolean;
+  allChecked?: boolean;
+  isSelectionThresholdReached?: boolean;
+  orderBy?: string;
+  orderDir?: string;
 }
 
-@observer
-export class TableContent extends React.Component<TableContentProps> {
-  static renderItemActions(
-    props: Pick<
-      TableContentProps,
-      'itemActions' | 'render' | 'store' | 'classnames'
-    >
-  ) {
-    const {itemActions, render, store, classnames: cx} = props;
+export function renderItemActions(
+  props: Pick<
+    TableContentProps,
+    'itemActions' | 'render' | 'store' | 'classnames'
+  >
+) {
+  const {itemActions, render, store, classnames: cx} = props;
 
-    if (!store.hoverRow) {
-      return null;
-    }
-
-    const finalActions = Array.isArray(itemActions)
-      ? itemActions.filter(action => !action.hiddenOnHover)
-      : [];
-
-    if (!finalActions.length) {
-      return null;
-    }
-
-    return (
-      <ItemActionsWrapper store={store} classnames={cx}>
-        <div className={cx('Table-itemActions')}>
-          {finalActions.map((action, index) =>
-            render(
-              `itemAction/${index}`,
-              {
-                ...(action as any),
-                isMenuItem: true
-              },
-              {
-                key: index,
-                item: store.hoverRow,
-                data: store.hoverRow!.locals,
-                rowIndex: store.hoverRow!.index
-              }
-            )
-          )}
-        </div>
-      </ItemActionsWrapper>
-    );
+  if (!store.hoverRow) {
+    return null;
   }
 
+  const finalActions = Array.isArray(itemActions)
+    ? itemActions.filter(action => !action.hiddenOnHover)
+    : [];
+
+  if (!finalActions.length) {
+    return null;
+  }
+
+  return (
+    <ItemActionsWrapper store={store} classnames={cx}>
+      <div className={cx('Table-itemActions')}>
+        {finalActions.map((action, index) =>
+          render(
+            `itemAction/${index}`,
+            {
+              ...(action as any),
+              isMenuItem: true
+            },
+            {
+              key: index,
+              item: store.hoverRow,
+              data: store.hoverRow!.locals,
+              rowIndex: store.hoverRow!.index
+            }
+          )
+        )}
+      </div>
+    </ItemActionsWrapper>
+  );
+}
+
+export class TableContent extends React.PureComponent<TableContentProps> {
   render() {
     const {
       placeholder,
@@ -128,6 +150,10 @@ export class TableContent extends React.Component<TableContentProps> {
       renderHeadCell,
       renderCell,
       onCheck,
+      onRowClick,
+      onRowDbClick,
+      onRowMouseEnter,
+      onRowMouseLeave,
       rowClassName,
       onQuickChange,
       footable,
@@ -159,24 +185,40 @@ export class TableContent extends React.Component<TableContentProps> {
         className={cx('Table-content', className)}
         onScroll={onScroll}
       >
-        <table ref={tableRef} className={tableClassName}>
+        <table
+          ref={tableRef}
+          className={cx(
+            tableClassName,
+            store.tableLayout === 'fixed' ? 'is-layout-fixed' : undefined
+          )}
+        >
+          <ColGroup columns={columns} store={store} />
           <thead>
             {columnsGroup.length ? (
               <tr>
-                {columnsGroup.map((item, index) =>
+                {columnsGroup.map((item, index) => {
+                  const [stickyStyle, stickyClassName] = store.getStickyStyles(
+                    item as any,
+                    columnsGroup as any
+                  );
+
                   /**
                    * 勾选列和展开列的表头单独成列
                    * 如果分组列只有一个元素且未分组时，也要执行表头合并
                    */
-                  !!~['__checkme', '__expandme'].indexOf(item.has[0].type) ||
-                  (item.has.length === 1 &&
-                    !/^__/.test(item.has[0].type) &&
-                    !item.has[0].groupName) ? (
+                  return !!~['__checkme', '__expandme'].indexOf(
+                    item.has[0].type
+                  ) ||
+                    (item.has.length === 1 &&
+                      !/^__/.test(item.has[0].type) &&
+                      !item.has[0].groupName) ? (
                     renderHeadCell(item.has[0], {
                       'data-index': item.has[0].index,
                       'key': index,
                       'colSpan': item.colSpan,
-                      'rowSpan': item.rowSpan
+                      'rowSpan': item.rowSpan,
+                      'style': stickyStyle,
+                      'className': stickyClassName
                     })
                   ) : (
                     <th
@@ -184,11 +226,13 @@ export class TableContent extends React.Component<TableContentProps> {
                       data-index={item.index}
                       colSpan={item.colSpan}
                       rowSpan={item.rowSpan}
+                      style={stickyStyle}
+                      className={stickyClassName}
                     >
                       {item.label ? render('tpl', item.label) : null}
                     </th>
-                  )
-                )}
+                  );
+                })}
               </tr>
             ) : null}
             <tr className={hideHeader ? 'fake-hide' : ''}>
@@ -228,11 +272,16 @@ export class TableContent extends React.Component<TableContentProps> {
             </tbody>
           ) : (
             <TableBody
+              store={store}
               itemAction={itemAction}
               classnames={cx}
               render={render}
               renderCell={renderCell}
               onCheck={onCheck}
+              onRowClick={onRowClick}
+              onRowDbClick={onRowDbClick}
+              onRowMouseEnter={onRowMouseEnter}
+              onRowMouseLeave={onRowMouseLeave}
               onQuickChange={onQuickChange}
               footable={footable}
               footableColumns={footableColumns}
@@ -251,7 +300,6 @@ export class TableContent extends React.Component<TableContentProps> {
               affixRow={affixRow}
               data={data}
               rowsProps={{
-                data,
                 dispatchEvent,
                 onEvent
               }}
@@ -262,3 +310,27 @@ export class TableContent extends React.Component<TableContentProps> {
     );
   }
 }
+
+export default observer((props: TableContentProps) => {
+  const store = props.store;
+
+  // 分析 table/index.tsx 中的 renderHeadCell 依赖了以下属性
+  // store.someChecked;
+  // store.allChecked;
+  // store.isSelectionThresholdReached;
+  // store.allExpanded;
+  // store.orderBy
+  // store.orderDir
+
+  return (
+    <TableContent
+      {...props}
+      columnWidthReady={store.columnWidthReady}
+      someChecked={store.someChecked}
+      allChecked={store.allChecked}
+      isSelectionThresholdReached={store.isSelectionThresholdReached}
+      orderBy={store.orderBy}
+      orderDir={store.orderDir}
+    />
+  );
+});

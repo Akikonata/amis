@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Renderer:Picker base 1`] = `
+exports[`1. Renderer:Picker base 1`] = `
 <body
   class="is-modalOpened"
   style="width: calc(100% - 0px);"
@@ -100,6 +100,9 @@ exports[`Renderer:Picker base 1`] = `
             class="cxd-List cxd-Crud-body"
           >
             <div
+              class="cxd-List-fixedTop"
+            />
+            <div
               class="cxd-List-items"
             >
               <div
@@ -110,6 +113,7 @@ exports[`Renderer:Picker base 1`] = `
                 >
                   <label
                     class="cxd-Checkbox cxd-Checkbox--radio cxd-Checkbox--full"
+                    data-role="checkbox"
                   >
                     <input
                       type="radio"
@@ -138,6 +142,7 @@ exports[`Renderer:Picker base 1`] = `
                 >
                   <label
                     class="cxd-Checkbox cxd-Checkbox--radio cxd-Checkbox--full"
+                    data-role="checkbox"
                   >
                     <input
                       type="radio"
@@ -166,6 +171,7 @@ exports[`Renderer:Picker base 1`] = `
                 >
                   <label
                     class="cxd-Checkbox cxd-Checkbox--radio cxd-Checkbox--full"
+                    data-role="checkbox"
                   >
                     <input
                       type="radio"
@@ -215,7 +221,7 @@ exports[`Renderer:Picker base 1`] = `
 </body>
 `;
 
-exports[`Renderer:Picker base 2`] = `
+exports[`1. Renderer:Picker base 2`] = `
 <div>
   <div
     class="cxd-Form-item cxd-Form-item--normal"
@@ -254,8 +260,6 @@ exports[`Renderer:Picker base 2`] = `
               >
                 <span
                   class="cxd-Picker-valueIcon"
-                  data-position="bottom"
-                  data-tooltip="删除"
                 >
                   ×
                 </span>

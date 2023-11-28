@@ -21,18 +21,20 @@ import type {RendererEvent} from './utils/renderer-event';
 import type {ListenerContext} from './actions/Action';
 import type {ICmptAction} from './actions/CmptAction';
 
-export interface wsObject {
+export interface WsObject {
   url: string;
   responseKey?: string;
   body?: any;
 }
 
 export interface RendererEnv {
+  /* 强制隐藏组件内部的报错信息，会覆盖组件内部属性 */
+  forceSilenceInsideError?: boolean;
   session?: string;
   fetcher: (api: Api, data?: any, options?: object) => Promise<Payload>;
   isCancel: (val: any) => boolean;
   wsFetcher: (
-    ws: wsObject,
+    ws: WsObject,
     onMessage: (data: any) => void,
     onError: (error: any) => void
   ) => void;
@@ -57,6 +59,14 @@ export interface RendererEnv {
   watchRouteChange?: (fn: () => void) => () => void;
   // 用于跟踪用户在界面中的各种操作
   tracker: (eventTrack: EventTrack, props?: PlainObject) => void;
+  /**
+   * 捕获amis执行中的错误信息
+   */
+  errorCatcher?: (error: any, errorInfo: any) => void;
+  /**
+   * 自定义样式前缀
+   */
+  customStyleClassPrefix?: string;
   rendererResolver?: (
     path: string,
     schema: Schema,
@@ -65,16 +75,39 @@ export interface RendererEnv {
   copy?: (contents: string, format?: any) => void;
   getModalContainer?: () => HTMLElement;
   theme: ThemeInstance;
-  affixOffsetTop: number;
-  affixOffsetBottom: number;
+
+  /**
+   * @deprecated
+   * 请通过外层设置 `--affix-offset-top` css 变量设置
+   */
+  affixOffsetTop?: number;
+
+  /**
+   * @deprecated
+   * 请通过外层设置 `--affix-offset-bottom` css 变量设置
+   */
+  affixOffsetBottom?: number;
+
   richTextToken: string;
+
+  /**
+   * 默认的选址组件提供商，目前支持仅 baidu
+   */
+  locationPickerVendor?: string;
+
+  /**
+   * 选址组件的 ak
+   */
+  locationPickerAK?: string;
   loadRenderer: (
     schema: Schema,
     path: string,
     reRender: Function
-  ) => Promise<React.ReactType> | React.ReactType | JSX.Element | void;
+  ) => Promise<React.ElementType> | React.ElementType | JSX.Element | void;
   loadChartExtends?: () => void | Promise<void>;
+  loadTinymcePlugin?: (tinymce: any) => void | Promise<void>;
   useMobileUI?: boolean;
+  isMobile: () => boolean;
   /**
    * 过滤 html 标签，可用来添加 xss 保护逻辑
    */
@@ -110,7 +143,9 @@ export interface RendererEnv {
   /**
    * 文本替换的黑名单，因为属性太多了所以改成黑名单的 flags
    */
-  replaceTextIgnoreKeys?: String[];
+  replaceTextIgnoreKeys?:
+    | String[]
+    | ((key: string, value: any, object: any) => boolean);
 
   /**
    * 解析url参数
@@ -153,7 +188,7 @@ export function withRendererEnv<
         const injectedProps: {
           env: RendererEnv;
         } = {
-          env: this.props.env || this.context
+          env: this.props.env! || this.context
         };
 
         if (!injectedProps.env) {

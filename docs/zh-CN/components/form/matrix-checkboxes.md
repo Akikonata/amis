@@ -44,6 +44,42 @@ order: 30
 }
 ```
 
+## 全选
+
+```schema: scope="body"
+{
+  "type": "form",
+  "api": "/api/mock2/form/saveForm",
+  "debug": true,
+  "body": [
+    {
+      "type": "matrix-checkboxes",
+      "name": "matrix",
+      "label": "Matrix",
+      "rowLabel": "行标题说明",
+      "xCheckAll": true,
+      "yCheckAll": true,
+      "columns": [
+        {
+          "label": "列1"
+        },
+        {
+          "label": "列2"
+        }
+      ],
+      "rows": [
+        {
+          "label": "行1"
+        },
+        {
+          "label": "行2"
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## 单选模式
 
 配置`"multiple": false`可以设置单选，配置`singleSelectMode`可以设置单选模式
@@ -281,10 +317,13 @@ row 模式，每行只能单选某个单元格
 | source           | [API](../../../docs/types/api) |            | Api 地址，如果选项组不固定，可以通过配置 `source` 动态拉取。                                                                                                |
 | multiple         | `boolean`                      | `true`     | 是否多选                                                                                                                                                    |
 | singleSelectMode | `string`                       | `"column"` | 设置单选模式，`multiple`为`false`时有效，可设置为`cell`, `row`, `column` 分别为全部选项中只能单选某个单元格、每行只能单选某个单元格，每列只能单选某个单元格 |
+| textAlign        | `string`                       | `"center"` | 当开启多选+全选时，默认为'left'                                                                                                                             |
+| yCheckAll        | `boolean`                      | `false`    | 列上的全选                                                                                                                                                  |
+| xCheckAll        | `boolean`                      | `false`    | 行上的全选                                                                                                                                                  |
 
 ## 事件表
 
-当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`来获取事件产生的数据（`< 2.3.2 及以下版本 为 ${event.data.[事件参数名]}`），详细请查看[事件动作](../../docs/concepts/event-action)。
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`或`${event.data.[事件参数名]}`来获取事件产生的数据，详细请查看[事件动作](../../docs/concepts/event-action)。
 
 > `[name]`表示当前组件绑定的名称，即`name`属性，如果没有配置`name`属性，则通过`value`取值。
 

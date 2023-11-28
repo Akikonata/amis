@@ -10,7 +10,7 @@ import {isObject} from 'amis-core';
 import {validations} from 'amis-core';
 import {Icon} from './icons';
 import {isObjectShallowModified} from 'amis-core';
-import {isEmpty} from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 
 export type textPositionType = 'left' | 'right';
 
@@ -226,7 +226,7 @@ export class Rating extends React.Component<RatingProps, any> {
   }
 
   saveRef(index: number) {
-    return (node: React.ReactNode) => {
+    return (node?: HTMLLIElement | null) => {
       this.starsNode[String(index)] = node;
     };
   }

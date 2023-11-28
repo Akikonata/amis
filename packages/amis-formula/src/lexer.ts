@@ -1,3 +1,4 @@
+import {getFilters} from './filter';
 import {LexerOptions, Token, TokenTypeName} from './types';
 
 export const enum TokenEnum {
@@ -171,16 +172,25 @@ function formatNumber(value: string) {
   return Number(value);
 }
 
-export function lexer(input: string, options?: LexerOptions) {
+export function lexer(input: string, options: LexerOptions = {}) {
   let line = 1;
   let column = 1;
   let index = 0;
   let mainState = mainStates.START;
   const states: Array<any> = [mainState];
   let tokenCache: Array<Token> = [];
-  const allowFilter = options?.allowFilter !== false;
+  options = {...options};
+  const allowFilter = options.allowFilter !== false;
 
-  if (options?.evalMode || options?.variableMode) {
+  if (!options.isFilter) {
+    const filterKeys = Object.keys(getFilters());
+    if ((options as any).filters) {
+      filterKeys.push(...Object.keys((options as any).filters));
+    }
+    options.isFilter = (name: string) => filterKeys.includes(name);
+  }
+
+  if (options.evalMode || options.variableMode) {
     pushState(mainStates.EXPRESSION);
   }
 
@@ -336,9 +346,9 @@ export function lexer(input: string, options?: LexerOptions) {
       punctuator() ||
       char();
 
-    if (token?.value === '{') {
+    if (token?.value === '{' && token.type == 'Punctuator') {
       pushState(mainStates.BLOCK);
-    } else if (token?.value === '}') {
+    } else if (token?.value === '}' && token.type == 'Punctuator') {
       if (mainState === mainStates.Filter) {
         popState();
       }
@@ -366,9 +376,20 @@ export function lexer(input: string, options?: LexerOptions) {
     // filter 过滤器部分需要特殊处理
     if (
       mainState === mainStates.SCRIPT &&
-      token?.value === '|' &&
+      token?.type == 'Punctuator' &&
+      token.value === '|' &&
       allowFilter
     ) {
+      // 怎么区分是过滤还是位运算呢？
+      // 靠外面反馈吧
+      if (options?.isFilter) {
+        const restInput = input.substring(token.start.index + 1).trim();
+        const m = /^[A-Za-z0-9_$@][A-Za-z0-9_\-$@]*/.exec(restInput);
+        if (!m || !options.isFilter(m[0])) {
+          return token;
+        }
+      }
+
       pushState(mainStates.Filter);
       return {
         type: TokenName[TokenEnum.OpenFilter],
@@ -376,7 +397,11 @@ export function lexer(input: string, options?: LexerOptions) {
         start: position(),
         end: position('|')
       };
-    } else if (mainState === mainStates.Filter && token?.value === '|') {
+    } else if (
+      mainState === mainStates.Filter &&
+      token?.value === '|' &&
+      token.type == 'Punctuator'
+    ) {
       return {
         type: TokenName[TokenEnum.OpenFilter],
         value: '|',
@@ -728,7 +753,7 @@ export function lexer(input: string, options?: LexerOptions) {
     // 所以纯变量模式支持纯数字作为变量名
     const reg = options?.variableMode
       ? /^[\u4e00-\u9fa5A-Za-z0-9_$@][\u4e00-\u9fa5A-Za-z0-9_\-$@]*/
-      : /^(?:[\u4e00-\u9fa5A-Za-z_$@]([\u4e00-\u9fa5A-Za-z0-9_\-$@]|\\(?:\.|\[|\]|\(|\)|\{|\}|\s|=|!|>|<|\||&|\+|-|\*|\/|\^|~|%|&|\?|:|;|,))*|\d+[\u4e00-\u9fa5A-Za-z_$@](?:[\u4e00-\u9fa5A-Za-z0-9_\-$@]|\\(?:\.|\[|\]|\(|\)|\{|\}|\s|=|!|>|<|\||&|\+|-|\*|\/|\^|~|%|&|\?|:|;|,))*)/;
+      : /^(?:[\u4e00-\u9fa5A-Za-z_$@]([\u4e00-\u9fa5A-Za-z0-9_$@]|\\(?:\.|\[|\]|\(|\)|\{|\}|\s|=|!|>|<|\||&|\+|-|\*|\/|\^|~|%|&|\?|:|;|,))*|\d+[\u4e00-\u9fa5A-Za-z_$@](?:[\u4e00-\u9fa5A-Za-z0-9_$@]|\\(?:\.|\[|\]|\(|\)|\{|\}|\s|=|!|>|<|\||&|\+|-|\*|\/|\^|~|%|&|\?|:|;|,))*)/;
 
     const match = reg.exec(
       input.substring(index, index + 256) // 变量长度不能超过 256

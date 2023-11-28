@@ -45,6 +45,14 @@
       var(--input-default-default-paddingLeft);
     background: var(--input-default-default-bg-color);
     height: var(--input-size-default-height);
+    align-items: center;
+
+    input {
+      color: var(--input-default-default-color);
+      font-size: var(--input-default-default-fontSize);
+      font-weight: var(--input-default-default-fontWeight);
+      line-height: var(--input-default-default-lineHeight);
+    }
 
     &:hover,
     &.hover {
@@ -154,6 +162,13 @@
   &--withAddOn {
     display: flex;
     flex-wrap: nowrap;
+    &:hover {
+      .#{$ns}TextControl-input,
+      .#{$ns}Button,
+      .#{$ns}TextControl-addOn {
+        border-color: var(--Form-input-onHover-borderColor);
+      }
+    }
 
     @include media-breakpoint-up(sm) {
       &.#{$ns}Form-control--sizeXs,
@@ -169,7 +184,8 @@
     }
   }
 
-  &--withAddOn > &-input {
+  &--withAddOn > &-input,
+  &--withAddOn.is-focused > &-input {
     flex-basis: 1;
     flex-grow: 1;
     min-width: 0;
@@ -217,6 +233,8 @@
 
     &:first-child {
       border-left-width: var(--input-addon-text-left-border-width);
+      border-top-left-radius: var(--Form-input-borderRadius);
+      border-bottom-left-radius: var(--Form-input-borderRadius);
     }
 
     &:last-child {
@@ -231,8 +249,7 @@
       position: relative;
       border-radius: 0;
       margin-left: px2rem(-1px);
-      border: var(--InputGroup-button-borderWidth) solid
-        var(--InputGroup-button-borderColor);
+      transition: none;
     }
 
     &:not(:last-child) .#{$ns}Button {
@@ -297,28 +314,28 @@
     }
   }
 
-  &-sugs {
-    position: absolute;
+  &-popover {
+    margin-top: px2rem(4px);
     background: var(--Form-select-menu-bg);
     color: var(--Form-select-menu-color);
     border-radius: px2rem(2px);
-    box-shadow: var(--menu-box-shadow);
-    left: px2rem(-1px);
-    right: px2rem(-1px);
-    top: calc(100% + #{px2rem(4px)});
-    z-index: 10;
+    box-shadow: var(--Form-select-outer-boxShadow);
+    border: var(--Form-select-outer-borderWidth) solid
+      var(--Form-input-onFocused-borderColor);
+    padding: px2rem(4px) 0;
+  }
+
+  &-sugs {
     max-height: px2rem(300px);
     overflow: auto;
   }
 
   &-sugItem {
-    padding: calc(
-        (
-            var(--Form-selectOption-height) - var(--Form-input-lineHeight) *
-              var(--Form-input-fontSize) - #{px2rem(2px)}
-          ) / 2
-      )
-      px2rem(12px);
+    padding: var(--select-base-default-option-paddingTop)
+      var(--select-base-default-option-paddingRight)
+      var(--select-base-default-option-paddingBottom)
+      var(--select-base-default-option-paddingLeft);
+    line-height: var(--select-base-default-option-line-height);
 
     svg {
       width: px2rem(16px);
@@ -353,8 +370,7 @@
   &-input--multiple {
     height: auto;
     min-height: var(--Form-input-height);
-    padding: calc(var(--Form-input-paddingY) - #{px2rem(2px)})
-      calc(var(--Form-input-paddingX) - #{px2rem(3px)});
+    padding: var(--Form-input-paddingY) var(--Form-input-paddingX);
   }
 
   &-input--multiple &-placeholder {

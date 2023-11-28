@@ -15,7 +15,7 @@ import {supportStatic} from './StaticHoc';
 
 /**
  * 复选框
- * 文档：https://baidu.gitee.io/amis/docs/components/form/checkboxes
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/checkboxes
  */
 export interface CheckboxesControlSchema extends FormOptionsSchema {
   type: 'checkboxes';
@@ -30,6 +30,10 @@ export interface CheckboxesControlSchema extends FormOptionsSchema {
    */
   defaultCheckAll?: boolean;
 
+  /**
+   * 全选/不选文案
+   */
+  checkAllText?: string;
   /**
    * 每行显示多少个
    */
@@ -337,6 +341,7 @@ export default class CheckboxesControl extends React.Component<
       onToggle,
       onToggleAll,
       checkAll,
+      checkAllText,
       classnames: cx,
       itemClassName,
       labelClassName,
@@ -369,7 +374,7 @@ export default class CheckboxesControl extends React.Component<
           inline={inline}
           labelClassName={labelClassName}
         >
-          {__('Checkboxes.selectAll')}
+          {checkAllText ?? __('Checkboxes.selectAll')}
         </Checkbox>
       );
     }

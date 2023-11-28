@@ -88,16 +88,17 @@ export const ServiceStore = iRendererStore
               (options && options.errorMessage),
             true
           );
-          getEnv(self).notify(
-            'error',
-            self.msg,
-            json.msgTimeout !== undefined
-              ? {
-                  closeButton: true,
-                  timeout: json.msgTimeout
-                }
-              : undefined
-          );
+          !(api as ApiObject).silent &&
+            getEnv(self).notify(
+              'error',
+              self.msg,
+              json.msgTimeout !== undefined
+                ? {
+                    closeButton: true,
+                    timeout: json.msgTimeout
+                  }
+                : undefined
+            );
         } else {
           self.updatedAt = Date.now();
           let replace = !!(api as ApiObject).replaceData;
@@ -108,7 +109,7 @@ export const ServiceStore = iRendererStore
           reInitData(data, replace);
           self.hasRemoteData = true;
           if (options && options.onSuccess) {
-            const ret = options.onSuccess(json);
+            const ret = options.onSuccess(json, data);
 
             if (ret && ret.then) {
               yield ret;
@@ -147,7 +148,7 @@ export const ServiceStore = iRendererStore
         if (e && e.message === 'Network Error') {
           message = self.__('networkError');
         }
-        env.notify('error', message);
+        !(api as ApiObject).silent && env.notify('error', message);
         return;
       }
     });
@@ -203,19 +204,20 @@ export const ServiceStore = iRendererStore
               (options && options.errorMessage),
             true
           );
-          getEnv(self).notify(
-            'error',
-            self.msg,
-            json.msgTimeout !== undefined
-              ? {
-                  closeButton: true,
-                  timeout: json.msgTimeout
-                }
-              : undefined
-          );
+          !(api as ApiObject).silent &&
+            getEnv(self).notify(
+              'error',
+              self.msg,
+              json.msgTimeout !== undefined
+                ? {
+                    closeButton: true,
+                    timeout: json.msgTimeout
+                  }
+                : undefined
+            );
         } else {
           if (options && options.onSuccess) {
-            const ret = options.onSuccess(json);
+            const ret = options.onSuccess(json, json.data);
 
             if (ret && ret.then) {
               yield ret;
@@ -253,7 +255,7 @@ export const ServiceStore = iRendererStore
         if (e && e.message === 'Network Error') {
           message = self.__('networkError');
         }
-        env.notify('error', message);
+        !(api as ApiObject).silent && env.notify('error', message);
         return;
       }
     });
@@ -310,7 +312,7 @@ export const ServiceStore = iRendererStore
           throw new ServerError(self.msg, json);
         } else {
           if (options && options.onSuccess) {
-            const ret = options.onSuccess(json);
+            const ret = options.onSuccess(json, json.data);
 
             if (ret && ret.then) {
               yield ret;
@@ -345,20 +347,23 @@ export const ServiceStore = iRendererStore
         }
 
         console.error(e);
-        if (e.type === 'ServerError') {
-          const result = (e as ServerError).response;
-          getEnv(self).notify(
-            'error',
-            e.message,
-            result.msgTimeout !== undefined
-              ? {
-                  closeButton: true,
-                  timeout: result.msgTimeout
-                }
-              : undefined
-          );
-        } else {
-          getEnv(self).notify('error', e.message);
+
+        if (!(api as ApiObject).silent) {
+          if (e.type === 'ServerError') {
+            const result = (e as ServerError).response;
+            getEnv(self).notify(
+              'error',
+              e.message,
+              result.msgTimeout !== undefined
+                ? {
+                    closeButton: true,
+                    timeout: result.msgTimeout
+                  }
+                : undefined
+            );
+          } else {
+            getEnv(self).notify('error', e.message);
+          }
         }
 
         throw e;
@@ -416,16 +421,17 @@ export const ServiceStore = iRendererStore
               self.__('fetchFailed'),
             true
           );
-          getEnv(self).notify(
-            'error',
-            self.msg,
-            json.msgTimeout !== undefined
-              ? {
-                  closeButton: true,
-                  timeout: json.msgTimeout
-                }
-              : undefined
-          );
+          !(api as ApiObject)?.silent &&
+            getEnv(self).notify(
+              'error',
+              self.msg,
+              json.msgTimeout !== undefined
+                ? {
+                    closeButton: true,
+                    timeout: json.msgTimeout
+                  }
+                : undefined
+            );
         } else {
           if (json.data) {
             const env = getEnv(self);
@@ -437,11 +443,15 @@ export const ServiceStore = iRendererStore
 
             self.schema = Array.isArray(json.data)
               ? json.data
-              : {
-                  type: 'wrapper',
-                  wrap: false,
-                  ...normalizeApiResponseData(json.data)
-                };
+              : Object.assign(
+                  json.data?.type
+                    ? {}
+                    : {
+                        type: 'wrapper',
+                        wrap: false
+                      },
+                  normalizeApiResponseData(json.data)
+                );
             self.schemaKey = '' + Date.now();
             isObject(json.data.data) &&
               self.updateData(
@@ -482,7 +492,7 @@ export const ServiceStore = iRendererStore
         if (e && e.message === 'Network Error') {
           message = self.__('networkError');
         }
-        env.notify('error', message);
+        !(api as ApiObject)?.silent && env.notify('error', message);
       }
     });
 

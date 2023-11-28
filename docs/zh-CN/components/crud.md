@@ -107,7 +107,11 @@ CRUD，即增删改查组件，主要用来展现数据列表，并支持各类�
 }
 ```
 
-## 数据源接口数据结构要求
+## 数据源接口
+
+### 数据结构
+
+CRUD 组件对数据源接口的数据结构要求如下：
 
 - `items`或`rows`：用于返回数据源数据，格式是数组
 - `total`: 用于返回数据库中一共有多少条数据，用于生成分页
@@ -174,15 +178,40 @@ CRUD，即增删改查组件，主要用来展现数据列表，并支持各类�
 
 如果不需要分页，或者配置了 `loadDataOnce` 则可以忽略掉 `total` 和 `hasNext` 参数。
 
-> 如果 api 地址中有变量，比如 `/api/mock2/sample/${id}`，amis 就不会自动加上分页参数，需要自己加上，改成 `/api/mock2/sample/${id}?page=${page}&perPage=${perPage}`
+### Query 参数
 
-## 分页参数
+数据源接口地址可以通过变量实现动态拼接，例如： `/api/mock2/sample/${id}`，但需要注意的是接口地址拼接变量后，amis 就不会自动追加默认参数了，例如：分页参数、查询参数等，如需追加，可以自行拼接，例如： `/api/mock2/sample/${id}?page=${page}&perPage=${perPage}`
 
 默认的分页参数是 `page` 和 `perPage`，page 代表页数，比如第一页，perPage 代表每页显示几行。
 
 如果要其它格式，比如转成 `limit` 和 `offset`，可以使用公式来转换，比如
 
 `/api/mock2/sample?limit=${perPage}&offset=${(page - 1) * perPage}`
+
+### 参数汇总
+
+这里汇总一下 CRUD 里默认用到的 query 列表
+
+| query 名 | 类型         | 说明                           |
+| -------- | ------------ | ------------------------------ |
+| page     | number       | 分页，从 1 开始                |
+| perPage  | number       | 每页数量                       |
+| orderBy  | string       | 排序字段，目前 CRUD 只支持一个 |
+| orderDir | 'asc'/'desc' | 排序方式                       |
+| keywords | string       | 搜索关键字                     |
+
+### 解析 Query 原始类型
+
+> `3.5.0`及以上版本
+
+`syncLocation`开启后，CRUD 在初始化数据域时，将会对 url 中的 Query 进行转换，将原始类型的字符串格式的转化为同位类型，目前仅支持**布尔类型**
+
+```
+"true"  ==> true
+"false" ==> false
+```
+
+如果只想保持字符串格式，可以设置`"parsePrimitiveQuery": false`关闭该特性，具体效果参考[示例](../../../examples/crud/parse-primitive-query)。
 
 ## 功能
 
@@ -554,11 +583,84 @@ Cards 模式支持 [Cards](./cards) 中的所有功能。
 }
 ```
 
+## 嵌套
+
+当行数据中存在 `children` 字段时，CRUD 会自动识别为树形数据，并支持展开收起。
+
+```schema: scope="body"
+{
+    "type": "crud",
+    "name": "crud",
+    "syncLocation": false,
+    "api": "/api/mock2/crud/table2",
+    "columns": [
+        {
+            "name": "id",
+            "label": "ID"
+        },
+        {
+            "name": "engine",
+            "label": "Rendering engine"
+        },
+        {
+            "name": "browser",
+            "label": "Browser"
+        }
+    ]
+}
+```
+
+## 嵌套懒加载
+
+如果数据量比较大不适合一次性加载，可以配置 `deferApi` 接口，结合行数据中标记 `defer: true` 属性，实现懒加载。
+
+注意 `deferApi` 结果返回跟 `api` 返回不一样，`deferApi` 返回的是节点详情，而不是列表，列表应该是节点信息的 children 属性里面。也就是说 deferApi 还可以进一步完善节点信息。返回格式参考如下：
+
+```
+{
+ status: 0,
+ data: {
+   id: 1,
+   xxxProp: 'abc',
+   children: [
+     {
+       id: 11,
+       name: '子节点'
+     }
+   ]
+ }
+}
+```
+
+```schema: scope="body"
+{
+    "type": "crud",
+    "name": "crud",
+    "syncLocation": false,
+    "api": "/api/mock2/crud/table6",
+    "deferApi": "/api/mock2/crud/table6?parentId=${id}",
+    "columns": [
+        {
+            "name": "id",
+            "label": "ID"
+        },
+        {
+            "name": "engine",
+            "label": "Rendering engine"
+        },
+        {
+            "name": "browser",
+            "label": "Browser"
+        }
+    ]
+}
+```
+
 ## 查询条件表单
 
 大部分表格展示有对数据进行检索的需求，CRUD 自身支持通过配置`filter`，实现查询条件过滤表单。`filter` 配置实际上同 [Form](./form/index) 组件，因此支持绝大部分`form`的功能。
 
-在条件搜索区的 `Engine` 输入框中输入任意值查询会发现结果中 `ID` 为 1 - 3 的 `Rendering engine` 列因为返回值中没有对应字段值，被错误填入了与 `filter` 中相同 `name` 的字段值，这是因为表格 Cell 通过[数据链](../../docs/concepts/datascope-and-datachain)获取到了上层数据域 `filter` 中相同字段的数据值。这种情况可以在 CRUD `columns` 对应列配置`"canAccessSuperData": false`禁止访问父级数据域（比如: `Platform`列）。
+在条件搜索区的 `Engine` 输入框中输入任意值查询会发现结果中 `ID` 为 1 - 3 的 `Rendering engine` 列因为返回值中没有对应字段值，被错误填入了与 `filter` 中相同 `name` 的字段值，这是因为表格 Cell 通过[数据链](../../docs/concepts/datascope-and-datachain)获取到了上层数据域 `filter` 中相同字段的数据值。这种情况可以在 CRUD `columns` 对应列配置`"canAccessSuperData": false`禁止访问父级数据域（比如: `Platform`列），或者 CRUD 追加`"canAccessSuperData": false`配置禁止所有列访问父级数据域。
 
 ```schema: scope="body"
 {
@@ -675,12 +777,23 @@ Cards 模式支持 [Cards](./cards) 中的所有功能。
 
 通过设置`"autoGenerateFilter": true`开启查询区域，会根据列元素的 `searchable` 属性值，自动生成查询条件表单，只有 `searchable` 属性值为合法的组件 Schema 时才会生成查询条件。注意这个属性和 `filter` 冲突，开启 `filter` 后 `autoGenerateFilter` 将会失效。
 
+### autoGenerateFilter 属性表
+
+| 属性名           | 类型      | 默认值 | 说明                 |
+| ---------------- | --------- | ------ | -------------------- |
+| columnsNum       | `number`  | `3`    | 过滤条件单行列数     |
+| showBtnToolbar   | `boolean` | `true` | 是否显示设置查询字段 |
+| defaultCollapsed | `boolean` | `true` | 是否初始收起         |
+
 ```schema: scope="body"
 {
     "type": "crud",
     "api": "/api/mock2/sample",
     "syncLocation": false,
-    "autoGenerateFilter": true,
+    "autoGenerateFilter": {
+        "columnsNum": 2,
+        "showBtnToolbar": false
+    },
     "headerToolbar": [
         {
             "type": "columns-toggler",
@@ -704,7 +817,7 @@ Cards 模式支持 [Cards](./cards) 中的所有功能。
         },
         {
             "name": "engine",
-            "label": "Rendering engine"
+            "label": "Rendering engine",
         },
         {
             "name": "browser",
@@ -845,11 +958,17 @@ Cards 模式支持 [Cards](./cards) 中的所有功能。
 
 可以在列上配置`"sortable": true`，该列表头右侧会渲染一个可点击的排序图标，可以切换`正序`和`倒序`。
 
+> 如果想默认就基于某个字段排序，可以结合 `defaultParams` 一起配置。
+
 ```schema: scope="body"
 {
     "type": "crud",
     "syncLocation": false,
     "api": "/api/mock2/sample",
+    "defaultParams": {
+      "orderBy": "engine",
+      "orderDir": "desc"
+    },
     "columns": [
         {
             "name": "id",
@@ -958,6 +1077,51 @@ amis 只负责生成下拉选择器组件，并将搜索参数传递给接口，
 ```
 
 你可以通过[数据映射](../../docs/concepts/data-mapping)，在`api`中获取这些参数。
+
+#### 下拉数据源
+
+过滤器的数据域支持 API 接口和上下文数据(`3.6.0`及以上版本)
+
+```schema
+{
+  "type": "page",
+  "data": {
+    "options": [
+      {"label": "4", "value": 3},
+      {"label": "5", "value": 5},
+      {"label": "5.5", "value": 5.5},
+      {"label": "6", "value": 6}
+    ]
+  },
+  "body": [
+    {
+      "type": "crud",
+      "syncLocation": false,
+      "api": "/api/mock2/sample",
+      "columns": [
+          {
+              "name": "id",
+              "label": "ID"
+          },
+          {
+              "name": "grade",
+              "label": "CSS grade",
+              "filterable": {
+                "source": "/api/mock2/crud/filterOptions"
+              }
+          },
+          {
+              "name": "version",
+              "label": "Version",
+              "filterable": {
+                "source": "${options}"
+              }
+          }
+      ]
+    }
+  ]
+}
+```
 
 ### 快速编辑
 
@@ -1442,7 +1606,7 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
 
 分页有两种模式：
 
-##### 1. 知道数据总数
+**1. 知道数据总数**
 
 如果后端可以知道数据总数时，接口返回格式如下：
 
@@ -1466,7 +1630,7 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
 
 该模式下，会自动计算总页码数，渲染出有页码的分页组件
 
-##### 2. 不知道数据总数
+**2. 不知道数据总数**
 
 如果后端无法知道数据总数，那么可以返回`hasNext`字段，来标识是否有下一页。
 
@@ -1491,6 +1655,261 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
 这样 amis 会在配置分页组件的地方，渲染出一个简单的页面跳转控件。
 
 > 如果总数据只够展示一页，则默认不显示该分页组件
+
+#### 前端分页
+
+如果你的数据并不是很大，而且后端不方便做分页和条件过滤操作，那么通过配置`loadDataOnce`实现前端一次性加载并支持分页和条件过滤操作。
+
+<div class="p-4 text-base text-gray-800 rounded-lg bg-gray-50" role="alert">
+  <span class="font-medium text-gray-800 block">温馨提示</span>
+  <span class="block">开启<code>loadDataOnce</code>后，搜索和过滤将交给组件处理，默认对所有字段采用模糊匹配（比如：<code>mi</code>将会匹配<code>amis</code>）。如果首次加载数据时设置了预设条件，导致接口返回的数据集合未按照此规则过滤，则可能导致切换页码后分页错误。此时有2种方案处理：</span>
+  <span class="block" style="text-indent: 2em">1. 将接口返回的列表数据按照所有字段模糊匹配的规则处理</span>
+  <span class="block" style="text-indent: 2em">2. 配置<a href="#匹配函数"><code>matchFunc</code></a>，自定义处理过滤</span>
+</div>
+
+```schema: scope="body"
+{
+    "type": "crud",
+    "syncLocation": false,
+    "api": "/api/mock2/sample",
+    "loadDataOnce": true,
+    "columns": [
+        {
+            "name": "id",
+            "label": "ID"
+        },
+        {
+            "name": "engine",
+            "label": "Rendering engine"
+        },
+        {
+            "name": "browser",
+            "label": "Browser"
+        },
+        {
+            "name": "platform",
+            "label": "Platform(s)"
+        },
+        {
+            "name": "version",
+            "label": "Engine version"
+        },
+        {
+            "name": "grade",
+            "label": "CSS grade",
+            "sortable": true
+        }
+    ]
+}
+```
+
+配置一次性加载后，基本的分页、快速排序操作将会在前端进行完成。如果想实现前端检索(目前是模糊搜索)，可以在 table 的 `columns` 对应项配置 `searchable` 来实现。
+
+```schema: scope="body"
+{
+    "type": "crud",
+    "syncLocation": false,
+    "api": "/api/mock2/sample",
+    "loadDataOnce": true,
+    "columns": [
+        {
+            "name": "id",
+            "label": "ID"
+        },
+        {
+            "name": "engine",
+            "label": "Rendering engine"
+        },
+        {
+            "name": "browser",
+            "label": "Browser"
+        },
+        {
+            "name": "platform",
+            "label": "Platform(s)"
+        },
+        {
+            "name": "version",
+            "label": "Engine version",
+            "searchable": {
+                "type": "select",
+                "name": "version",
+                "label": "Engine version",
+                "clearable": true,
+                "multiple": true,
+                "searchable": true,
+                "checkAll": true,
+                "options": ["1.7", "3.3", "5.6"],
+                "maxTagCount": 10,
+                "extractValue": true,
+                "joinValues": false,
+                "delimiter": ',',
+                "defaultCheckAll": false,
+                "checkAllLabel": "全选"
+              }
+        },
+        {
+            "name": "grade",
+            "label": "CSS grade"
+        }
+    ]
+}
+```
+
+> **注意：**如果你的数据量较大，请务必使用服务端分页的方案，过多的前端数据展示，会显著影响前端页面的性能
+
+另外前端一次性加载当有查寻条件的时候，默认还是会重新请求一次，如果配置 `loadDataOnceFetchOnFilter` 为 `false` 则为前端过滤。
+
+```schema: scope="body"
+{
+  "type": "crud",
+  "syncLocation": false,
+  "api": "/api/mock2/sample",
+  "loadDataOnce": true,
+  "loadDataOnceFetchOnFilter": false,
+  "autoGenerateFilter": true,
+  "columns": [
+    {
+      "name": "id",
+      "label": "ID"
+    },
+    {
+      "name": "engine",
+      "label": "Rendering engine"
+    },
+    {
+      "name": "browser",
+      "label": "Browser"
+    },
+    {
+      "name": "platform",
+      "label": "Platform(s)"
+    },
+    {
+      "name": "version",
+      "label": "Engine version",
+      "searchable": {
+        "type": "select",
+        "name": "version",
+        "label": "Engine version",
+        "clearable": true,
+        "multiple": true,
+        "searchable": true,
+        "checkAll": true,
+        "options": [
+          "1.7",
+          "3.3",
+          "5.6"
+        ],
+        "maxTagCount": 10,
+        "extractValue": true,
+        "joinValues": false,
+        "delimiter": ",",
+        "defaultCheckAll": false,
+        "checkAllLabel": "全选"
+      }
+    },
+    {
+      "name": "grade",
+      "label": "CSS grade"
+    }
+  ]
+}
+```
+
+`loadDataOnceFetchOnFilter` 配置成 `true` 则会强制重新请求接口比如以下用法
+
+> 此时如果不配置或者配置为 `false` 是前端直接过滤，不过记得配置 name 为行数据中的属性，如果行数据中没有对应属性则不会起作用
+
+```schema: scope="body"
+{
+  "type": "crud",
+  "syncLocation": false,
+  "api": "/api/mock2/sample",
+  "loadDataOnce": true,
+  "loadDataOnceFetchOnFilter": true,
+  "headerToolbar": [
+    {
+      "type": "search-box",
+      "name": "keywords"
+    }
+  ],
+  "columns": [
+    {
+      "name": "id",
+      "label": "ID"
+    },
+    {
+      "name": "engine",
+      "label": "Rendering engine"
+    },
+    {
+      "name": "browser",
+      "label": "Browser"
+    },
+    {
+      "name": "platform",
+      "label": "Platform(s)"
+    },
+    {
+      "name": "version",
+      "label": "Engine version",
+      "searchable": {
+        "type": "select",
+        "name": "version",
+        "label": "Engine version",
+        "clearable": true,
+        "multiple": true,
+        "searchable": true,
+        "checkAll": true,
+        "options": [
+          "1.7",
+          "3.3",
+          "5.6"
+        ],
+        "maxTagCount": 10,
+        "extractValue": true,
+        "joinValues": false,
+        "delimiter": ",",
+        "defaultCheckAll": false,
+        "checkAllLabel": "全选"
+      }
+    },
+    {
+      "name": "grade",
+      "label": "CSS grade"
+    }
+  ]
+}
+```
+
+##### 匹配函数
+
+> `3.5.0` 及以上版本
+
+支持自定义匹配函数`matchFunc`，当开启`loadDataOnce`时，会基于该函数计算的匹配结果进行过滤，主要用于处理列字段类型较为复杂或者字段值格式和后端返回不一致的场景，函数签名如下：
+
+```typescript
+interface CRUDMatchFunc {
+  (
+    /* 当前列表的全量数据 */
+    items: any,
+    /* 最近一次接口返回的全量数据 */
+    itemsRaw: any,
+    /** 相关配置 */
+    options?: {
+      /* 查询参数 */
+      query: Record<string, any>;
+      /* 列配置 */
+      columns: any;
+      /** match-sorter 匹配函数 */
+      matchSorter: (items: any[], value: string, options?: MatchSorterOptions<any>) => any[]
+    }
+  ): boolean;
+}
+```
+
+具体效果请参考[示例](../../../examples/crud/match-func)，从`3.6.0`版本开始，`options`中支持使用`matchSorter`函数处理复杂的过滤场景，比如前缀匹配、模糊匹配等，更多详细内容推荐查看[match-sorter](https://github.com/kentcdodds/match-sorter)。
 
 ### 批量操作
 
@@ -1845,13 +2264,17 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
         },
         {
             "name": "grade",
-            "label": "CSS grade"
+            "label": "CSS grade",
+            "type": "mapping",
+            "map": {
+                "*": "<span class=\"label label-info\">${grade}</span>"
+            }
         }
     ]
 }
 ```
 
-### 通过 api 导出 CSV
+#### 通过 api 导出 CSV
 
 > 1.4.0 及以上版本
 
@@ -1862,11 +2285,13 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
     "type": "crud",
     "syncLocation": false,
     "api": "/api/mock2/sample",
-    "headerToolbar": [{
-        "type": "export-csv",
-        "label": "全量导出 CSV",
-        "api": "/api/mock2/sample"
-    }],
+    "headerToolbar": [
+        {
+            "type": "export-csv",
+            "label": "全量导出 CSV",
+            "api": "/api/mock2/sample"
+        }
+    ],
     "columns": [
         {
             "name": "id",
@@ -1890,7 +2315,66 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
         },
         {
             "name": "grade",
-            "label": "CSS grade"
+            "label": "CSS grade",
+            "type": "mapping",
+            "map": {
+                "*": "<span class=\"label label-info\">${grade}</span>"
+            }
+        }
+    ]
+}
+```
+
+#### 自定义导出 CSV 的文件名
+
+> 1.4.0 及以上版本
+
+`export-csv` 可以单独配置 `api` 实现导出全量功能，这个 api 的返回结果和 CRUD 类似
+
+```schema: scope="body"
+{
+    "type": "crud",
+    "syncLocation": false,
+    "api": "/api/mock2/sample",
+    "data": {
+        "name": "123"
+    },
+    "headerToolbar": [
+        {
+            "type": "export-csv",
+            "label": "自定义导出 CSV",
+            "api": "/api/mock2/sample",
+            "filename": "自定义文件名${name}"
+        }
+    ],
+    "columns": [
+        {
+            "name": "id",
+            "label": "ID"
+        },
+        {
+            "name": "engine",
+            "label": "Rendering engine"
+        },
+        {
+            "name": "browser",
+            "label": "Browser"
+        },
+        {
+            "name": "platform",
+            "label": "Platform(s)"
+        },
+        {
+            "name": "version",
+            "label": "Engine version"
+        },
+        {
+            "name": "grade",
+            "label": "CSS grade",
+            "type": "mapping",
+            "map": {
+                "*": "<span class=\"label label-info\">${grade}</span>"
+            }
         }
     ]
 }
@@ -1933,7 +2417,11 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
         },
         {
             "name": "grade",
-            "label": "CSS grade"
+            "label": "CSS grade",
+            "type": "mapping",
+            "map": {
+                "*": "<span class=\"label label-info\">${grade}</span>"
+            }
         }
     ]
 }
@@ -2088,6 +2576,60 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
 }
 ```
 
+#### 指定导出行
+
+> 3.2.0 及以上版本
+
+可以通过配置 `rowSlice` 属性来控制导出哪些行
+
+```schema: scope="body"
+{
+    "type": "crud",
+    "syncLocation": false,
+    "api": "/api/mock2/sample",
+    "headerToolbar": [{
+        "type": "export-excel",
+        "label": "导出 1, 4, 5 行",
+        "rowSlice": "0,3:5"
+    }],
+    "columns": [
+        {
+            "name": "id",
+            "label": "ID"
+        },
+        {
+            "name": "engine",
+            "label": "Rendering engine"
+        },
+        {
+            "name": "browser",
+            "label": "Browser"
+        },
+        {
+            "name": "platform",
+            "label": "Platform(s)"
+        },
+        {
+            "name": "version",
+            "label": "Engine version"
+        },
+        {
+            "name": "grade",
+            "label": "CSS grade"
+        }
+    ]
+}
+```
+
+`rowSlice` 支持以下写法
+
+- 取单个值 '1,2,3'，代表取 1、2、3 索引的内容
+- 取范围 '3:10'，代表取 3-9 索引的内容
+  - ':' 代表所有行
+  - '1:' 代表从第二行开始到结束
+  - 结束可以是负数 ':-1'，代表除了最后一个元素的所有元素，开始为空代表 0
+- 前两种的组合 '1,3:10'，代表取 1 索引和 3-9 索引的内容
+
 #### 通过 api 导出 Excel
 
 > 1.1.6 以上版本支持
@@ -2197,6 +2739,61 @@ crud 组件支持通过配置`headerToolbar`和`footerToolbar`属性，实现在
         ]
     },
     "filterTogglable": true,
+    "headerToolbar": [
+        "filter-toggler"
+    ],
+    "columns": [
+        {
+            "name": "id",
+            "label": "ID"
+        },
+        {
+            "name": "engine",
+            "label": "Rendering engine"
+        },
+        {
+            "name": "browser",
+            "label": "Browser"
+        },
+        {
+            "name": "platform",
+            "label": "Platform(s)"
+        },
+        {
+            "name": "version",
+            "label": "Engine version"
+        },
+        {
+            "name": "grade",
+            "label": "CSS grade"
+        }
+    ]
+}
+```
+
+还可以定制文案和按钮如：
+
+```schema: scope="body"
+{
+    "type": "crud",
+    "syncLocation": false,
+    "api": "/api/mock2/sample",
+     "filter": {
+        "title": "条件搜索",
+        "body": [
+            {
+                "type": "input-text",
+                "name": "keywords",
+                "placeholder": "通过关键字搜索"
+            }
+        ]
+    },
+    "filterTogglable": {
+        "label": "更多搜索",
+        "activeLabel": "收起搜索",
+        "icon": "fa fa-arrow-down mr-1",
+        "activeIcon": "fa fa-arrow-up mr-1"
+    },
     "headerToolbar": [
         "filter-toggler"
     ],
@@ -2590,96 +3187,7 @@ CRUD 中不限制有多少个单条操作、添加一个操作对应的添加一
 > 本文中的例子为了不相互影响都关闭了这个功能。
 > 另外如果需要使用接口联动，需要设置`syncLocation: false`
 
-## 前端一次性加载
-
-如果你的数据并不是很大，而且后端不方便做分页和条件过滤操作，那么通过配置`loadDataOnce`实现前端一次性加载并支持分页和条件过滤操作
-
-```schema: scope="body"
-{
-    "type": "crud",
-    "syncLocation": false,
-    "api": "/api/mock2/sample",
-    "loadDataOnce": true,
-    "columns": [
-        {
-            "name": "id",
-            "label": "ID"
-        },
-        {
-            "name": "engine",
-            "label": "Rendering engine"
-        },
-        {
-            "name": "browser",
-            "label": "Browser"
-        },
-        {
-            "name": "platform",
-            "label": "Platform(s)"
-        },
-        {
-            "name": "version",
-            "label": "Engine version"
-        },
-        {
-            "name": "grade",
-            "label": "CSS grade",
-            "sortable": true
-        }
-    ]
-}
-```
-
-配置一次性加载后，基本的分页、快速排序操作将会在前端进行完成。如果想实现前端检索，需要用到[数据映射](../../docs/concepts/data-mapping)功能：
-
-```schema: scope="body"
-{
-    "type": "crud",
-    "syncLocation": false,
-    "api": "/api/mock2/sample",
-    "loadDataOnce": true,
-    "source": "${rows | filter:engine:match:keywords}",
-    "filter":{
-        "body": [
-            {
-                "type": "input-text",
-                "name": "keywords",
-                "label": "引擎"
-            }
-        ]
-    },
-    "columns": [
-        {
-            "name": "id",
-            "label": "ID"
-        },
-        {
-            "name": "engine",
-            "label": "Rendering engine"
-        },
-        {
-            "name": "browser",
-            "label": "Browser"
-        },
-        {
-            "name": "platform",
-            "label": "Platform(s)"
-        },
-        {
-            "name": "version",
-            "label": "Engine version"
-        },
-        {
-            "name": "grade",
-            "label": "CSS grade"
-        }
-    ]
-}
-```
-
-上例使用了数据映射中的`filter`过滤器，在前端实现了`engine`列的搜索功能。
-
-> **注意：**如果你的数据量较大，请务必使用服务端分页的方案，过多的前端数据展示，会显著影响前端页面的性能
+`syncLocation`开启后，数据域经过地址栏同步后，原始值被转化为字符串同步回数据域，但布尔值（boolean）同步后不符合预期数据结构，导致组件渲染出错。比如查询条件表单中包含[Checkbox](./form/checkbox)组件，此时可以设置`{"trueValue": "1", "falseValue": "0"}`，将真值和假值设置为字符串格式规避。从`3.5.0`版本开始，已经支持[`parsePrimitiveQuery`](#解析query原始类型)，该配置默认开启。
 
 ## 动态列
 
@@ -2816,59 +3324,63 @@ itemAction 里的 onClick 还能通过 `data` 参数拿到当前行的数据，�
 
 ## 属性表
 
-| 属性名                                | 类型                            | 默认值                          | 说明                                                                                                                  |
-| ------------------------------------- | ------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| type                                  | `string`                        |                                 | `type` 指定为 CRUD 渲染器                                                                                             |
-| mode                                  | `string`                        | `"table"`                       | `"table" 、 "cards" 或者 "list"`                                                                                      |
-| title                                 | `string`                        | `""`                            | 可设置成空，当设置成空时，没有标题栏                                                                                  |
-| className                             | `string`                        |                                 | 表格外层 Dom 的类名                                                                                                   |
-| api                                   | [API](../../docs/types/api)     |                                 | CRUD 用来获取列表数据的 api。                                                                                         |
-| loadDataOnce                          | `boolean`                       |                                 | 是否一次性加载所有数据（前端分页）                                                                                    |
-| loadDataOnceFetchOnFilter             | `boolean`                       | `true`                          | 在开启 loadDataOnce 时，filter 时是否去重新请求 api                                                                   |
-| source                                | `string`                        |                                 | 数据映射接口返回某字段的值，不设置会默认使用接口返回的`${items}`或者`${rows}`，也可以设置成上层数据源的内容           |
-| filter                                | [Form](./form/index)            |                                 | 设置过滤器，当该表单提交后，会把数据带给当前 `mode` 刷新列表。                                                        |
-| filterTogglable                       | `boolean`                       | `false`                         | 是否可显隐过滤器                                                                                                      |
-| filterDefaultVisible                  | `boolean`                       | `true`                          | 设置过滤器默认是否可见。                                                                                              |
-| initFetch                             | `boolean`                       | `true`                          | 是否初始化的时候拉取数据, 只针对有 filter 的情况, 没有 filter 初始都会拉取数据                                        |
-| interval                              | `number`                        | `3000`                          | 刷新时间(最低 1000)                                                                                                   |
-| silentPolling                         | `boolean`                       | `false`                         | 配置刷新时是否隐藏加载动画                                                                                            |
-| stopAutoRefreshWhen                   | `string`                        | `""`                            | 通过[表达式](../../docs/concepts/expression)来配置停止刷新的条件                                                      |
-| stopAutoRefreshWhenModalIsOpen        | `boolean`                       | `false`                         | 当有弹框时关闭自动刷新，关闭弹框又恢复                                                                                |
-| syncLocation                          | `boolean`                       | `true`                          | 是否将过滤条件的参数同步到地址栏                                                                                      |
-| draggable                             | `boolean`                       | `false`                         | 是否可通过拖拽排序                                                                                                    |
-| resizable                             | `boolean`                       | `true`                          | 是否可以调整列宽度                                                                                                    |
-| itemDraggableOn                       | `boolean`                       |                                 | 用[表达式](../../docs/concepts/expression)来配置是否可拖拽排序                                                        |
-| [saveOrderApi](#saveOrderApi)         | [API](../../docs/types/api)     |                                 | 保存排序的 api。                                                                                                      |
-| [quickSaveApi](#quickSaveApi)         | [API](../../docs/types/api)     |                                 | 快速编辑后用来批量保存的 API。                                                                                        |
-| [quickSaveItemApi](#quickSaveItemApi) | [API](../../docs/types/api)     |                                 | 快速编辑配置成及时保存时使用的 API。                                                                                  |
-| bulkActions                           | Array<[Action](./action)>       |                                 | 批量操作列表，配置后，表格可进行选中操作。                                                                            |
-| messages                              | `Object`                        |                                 | 覆盖消息提示，如果不指定，将采用 api 返回的 message                                                                   |
-| messages.fetchFailed                  | `string`                        |                                 | 获取失败时提示                                                                                                        |
-| messages.saveOrderFailed              | `string`                        |                                 | 保存顺序失败提示                                                                                                      |
-| messages.saveOrderSuccess             | `string`                        |                                 | 保存顺序成功提示                                                                                                      |
-| messages.quickSaveFailed              | `string`                        |                                 | 快速保存失败提示                                                                                                      |
-| messages.quickSaveSuccess             | `string`                        |                                 | 快速保存成功提示                                                                                                      |
-| primaryField                          | `string`                        | `"id"`                          | 设置 ID 字段名。                                                                                                      |
-| perPage                               | `number`                        | 10                              | 设置一页显示多少条数据。                                                                                              |
-| orderBy                               | `string`                        |                                 | 默认排序字段，这个是传给后端，需要后端接口实现                                                                        |
-| orderDir                              | `asc` \| `desc`                 |                                 | 排序方向                                                                                                              |
-| defaultParams                         | `Object`                        |                                 | 设置默认 filter 默认参数，会在查询的时候一起发给后端                                                                  |
-| pageField                             | `string`                        | `"page"`                        | 设置分页页码字段名。                                                                                                  |
-| perPageField                          | `string`                        | `"perPage"`                     | 设置分页一页显示的多少条数据的字段名。注意：最好与 defaultParams 一起使用，请看下面例子。                             |
-| perPageAvailable                      | `Array<number>`                 | `[5, 10, 20, 50, 100]`          | 设置一页显示多少条数据下拉框可选条数。                                                                                |
-| orderField                            | `string`                        |                                 | 设置用来确定位置的字段名，设置后新的顺序将被赋值到该字段中。                                                          |
-| hideQuickSaveBtn                      | `boolean`                       | `false`                         | 隐藏顶部快速保存提示                                                                                                  |
-| autoJumpToTopOnPagerChange            | `boolean`                       | `false`                         | 当切分页的时候，是否自动跳顶部。                                                                                      |
-| syncResponse2Query                    | `boolean`                       | `true`                          | 将返回数据同步到过滤器上。                                                                                            |
-| keepItemSelectionOnPageChange         | `boolean`                       | `true`                          | 保留条目选择，默认分页、搜素后，用户选择条目会被清空，开启此选项后会保留用户选择，可以实现跨页面批量操作。            |
-| labelTpl                              | `string`                        |                                 | 单条描述模板，`keepItemSelectionOnPageChange`设置为`true`后会把所有已选择条目列出来，此选项可以用来定制条目展示文案。 |
-| headerToolbar                         | Array                           | `['bulkActions', 'pagination']` | 顶部工具栏配置                                                                                                        |
-| footerToolbar                         | Array                           | `['statistics', 'pagination']`  | 底部工具栏配置                                                                                                        |
-| alwaysShowPagination                  | `boolean`                       | `false`                         | 是否总是显示分页                                                                                                      |
-| affixHeader                           | `boolean`                       | `true`                          | 是否固定表头(table 下)                                                                                                |
-| autoGenerateFilter                    | `boolean`                       | `false`                         | 是否开启查询区域，开启后会根据列元素的 `searchable` 属性值，自动生成查询条件表单                                      |
-| resetPageAfterAjaxItemAction          | `boolean`                       | `false`                         | 单条数据 ajax 操作后是否重置页码为第一页                                                                              |
-| autoFillHeight                        | `boolean` 丨 `{height: number}` |                                 | 内容区域自适应高度                                                                                                    |
+| 属性名                                | 类型                                                                                    | 默认值                          | 说明                                                                                                                                           | 版本    |
+| ------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| type                                  | `string`                                                                                |                                 | `type` 指定为 CRUD 渲染器                                                                                                                      |
+| mode                                  | `string`                                                                                | `"table"`                       | `"table" 、 "cards" 或者 "list"`                                                                                                               |
+| title                                 | `string`                                                                                | `""`                            | 可设置成空，当设置成空时，没有标题栏                                                                                                           |
+| className                             | `string`                                                                                |                                 | 表格外层 Dom 的类名                                                                                                                            |
+| api                                   | [API](../../docs/types/api)                                                             |                                 | CRUD 用来获取列表数据的 api。                                                                                                                  |
+| deferApi                              | [API](../../docs/types/api)                                                             |                                 | 当行数据中有 defer 属性时，用此接口进一步加载内容                                                                                              |
+| loadDataOnce                          | `boolean`                                                                               |                                 | 是否一次性加载所有数据（前端分页）                                                                                                             |
+| loadDataOnceFetchOnFilter             | `boolean`                                                                               | `true`                          | 在开启 loadDataOnce 时，filter 时是否去重新请求 api                                                                                            |
+| source                                | `string`                                                                                |                                 | 数据映射接口返回某字段的值，不设置会默认使用接口返回的`${items}`或者`${rows}`，也可以设置成上层数据源的内容                                    |
+| filter                                | [Form](./form/index)                                                                    |                                 | 设置过滤器，当该表单提交后，会把数据带给当前 `mode` 刷新列表。                                                                                 |
+| filterTogglable                       | `boolean` \| `{label: string; icon: string; activeLabel: string; activeIcon?: stirng;}` | `false`                         | 是否可显隐过滤器                                                                                                                               |
+| filterDefaultVisible                  | `boolean`                                                                               | `true`                          | 设置过滤器默认是否可见。                                                                                                                       |
+| initFetch                             | `boolean`                                                                               | `true`                          | 是否初始化的时候拉取数据, 只针对有 filter 的情况, 没有 filter 初始都会拉取数据                                                                 |
+| interval                              | `number`                                                                                | `3000`                          | 刷新时间(最低 1000)                                                                                                                            |
+| silentPolling                         | `boolean`                                                                               | `false`                         | 配置刷新时是否隐藏加载动画                                                                                                                     |
+| stopAutoRefreshWhen                   | `string`                                                                                | `""`                            | 通过[表达式](../../docs/concepts/expression)来配置停止刷新的条件                                                                               |
+| stopAutoRefreshWhenModalIsOpen        | `boolean`                                                                               | `false`                         | 当有弹框时关闭自动刷新，关闭弹框又恢复                                                                                                         |
+| syncLocation                          | `boolean`                                                                               | `true`                          | 是否将过滤条件的参数同步到地址栏                                                                                                               |
+| draggable                             | `boolean`                                                                               | `false`                         | 是否可通过拖拽排序                                                                                                                             |
+| resizable                             | `boolean`                                                                               | `true`                          | 是否可以调整列宽度                                                                                                                             |
+| itemDraggableOn                       | `boolean`                                                                               |                                 | 用[表达式](../../docs/concepts/expression)来配置是否可拖拽排序                                                                                 |
+| [saveOrderApi](#saveOrderApi)         | [API](../../docs/types/api)                                                             |                                 | 保存排序的 api。                                                                                                                               |
+| [quickSaveApi](#quickSaveApi)         | [API](../../docs/types/api)                                                             |                                 | 快速编辑后用来批量保存的 API。                                                                                                                 |
+| [quickSaveItemApi](#quickSaveItemApi) | [API](../../docs/types/api)                                                             |                                 | 快速编辑配置成及时保存时使用的 API。                                                                                                           |
+| bulkActions                           | Array<[Action](./action)>                                                               |                                 | 批量操作列表，配置后，表格可进行选中操作。                                                                                                     |
+| messages                              | `Object`                                                                                |                                 | 覆盖消息提示，如果不指定，将采用 api 返回的 message                                                                                            |
+| messages.fetchFailed                  | `string`                                                                                |                                 | 获取失败时提示                                                                                                                                 |
+| messages.saveOrderFailed              | `string`                                                                                |                                 | 保存顺序失败提示                                                                                                                               |
+| messages.saveOrderSuccess             | `string`                                                                                |                                 | 保存顺序成功提示                                                                                                                               |
+| messages.quickSaveFailed              | `string`                                                                                |                                 | 快速保存失败提示                                                                                                                               |
+| messages.quickSaveSuccess             | `string`                                                                                |                                 | 快速保存成功提示                                                                                                                               |
+| primaryField                          | `string`                                                                                | `"id"`                          | 设置 ID 字段名。                                                                                                                               |
+| perPage                               | `number`                                                                                | 10                              | 设置一页显示多少条数据。                                                                                                                       |
+| orderBy                               | `string`                                                                                |                                 | 默认排序字段，这个是传给后端，需要后端接口实现                                                                                                 |
+| orderDir                              | `asc` \| `desc`                                                                         |                                 | 排序方向                                                                                                                                       |
+| defaultParams                         | `Object`                                                                                |                                 | 设置默认 filter 默认参数，会在查询的时候一起发给后端                                                                                           |
+| pageField                             | `string`                                                                                | `"page"`                        | 设置分页页码字段名。                                                                                                                           |
+| perPageField                          | `string`                                                                                | `"perPage"`                     | 设置分页一页显示的多少条数据的字段名。注意：最好与 defaultParams 一起使用，请看下面例子。                                                      |
+| pageDirectionField                    | `string`                                                                                | `"pageDir"`                     | 分页方向字段名可能是 forward 或者 backward                                                                                                     |
+| perPageAvailable                      | `Array<number>`                                                                         | `[5, 10, 20, 50, 100]`          | 设置一页显示多少条数据下拉框可选条数。                                                                                                         |
+| orderField                            | `string`                                                                                |                                 | 设置用来确定位置的字段名，设置后新的顺序将被赋值到该字段中。                                                                                   |
+| hideQuickSaveBtn                      | `boolean`                                                                               | `false`                         | 隐藏顶部快速保存提示                                                                                                                           |
+| autoJumpToTopOnPagerChange            | `boolean`                                                                               | `false`                         | 当切分页的时候，是否自动跳顶部。                                                                                                               |
+| syncResponse2Query                    | `boolean`                                                                               | `true`                          | 将返回数据同步到过滤器上。                                                                                                                     |
+| keepItemSelectionOnPageChange         | `boolean`                                                                               | `true`                          | 保留条目选择，默认分页、搜素后，用户选择条目会被清空，开启此选项后会保留用户选择，可以实现跨页面批量操作。                                     |
+| labelTpl                              | `string`                                                                                |                                 | 单条描述模板，`keepItemSelectionOnPageChange`设置为`true`后会把所有已选择条目列出来，此选项可以用来定制条目展示文案。                          |
+| headerToolbar                         | Array                                                                                   | `['bulkActions', 'pagination']` | 顶部工具栏配置                                                                                                                                 |
+| footerToolbar                         | Array                                                                                   | `['statistics', 'pagination']`  | 底部工具栏配置                                                                                                                                 |
+| alwaysShowPagination                  | `boolean`                                                                               | `false`                         | 是否总是显示分页                                                                                                                               |
+| affixHeader                           | `boolean`                                                                               | `true`                          | 是否固定表头(table 下)                                                                                                                         |
+| autoGenerateFilter                    | `Object \| boolean`                                                                     |                                 | 是否开启查询区域，开启后会根据列元素的 `searchable` 属性值，自动生成查询条件表单                                                               |
+| resetPageAfterAjaxItemAction          | `boolean`                                                                               | `false`                         | 单条数据 ajax 操作后是否重置页码为第一页                                                                                                       |
+| autoFillHeight                        | `boolean` 丨 `{height: number}`                                                         |                                 | 内容区域自适应高度                                                                                                                             |
+| canAccessSuperData                    | `boolean`                                                                               | `true`                          | 指定是否可以自动获取上层的数据并映射到表格行数据上，如果列也配置了该属性，则列的优先级更高                                                     |
+| matchFunc                             | `string`                                                                                | [`CRUDMatchFunc`](#匹配函数)    | 自定义匹配函数, 当开启`loadDataOnce`时，会基于该函数计算的匹配结果进行过滤，主要用于处理列字段类型较为复杂或者字段值格式和后端返回不一致的场景 | `3.5.0` |
 
 注意除了上面这些属性，CRUD 在不同模式下的属性需要参考各自的文档，比如
 
@@ -2880,31 +3392,32 @@ itemAction 里的 onClick 还能通过 `data` 参数拿到当前行的数据，�
 
 除了 Table 组件默认支持的列配置，CRUD 的列配置还额外支持以下属性：
 
-| 属性名     | 类型                                                            | 默认值  | 说明                                                                        |
-| ---------- | --------------------------------------------------------------- | ------- | --------------------------------------------------------------------------- |
-| sortable   | `boolean`                                                       | `false` | 是否可排序                                                                  |
-| searchable | `boolean` \| `Schema`                                           | `false` | 是否可快速搜索，开启`autoGenerateFilter`后，`searchable`支持配置`Schema`    |
-| filterable | `boolean` \| [`QuickFilterConfig`](./crud.md#quickfilterconfig) | `false` | 是否可快速搜索，`options`属性为静态选项，支持设置`source`属性从接口获取选项 |
-| quickEdit  | `boolean` \| [`QuickEditConfig`](./crud.md#quickeditconfig)     | -       | 快速编辑，一般需要配合`quickSaveApi`接口使用                                |
+| 属性名             | 类型                                                            | 默认值  | 说明                                                                        | 版本 |
+| ------------------ | --------------------------------------------------------------- | ------- | --------------------------------------------------------------------------- | ---- |
+| sortable           | `boolean`                                                       | `false` | 是否可排序                                                                  |
+| searchable         | `boolean` \| `Schema`                                           | `false` | 是否可快速搜索，开启`autoGenerateFilter`后，`searchable`支持配置`Schema`    |
+| filterable         | `boolean` \| [`QuickFilterConfig`](./crud.md#quickfilterconfig) | `false` | 是否可快速搜索，`options`属性为静态选项，支持设置`source`属性从接口获取选项 |
+| quickEdit          | `boolean` \| [`QuickEditConfig`](./crud.md#quickeditconfig)     | -       | 快速编辑，一般需要配合`quickSaveApi`接口使用                                |
+| quickEditEnabledOn | `SchemaExpression`                                              | -       | 开启快速编辑条件[表达式](../../docs/concepts/expression)                    |      |
 
 #### QuickFilterConfig
 
-| 属性名     | 类型                          | 默认值  | 说明                                                     | 版本    |
-| ---------- | ----------------------------- | ------- | -------------------------------------------------------- | ------- |
-| options    | `Array<any>`                  | -       | 静态选项                                                 |         |
-| multiple   | `boolean`                     | `false` | 是否支持多选                                             |         |
-| source     | [`Api`](../../docs/types/api) | -       | 选项 API 接口                                            |         |
-| strictMode | `string`                      | `false` | 严格模式，开启严格模式后，会采用 JavaScript 严格想等比较 | `2.3.0` |
+| 属性名        | 类型                                      | 默认值  | 说明                                                     | 版本                        |
+| ------------- | ----------------------------------------- | ------- | -------------------------------------------------------- | --------------------------- |
+| options       | `Array<any>`                              | -       | 静态选项                                                 |                             |
+| multiple      | `boolean`                                 | `false` | 是否支持多选                                             |                             |
+| source        | [`Api`](../../docs/types/api) \| `string` | -       | 选项 API 接口                                            | `3.6.0`版本后支持上下文变量 |
+| refreshOnOpen | `boolean`                                 | `false` | 配置 source 前提下，每次展开筛选浮层是否重新加载选项数据 | `2.9.0`                     |
+| strictMode    | `boolean`                                 | `false` | 严格模式，开启严格模式后，会采用 JavaScript 严格相等比较 | `2.3.0`                     |
 
 #### QuickEditConfig
 
-| 属性名             | 类型                      | 默认值      | 说明                                                                                                    | 版本 |
-| ------------------ | ------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- | ---- |
-| type               | `SchemaType`              | -           | 表单项组件类型                                                                                          |      |
-| body               | `SchemaCollection`        | -           | 组件容器，支持多个表单项组件                                                                            |      |
-| mode               | `'inline' \| 'popOver'`   | `'popOver'` | 编辑模式，inline 为行内编辑，popOver 为浮层编辑                                                         |      |
-| saveImmediately    | `boolean` 或 `{api: Api}` | `false`     | 是否修改后即时保存，一般需要配合`quickSaveItemApi`接口使用，也可以直接配置[`Api`](../../docs/types/api) |      |
-| quickEditEnabledOn | `SchemaExpression`        | -           | 开启快速编辑条件[表达式](../../docs/concepts/expression)                                                |      |
+| 属性名          | 类型                      | 默认值      | 说明                                                                                                    | 版本 |
+| --------------- | ------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- | ---- |
+| type            | `SchemaType`              | -           | 表单项组件类型                                                                                          |      |
+| body            | `SchemaCollection`        | -           | 组件容器，支持多个表单项组件                                                                            |      |
+| mode            | `'inline' \| 'popOver'`   | `'popOver'` | 编辑模式，inline 为行内编辑，popOver 为浮层编辑                                                         |      |
+| saveImmediately | `boolean` 或 `{api: Api}` | `false`     | 是否修改后即时保存，一般需要配合`quickSaveItemApi`接口使用，也可以直接配置[`Api`](../../docs/types/api) |      |
 
 ### columns-toggler 属性表
 
@@ -2927,3 +3440,1584 @@ itemAction 里的 onClick 还能通过 `data` 参数拿到当前行的数据，�
 | icon            | `string`                       |           | 按钮的图标                             |
 | className       | `string`                       |           | 外层 CSS 类名                          |
 | btnClassName    | `string`                       |           | 按钮的 CSS 类名                        |
+
+## 事件表
+
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`或`${event.data.[事件参数名]}`来获取事件产生的数据，详细查看[事件动作](../../docs/concepts/event-action)。
+
+| 事件名称       | 事件参数                                                                        | 说明                                                           |
+| -------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| selectedChange | `selectedItems: item[]` 已选择行<br/>`unSelectedItems: item[]` 未选择行         | 手动选择表格项时触发                                           |
+| columnSort     | `orderBy: string` 列排序列名<br/>`orderDir: string` 列排序值                    | 点击列排序时触发                                               |
+| columnFilter   | `filterName: string` 列筛选列名<br/>`filterValue: string \| undefined` 列筛选值 | 点击列筛选时触发，点击重置后事件参数`filterValue`为`undefined` |
+| columnSearch   | `searchName: string` 列搜索列名<br/>`searchValue: object` 列搜索数据            | 点击列搜索时触发                                               |
+| orderChange    | `movedItems: item[]` 已排序数据                                                 | 手动拖拽行排序时触发                                           |
+| columnToggled  | `columns: item[]` 当前显示的列配置数据                                          | 点击自定义列时触发                                             |
+| rowClick       | `item: object` 行点击数据<br/>`index: number` 行索引                            | 点击整行时触发                                                 |
+| rowMouseEnter  | `item: object` 行移入数据<br/>`index: number` 行索引                            | 移入整行时触发                                                 |
+| rowMouseLeave  | `item: object` 行移出数据<br/>`index: number` 行索引                            | 移出整行时触发                                                 |
+
+### selectedChange
+
+在开启批量操作后才会用到，可以尝试勾选列表的行记录。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "onEvent": {
+      "selectedChange": {
+        "actions": [
+          {
+            "actionType": "toast",
+            "args": {
+              "msg": "已选择${event.data.selectedItems.length}条记录"
+            }
+          }
+        ]
+      }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID"
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine"
+      },
+      {
+        "name": "browser",
+        "label": "Browser"
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### columnSort
+
+列排序，可以尝试点击`Browser`列右侧的排序图标。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "onEvent": {
+      "columnSort": {
+            "actions": [
+                {
+                    "actionType": "toast",
+                    "args": {
+                    "msgType": "info",
+                    "msg": "orderBy：${event.data.orderBy},orderDir：${event.data.orderDir}"
+                    }
+                }
+            ]
+        }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### columnFilter
+
+列过滤，可以尝试点击`Rendering engine`列右侧的筛选图标。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "onEvent": {
+        "columnFilter": {
+            "actions": [
+                {
+                    "actionType": "toast",
+                    "args": {
+                    "msgType": "info",
+                    "msg": "filterName：${event.data.filterName},filterValue：${event.data.filterValue}"
+                    }
+                }
+            ]
+        }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### columnSearch
+
+列检索，，可以尝试点击`ID`列右侧的检索图标。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "onEvent": {
+        "columnSearch": {
+            "actions": [
+                {
+                    "actionType": "toast",
+                    "args": {
+                    "msgType": "info",
+                    "msg": "searchName：${event.data.searchName},searchValue：${event.data.searchValue|json}"
+                    }
+                }
+            ]
+        }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### columnToggled
+
+点击自定义列，可以尝试修改`自定义列`的配置。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "onEvent": {
+      "columnToggled": {
+            "actions": [
+            {
+                "actionType": "toast",
+                "args": {
+                "msgType": "info",
+                "msg": "当前显示${event.data.columns.length}列"
+                }
+            }
+            ]
+        }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### orderChange
+
+在开启拖拽排序行记录后才会用到，排序确认后触发。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "draggable": true,
+    "onEvent": {
+      "orderChange": {
+            "actions": [
+                {
+                    "actionType": "toast",
+                    "args": {
+                        "msgType": "info",
+                        "msg": "${event.data.movedItems.length}行发生移动"
+                    }
+                }
+            ]
+        }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### rowClick
+
+点击行记录。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "onEvent": {
+      "rowClick": {
+            "actions": [
+                {
+                    "actionType": "toast",
+                    "args": {
+                        "msgType": "info",
+                        "msg": "行单击数据：${event.data.item|json}；行索引：${event.data.index}"
+                    }
+                }
+            ]
+        }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### rowMouseEnter
+
+鼠标移入行记录。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "onEvent": {
+      "rowMouseEnter": {
+            "actions": [
+                {
+                    "actionType": "toast",
+                    "args": {
+                        "msgType": "info",
+                        "msg": "行索引：${event.data.index}"
+                    }
+                }
+            ]
+        }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### rowMouseLeave
+
+鼠标移出行记录。
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "onEvent": {
+      "rowMouseLeave": {
+            "actions": [
+                {
+                    "actionType": "toast",
+                    "args": {
+                        "msgType": "info",
+                        "msg": "行索引：${event.data.index}"
+                    }
+                }
+            ]
+        }
+    },
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+### 列的事件表
+
+表格的默认列定义的事件如下，即 click、mouseenter、mouseleave。如果列定义是其他组件，则事件表就是这个组件对应的事件表，例如列定义是 Switch 组件，则可以监听 [Switch 的 change 事件](./form/switch#%E4%BA%8B%E4%BB%B6%E8%A1%A8)。
+
+| 事件名称   | 事件参数                            | 说明                                           |
+| ---------- | ----------------------------------- | ---------------------------------------------- |
+| click      | `[columnName]: string` 对应列名的值 | 监听表格列点击事件，表格数据点击时触发         |
+| mouseenter | `[columnName]: string` 对应列名的值 | 监听表格列鼠标移入事件，表格数据鼠标移入时触发 |
+| mouseleave | `[columnName]: string` 对应列名的值 | 监听表格列鼠标移出事件，表格数据鼠标移出时触发 |
+
+```schema: scope="body"
+{
+  "type": "page",
+  "body": {
+    "type": "crud",
+    "api": "/api/mock2/sample",
+    "syncLocation": false,
+    "bulkActions": [
+        {
+            "label": "批量删除",
+            "actionType": "ajax",
+            "api": "delete:/api/mock2/sample/${ids|raw}",
+            "confirmText": "确定要批量删除?"
+        }
+    ],
+    "columns": [
+      {
+        "name": "id",
+        "label": "ID",
+        "searchable": true
+      },
+      {
+        "name": "engine",
+        "label": "Rendering engine",
+        "filterable": {
+            "options": [
+                "Internet Explorer 4.0",
+                "Internet Explorer 5.0"
+            ]
+        },
+        "onEvent": {
+            "click": {
+                "actions": [
+                    {
+                        "actionType": "toast",
+                        "args": {
+                            "msgType": "info",
+                            "msg": "第${event.data.index}行的${event.data.engine}"
+                        }
+                    }
+                ]
+            }
+        }
+      },
+      {
+        "name": "browser",
+        "label": "Browser",
+        "sortable": true,
+        "onEvent": {
+            "mouseenter": {
+                "actions": [
+                    {
+                        "actionType": "toast",
+                        "args": {
+                            "msgType": "info",
+                            "msg": "第${event.data.index}行的${event.data.browser}"
+                        }
+                    }
+                ]
+            },
+            "mouseleave": {
+                "actions": [
+                    {
+                        "actionType": "toast",
+                        "args": {
+                            "msgType": "info",
+                            "msg": "第${event.data.index}行的${event.data.browser}"
+                        }
+                    }
+                ]
+            }
+        }
+      },
+      {
+        "name": "platform",
+        "label": "Platform(s)"
+      },
+      {
+        "name": "version",
+        "label": "Engine version"
+      },
+      {
+        "name": "grade",
+        "label": "CSS grade"
+      }
+    ]
+  }
+}
+```
+
+## 动作表
+
+当前组件对外暴露以下特性动作，其他组件可以通过指定`actionType: 动作名称`、`componentId: 该组件id`来触发这些动作，动作配置可以通过`args: {动作配置项名称: xxx}`来配置具体的参数，详细请查看[事件动作](../../docs/concepts/event-action#触发其他组件的动作)。
+
+| 动作名称 | 动作配置        | 说明         |
+| -------- | --------------- | ------------ |
+| reload   | -               | 刷新列表请求 |
+| setValue | `value: object` | 更新列表记录 |
+
+value 结构说明：
+
+| 属性名         | 类型     | 默认值 | 说明     |
+| -------------- | -------- | ------ | -------- |
+| items 或 rows  | `item[]` |        | 列表记录 |
+| count 或 total | `number` |        | 记录总数 |
+
+### reload
+
+#### 只做刷新
+
+重新发送`api`请求，刷新 CRUD 时，只配置`componentId`目标组件 ID 即可。
+
+```schema
+{
+  "type": "page",
+  "data": {
+    "name": "amis",
+    "age": 18,
+    "date": "2023-6-6"
+  },
+  "body": [
+    {
+      "type": "button",
+      "label": "刷新CRUD数据加载请求",
+      level: 'primary',
+      "className": "mb-2",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "componentId": "crud_reload1",
+              "actionType": "reload"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "crud",
+      "api": "/api/mock2/sample",
+      "id": "crud_reload1",
+      "syncLocation": false,
+      "columns": [
+        {
+          "name": "id",
+          "label": "ID"
+        },
+        {
+          "name": "engine",
+          "label": "Rendering engine"
+        },
+        {
+          "name": "browser",
+          "label": "Browser"
+        },
+        {
+          "name": "platform",
+          "label": "Platform(s)"
+        },
+        {
+          "name": "version",
+          "label": "Engine version"
+        },
+        {
+          "name": "grade",
+          "label": "CSS grade"
+        },
+        {
+          "type": "operation",
+          "label": "操作",
+          "buttons": [
+            {
+              "label": "详情",
+              "type": "button",
+              "level": "link",
+              "actionType": "dialog",
+              "dialog": {
+                "title": "查看详情",
+                "body": {
+                  "type": "form",
+                  "body": [
+                    {
+                      "type": "input-text",
+                      "name": "engine",
+                      "label": "Engine"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "browser",
+                      "label": "Browser"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "platform",
+                      "label": "platform"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "version",
+                      "label": "version"
+                    },
+                    {
+                      "type": "control",
+                      "label": "grade",
+                      "body": {
+                        "type": "tag",
+                        "label": "${grade}",
+                        "displayMode": "normal",
+                        "color": "active"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "删除",
+              "type": "button",
+              "level": "link",
+              "className": "text-danger",
+              "disabledOn": "this.grade === 'A'"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### 追加请求参数并刷新
+
+刷新 CRUD 时，如果配置了`data`，将先发送`data`给目标 CRUD 组件，并将该数据合并到目标 CRUD 组件的数据域中，然后重启请求数据，并且自动追加`data`参数到请求中。
+
+```schema
+{
+  "type": "page",
+  "data": {
+    "name": "amis",
+    "age": 18,
+    "date": "2023-6-6"
+  },
+  "body": [
+    {
+      "type": "button",
+      "label": "刷新CRUD数据加载请求，同时追加参数date",
+      level: 'primary',
+      "className": "mb-2",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "componentId": "crud_reload2",
+              "actionType": "reload",
+              data: {
+                date: "${date}"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "crud",
+      "api": "/api/mock2/sample",
+      "id": "crud_reload2",
+      "syncLocation": false,
+      "columns": [
+        {
+          "name": "id",
+          "label": "ID"
+        },
+        {
+          "name": "engine",
+          "label": "Rendering engine"
+        },
+        {
+          "name": "browser",
+          "label": "Browser"
+        },
+        {
+          "name": "platform",
+          "label": "Platform(s)"
+        },
+        {
+          "name": "version",
+          "label": "Engine version"
+        },
+        {
+          "name": "grade",
+          "label": "CSS grade"
+        },
+        {
+          "type": "operation",
+          "label": "操作",
+          "buttons": [
+            {
+              "label": "详情",
+              "type": "button",
+              "level": "link",
+              "actionType": "dialog",
+              "dialog": {
+                "title": "查看详情",
+                "body": {
+                  "type": "form",
+                  "body": [
+                    {
+                      "type": "input-text",
+                      "name": "engine",
+                      "label": "Engine"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "browser",
+                      "label": "Browser"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "platform",
+                      "label": "platform"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "version",
+                      "label": "version"
+                    },
+                    {
+                      "type": "control",
+                      "label": "grade",
+                      "body": {
+                        "type": "tag",
+                        "label": "${grade}",
+                        "displayMode": "normal",
+                        "color": "active"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "删除",
+              "type": "button",
+              "level": "link",
+              "className": "text-danger",
+              "disabledOn": "this.grade === 'A'"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+通过`&: $$`追加触发事件的按钮所在数据域的所有数据，即`name、age、date`。
+
+```schema
+{
+  "type": "page",
+  "data": {
+    "name": "amis",
+    "age": 18,
+    "date": "2023-6-6"
+  },
+  "body": [
+    {
+      "type": "button",
+      "label": "刷新CRUD数据加载请求，同时追加按钮所在数据域的所有数据",
+      level: 'primary',
+      "className": "mb-2",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "componentId": "crud_reload2",
+              "actionType": "reload",
+              data: {
+                "&": "$$"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "crud",
+      "api": "/api/mock2/sample",
+      "id": "crud_reload2",
+      "syncLocation": false,
+      "columns": [
+        {
+          "name": "id",
+          "label": "ID"
+        },
+        {
+          "name": "engine",
+          "label": "Rendering engine"
+        },
+        {
+          "name": "browser",
+          "label": "Browser"
+        },
+        {
+          "name": "platform",
+          "label": "Platform(s)"
+        },
+        {
+          "name": "version",
+          "label": "Engine version"
+        },
+        {
+          "name": "grade",
+          "label": "CSS grade"
+        },
+        {
+          "type": "operation",
+          "label": "操作",
+          "buttons": [
+            {
+              "label": "详情",
+              "type": "button",
+              "level": "link",
+              "actionType": "dialog",
+              "dialog": {
+                "title": "查看详情",
+                "body": {
+                  "type": "form",
+                  "body": [
+                    {
+                      "type": "input-text",
+                      "name": "engine",
+                      "label": "Engine"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "browser",
+                      "label": "Browser"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "platform",
+                      "label": "platform"
+                    },
+                    {
+                      "type": "input-text",
+                      "name": "version",
+                      "label": "version"
+                    },
+                    {
+                      "type": "control",
+                      "label": "grade",
+                      "body": {
+                        "type": "tag",
+                        "label": "${grade}",
+                        "displayMode": "normal",
+                        "color": "active"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": "删除",
+              "type": "button",
+              "level": "link",
+              "className": "text-danger",
+              "disabledOn": "this.grade === 'A'"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### setValue
+
+通过`setValue`更新指定 CRUD 的数据。
+
+#### 合并数据
+
+默认`setValue`会将新数据与目标组件数据进行合并。
+
+```schema: scope="body"
+[
+    {
+      "type": "button",
+      "label": "更新数据，记录总数被更新为20",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "actionType": "setValue",
+              "componentId": "crud_setvalue",
+              "args": {
+                "value": {
+                  "count": 20
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "crud",
+      "id": "crud_setvalue",
+      "syncLocation": false,
+      "api": "/api/mock2/sample",
+      "quickSaveApi": "/api/mock2/sample/bulkUpdate",
+      "headerToolbar": [
+        {
+          "type": "tpl",
+          "tpl": "记录总数：${count}"
+        }
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "label": "ID",
+          "id": "u:3db3f2b1b99e"
+        },
+        {
+          "name": "engine",
+          "label": "engine",
+          "id": "u:0b9be99f3403"
+        },
+        {
+          "name": "version",
+          "label": "version",
+          "id": "u:4868d7db0139"
+        }
+      ]
+    }
+]
+```
+
+#### 覆盖数据
+
+可以通过`"dataMergeMode": "override"`来覆盖目标组件数据。
+
+```schema: scope="body"
+[
+    {
+      "type": "button",
+      "label": "更新数据，列表记录更新为两条，记录总数被删除",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "actionType": "setValue",
+              "componentId": "crud_setvalue",
+              "args": {
+                "value": {
+                  "items": [
+                    {
+                      "engine": "Trident - f12fj",
+                      "browser": "Internet Explorer 4.0",
+                      "platform": "Win 95+",
+                      "version": "4",
+                      "grade": "X",
+                      "badgeText": "默认",
+                      "id": 1
+                    },
+                    {
+                      "engine": "Trident - oqvc0e",
+                      "browser": "Internet Explorer 5.0",
+                      "platform": "Win 95+",
+                      "version": "5",
+                      "grade": "C",
+                      "badgeText": "危险",
+                      "id": 2
+                    }
+                  ]
+                }
+              },
+              "dataMergeMode": "override"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "crud",
+      "id": "crud_setvalue",
+      "syncLocation": false,
+      "api": "/api/mock2/sample",
+      "quickSaveApi": "/api/mock2/sample/bulkUpdate",
+      "headerToolbar": [
+        {
+          "type": "tpl",
+          "tpl": "记录总数：${count}"
+        }
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "label": "ID",
+          "id": "u:3db3f2b1b99e"
+        },
+        {
+          "name": "engine",
+          "label": "engine",
+          "id": "u:0b9be99f3403"
+        },
+        {
+          "name": "version",
+          "label": "version",
+          "id": "u:4868d7db0139"
+        }
+      ]
+    }
+]
+```
+
+#### 更新列表记录
+
+```schema: scope="body"
+[
+    {
+      "type": "button",
+      "label": "更新列表记录",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "actionType": "setValue",
+              "componentId": "crud_setvalue",
+              "args": {
+                "value": {
+                  "count": 2,
+                  "items": [
+                    {
+                      "engine": "Trident - f12fj",
+                      "browser": "Internet Explorer 4.0",
+                      "platform": "Win 95+",
+                      "version": "4",
+                      "grade": "X",
+                      "badgeText": "默认",
+                      "id": 1
+                    },
+                    {
+                      "engine": "Trident - oqvc0e",
+                      "browser": "Internet Explorer 5.0",
+                      "platform": "Win 95+",
+                      "version": "5",
+                      "grade": "C",
+                      "badgeText": "危险",
+                      "id": 2
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "button",
+      "label": "清空数据",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "actionType": "setValue",
+              "componentId": "crud_setvalue",
+              "args": {
+                "value": {
+                  "items": []
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "crud",
+      "id": "crud_setvalue",
+      "syncLocation": false,
+      "api": "/api/mock2/sample",
+      "quickSaveApi": "/api/mock2/sample/bulkUpdate",
+      "headerToolbar": [
+        {
+          "type": "tpl",
+          "tpl": "记录总数：${count}"
+        }
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "label": "ID",
+          "id": "u:3db3f2b1b99e"
+        },
+        {
+          "name": "engine",
+          "label": "engine",
+          "id": "u:0b9be99f3403"
+        },
+        {
+          "name": "version",
+          "label": "version",
+          "id": "u:4868d7db0139"
+        }
+      ]
+    }
+]
+```
+
+#### 更新指定行记录
+
+可以通过指定`index`或者`condition`来分别更新指定索引的行记录和指定满足条件（条件表达式或者 ConditionBuilder）的行记录，另外`replace`同样生效，即可以完全替换指定行记录，也可以对指定行记录做合并。
+
+```schema
+{
+  type: 'page',
+  data: {
+    i: '3,5'
+  },
+  body: [
+    [
+      {
+        "type": "button",
+        "label": "更新index为3和5的行记录",
+        "onEvent": {
+          "click": {
+            "actions": [
+              {
+                "actionType": "setValue",
+                "componentId": "crud_setvalue_item",
+                "args": {
+                  "value": {
+                    "engine": "amis",
+                    "browser": "Chrome",
+                    "platform": "Mac Pro",
+                    "version": "4",
+                    "grade": "Y",
+                    "badgeText": "你好！",
+                    "id": 1234
+                  },
+                  "index": "${i}"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "button",
+        "label": "更新index为3和5的行记录(替换)",
+        "onEvent": {
+          "click": {
+            "actions": [
+              {
+                "actionType": "setValue",
+                "componentId": "crud_setvalue_item",
+                "args": {
+                  "value": {
+                    "engine": "amis",
+                    "id": 1234
+                  },
+                  "index": "${i}",
+                  "replace": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+          "type": "button",
+          "label": "更新version=7的行记录",
+          "onEvent": {
+            "click": {
+              "actions": [
+                {
+                  "actionType": "setValue",
+                  "componentId": "crud_setvalue_item",
+                  "args": {
+                    "value": {
+                      "engine": "amis",
+                      "browser": "Chrome",
+                      "platform": "Mac Pro",
+                      "version": "4",
+                      "grade": "Y",
+                      "badgeText": "你好！",
+                      "id": 1234
+                    },
+                    "condition": "${version === '7'}"
+                  }
+                }
+              ]
+            }
+          }
+      },
+      {
+        "type": "button",
+        "label": "更新version=4的行记录",
+        "onEvent": {
+          "click": {
+            "actions": [
+              {
+                "actionType": "setValue",
+                "componentId": "crud_setvalue_item",
+                "args": {
+                  "value": {
+                    "engine": "amis",
+                    "browser": "Chrome",
+                    "platform": "Mac Pro",
+                    "version": "4",
+                    "grade": "Y",
+                    "badgeText": "你好！",
+                    "id": 1234
+                  },
+                  "condition": {
+                      conjunction: 'and',
+                      children: [
+                        {
+                          left: {
+                            type: 'field',
+                            field: 'version'
+                          },
+                          op: 'equal',
+                          right: "4"
+                        }
+                      ]
+                    }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "crud",
+        "id": "crud_setvalue_item",
+        "syncLocation": false,
+        "api": "/api/mock2/sample",
+        "quickSaveApi": "/api/mock2/sample/bulkUpdate",
+        "headerToolbar": [
+          {
+            "type": "tpl",
+            "tpl": "记录总数：${count}"
+          }
+        ],
+        "columns": [
+          {
+            "name": "id",
+            "label": "ID",
+            "id": "u:3db3f2b1b99e"
+          },
+          {
+            "name": "engine",
+            "label": "engine",
+            "id": "u:0b9be99f3403"
+          },
+          {
+            "name": "version",
+            "label": "version",
+            "id": "u:4868d7db0139"
+          }
+        ]
+      }
+  ]
+  ]
+}
+```
+
+#### 行记录中字段赋值
+
+需要通过表达式配置动态`id`和`componentId`。例如修改`engine`选中状态的同时选中`version`，勾选`id`的同时去掉对`engine`的选中。
+
+```schema: scope="body"
+{
+    "type": "crud",
+    "syncLocation": false,
+    "api": "/api/mock2/sample",
+    "quickSaveApi": "/api/mock2/sample/bulkUpdate",
+    "columns": [
+        {
+            "name": "id",
+            "label": "ID",
+            "onEvent": {
+                "click": {
+                    "actions": [
+                    {
+                        "actionType": "setValue",
+                        "componentId": "version_${index}",
+                        "args": {
+                            "value": false
+                        }
+                    }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "engine",
+            "type": "checkbox",
+            "label": "engine",
+            "quickEdit": true,
+            "quickEditEnabledOn": "this.id < 5",
+            "onEvent": {
+                "change": {
+                    "actions": [
+                    {
+                        "actionType": "setValue",
+                        "componentId": "version_${index}",
+                        "args": {
+                            "value": true
+                        }
+                    }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "version",
+            "type": "checkbox",
+            "label": "version",
+            "quickEdit": true,
+            "quickEditEnabledOn": "this.id < 5",
+            "id": "version_${index}"
+        }
+    ],
+    "id": "u:f5bad706d7c5"
+}
+```

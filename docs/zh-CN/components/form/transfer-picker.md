@@ -117,12 +117,16 @@ icon:
 ```
 
 ## 属性表
+下面属性为`transfer-picker`独占属性, 更多属性用法，参考[穿梭器（Transfer）](./transfer)
 
-更多配置请参考[穿梭器（Transfer）](./transfer)。
+| 属性名            | 类型      | 默认值  | 说明                                              
+| ----------------- | --------- | ------- | ------------------------------------------------- 
+| borderMode | `'full'` \| `'half'` \| `'none'` |  | 边框模式，`'full'`为全边框，`'half'`为半边框，`'none'`为没边框       |
+| pickerSize          | string |  | 弹窗大小，支持: xs、sm、md、lg、xl、full                                |
 
 ## 事件表
 
-当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`来获取事件产生的数据（`< 2.3.2 及以下版本 为 ${event.data.[事件参数名]}`），详细请查看[事件动作](../../docs/concepts/event-action)。
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`或`${event.data.[事件参数名]}`来获取事件产生的数据，详细请查看[事件动作](../../docs/concepts/event-action)。
 
 > `[name]`表示当前组件绑定的名称，即`name`属性，如果没有配置`name`属性，则通过`value`取值。
 
