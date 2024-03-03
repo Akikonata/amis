@@ -7,7 +7,8 @@ import {
   RendererProps,
   evalExpressionWithConditionBuilder,
   filterTarget,
-  mapTree
+  mapTree,
+  buildTestId
 } from 'amis-core';
 import {SchemaNode, Schema, ActionObject, PlainObject} from 'amis-core';
 import {CRUDStore, ICRUDStore} from 'amis-core';
@@ -760,8 +761,13 @@ export default class CRUD extends React.Component<CRUDProps, any> {
       stopAutoRefreshWhenModalIsOpen
     } = this.props;
 
+    if (store.loading) {
+      //由于curd的loading样式未遮罩按钮部分，如果处于加载中时不处理操作
+      return;
+    }
+
     if (action.actionType === 'dialog') {
-      store.setCurrentAction(action);
+      store.setCurrentAction(action, this.props.resolveDefinitions);
       const idx: number = (ctx as any).index;
       const length = store.items.length;
       stopAutoRefreshWhenModalIsOpen && clearTimeout(this.timer);
@@ -778,7 +784,7 @@ export default class CRUD extends React.Component<CRUDProps, any> {
         delegate || (this.context as any)
       );
     } else if (action.actionType === 'ajax') {
-      store.setCurrentAction(action);
+      store.setCurrentAction(action, this.props.resolveDefinitions);
       const data = ctx;
 
       // 由于 ajax 一段时间后再弹出，肯定被浏览器给阻止掉的，所以提前弹。
@@ -822,12 +828,12 @@ export default class CRUD extends React.Component<CRUDProps, any> {
       pickerMode &&
       (action.actionType === 'confirm' || action.actionType === 'submit')
     ) {
-      store.setCurrentAction(action);
+      store.setCurrentAction(action, this.props.resolveDefinitions);
       return Promise.resolve({
         items: store.selectedItems.concat()
       });
     } else if (action.onClick) {
-      store.setCurrentAction(action);
+      store.setCurrentAction(action, this.props.resolveDefinitions);
       let onClick = action.onClick;
       if (typeof onClick === 'string') {
         onClick = str2function(onClick, 'event', 'props', 'data');
@@ -976,8 +982,13 @@ export default class CRUD extends React.Component<CRUDProps, any> {
   handleFilterReset(values: object, action: any) {
     const {store, syncLocation, env, pageField, perPageField} = this.props;
 
+    const resetQuery: any = {};
+    Object.keys(values).forEach(key => (resetQuery[key] = ''));
     store.updateQuery(
-      store.pristineQuery,
+      {
+        ...resetQuery,
+        ...store.pristineQuery
+      },
       syncLocation && env && env.updateLocation
         ? (location: any) => env.updateLocation(location)
         : undefined,
@@ -1205,11 +1216,14 @@ export default class CRUD extends React.Component<CRUDProps, any> {
   openFeedback(dialog: any, ctx: any) {
     return new Promise(resolve => {
       const {store} = this.props;
-      store.setCurrentAction({
-        type: 'button',
-        actionType: 'dialog',
-        dialog: dialog
-      });
+      store.setCurrentAction(
+        {
+          type: 'button',
+          actionType: 'dialog',
+          dialog: dialog
+        },
+        this.props.resolveDefinitions
+      );
       store.openDialog(
         ctx,
         undefined,
@@ -1819,10 +1833,10 @@ export default class CRUD extends React.Component<CRUDProps, any> {
   clearSelection() {
     const {store} = this.props;
     const selected = store.selectedItems.concat();
-    const unSelected = store.unSelectedItems.concat();
+    const unSelected = store.unSelectedItems.concat(selected);
 
     store.setSelectedItems([]);
-    store.setUnSelectedItems(unSelected.concat(selected));
+    store.setUnSelectedItems(unSelected);
   }
 
   hasBulkActionsToolbar() {
@@ -2493,6 +2507,7 @@ export default class CRUD extends React.Component<CRUDProps, any> {
       classnames: cx,
       keepItemSelectionOnPageChange,
       maxKeepItemSelectionLength,
+      maxItemSelectionLength,
       onAction,
       popOverContainer,
       translate: __,
@@ -2510,6 +2525,7 @@ export default class CRUD extends React.Component<CRUDProps, any> {
       onSearchableFromInit,
       headerToolbarRender,
       footerToolbarRender,
+      testid,
       ...rest
     } = this.props;
 
@@ -2520,6 +2536,7 @@ export default class CRUD extends React.Component<CRUDProps, any> {
           'is-mobile': isMobile()
         })}
         style={style}
+        {...buildTestId(testid)}
       >
         {filter && (!store.filterTogggable || store.filterVisible)
           ? render(
@@ -2580,12 +2597,15 @@ export default class CRUD extends React.Component<CRUDProps, any> {
                   : false
                 : multiple,
             selected:
-              pickerMode || keepItemSelectionOnPageChange
+              pickerMode ||
+              keepItemSelectionOnPageChange ||
+              maxItemSelectionLength
                 ? store.selectedItemsAsArray
                 : undefined,
             strictMode,
             keepItemSelectionOnPageChange,
             maxKeepItemSelectionLength,
+            maxItemSelectionLength,
             valueField: valueField || primaryField,
             primaryField: primaryField,
             hideQuickSaveBtn,

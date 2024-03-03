@@ -8,7 +8,8 @@ import {
   RendererProps,
   resolveMappingObject,
   CustomStyle,
-  setThemeClassName
+  setThemeClassName,
+  buildTestId
 } from 'amis-core';
 import {BaseSchema, SchemaObject} from '../Schema';
 
@@ -276,6 +277,7 @@ export default class TableView extends React.Component<TableViewProps, object> {
       wrapperCustomStyle,
       env,
       themeCss,
+      testid,
       baseControlClassName
     } = this.props;
 
@@ -284,15 +286,27 @@ export default class TableView extends React.Component<TableViewProps, object> {
         className={cx(
           'TableView',
           className,
-          setThemeClassName('baseControlClassName', id, themeCss),
-          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+          setThemeClassName({
+            ...this.props,
+            name: 'baseControlClassName',
+            id,
+            themeCss
+          }),
+          setThemeClassName({
+            ...this.props,
+            name: 'wrapperCustomStyle',
+            id,
+            themeCss: wrapperCustomStyle
+          })
         )}
         style={{width: width, borderCollapse: 'collapse'}}
+        {...buildTestId(testid)}
       >
         {this.renderCaption()}
         {this.renderCols()}
         <tbody>{this.renderTrs(trs)}</tbody>
         <CustomStyle
+          {...this.props}
           config={{
             wrapperCustomStyle,
             id,

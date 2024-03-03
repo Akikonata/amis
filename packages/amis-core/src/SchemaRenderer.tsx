@@ -1,6 +1,7 @@
 import difference from 'lodash/difference';
 import omit from 'lodash/omit';
 import React from 'react';
+import {isValidElementType} from 'react-is';
 import LazyComponent from './components/LazyComponent';
 import {
   filterSchema,
@@ -349,7 +350,7 @@ export class SchemaRenderer extends React.Component<SchemaRendererProps, any> {
             statusStore,
             dispatchEvent: this.dispatchEvent
           });
-    } else if (typeof schema.component === 'function') {
+    } else if (schema.component && isValidElementType(schema.component)) {
       const isSFC = !(schema.component.prototype instanceof React.Component);
       const {
         data: defaultData,
@@ -473,6 +474,10 @@ export class SchemaRenderer extends React.Component<SchemaRendererProps, any> {
 
     if (isStatic !== undefined) {
       (props as any).static = isStatic;
+    }
+
+    if (rest.env.enableTestid && props.id && !props.testid) {
+      props.testid = props.id;
     }
 
     // 自动解析变量模式，主要是方便直接引入第三方组件库，无需为了支持变量封装一层

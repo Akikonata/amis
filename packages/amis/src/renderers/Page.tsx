@@ -480,7 +480,7 @@ export default class Page extends React.Component<PageProps> {
     const {env, store, messages, onAction} = this.props;
 
     if (action.actionType === 'dialog') {
-      store.setCurrentAction(action);
+      store.setCurrentAction(action, this.props.resolveDefinitions);
       store.openDialog(
         ctx,
         undefined,
@@ -488,10 +488,10 @@ export default class Page extends React.Component<PageProps> {
         delegate || (this.context as any)
       );
     } else if (action.actionType === 'drawer') {
-      store.setCurrentAction(action);
+      store.setCurrentAction(action, this.props.resolveDefinitions);
       store.openDrawer(ctx, undefined, undefined, delegate);
     } else if (action.actionType === 'ajax') {
-      store.setCurrentAction(action);
+      store.setCurrentAction(action, this.props.resolveDefinitions);
 
       if (!isEffectiveApi(action.api, ctx)) {
         return;
@@ -661,11 +661,14 @@ export default class Page extends React.Component<PageProps> {
   openFeedback(dialog: any, ctx: any) {
     return new Promise(resolve => {
       const {store} = this.props;
-      store.setCurrentAction({
-        type: 'button',
-        actionType: 'dialog',
-        dialog: dialog
-      });
+      store.setCurrentAction(
+        {
+          type: 'button',
+          actionType: 'dialog',
+          dialog: dialog
+        },
+        this.props.resolveDefinitions
+      );
       store.openDialog(
         ctx,
         undefined,
@@ -806,14 +809,24 @@ export default class Page extends React.Component<PageProps> {
           className={cx(
             `Page-header`,
             headerClassName,
-            setThemeClassName('headerControlClassName', id, themeCss)
+            setThemeClassName({
+              ...this.props,
+              name: 'headerControlClassName',
+              id,
+              themeCss
+            })
           )}
         >
           {title ? (
             <h2
               className={cx(
                 'Page-title',
-                setThemeClassName('titleControlClassName', id, themeCss)
+                setThemeClassName({
+                  ...this.props,
+                  name: 'titleControlClassName',
+                  id,
+                  themeCss
+                })
               )}
             >
               {render('title', title, subProps)}
@@ -842,7 +855,12 @@ export default class Page extends React.Component<PageProps> {
           className={cx(
             `Page-toolbar`,
             toolbarClassName,
-            setThemeClassName('toolbarControlClassName', id, themeCss)
+            setThemeClassName({
+              ...this.props,
+              name: 'toolbarControlClassName',
+              id,
+              themeCss
+            })
           )}
         >
           {render('toolbar', toolbar || '', subProps)}
@@ -912,7 +930,12 @@ export default class Page extends React.Component<PageProps> {
             className={cx(
               `Page-body`,
               bodyClassName,
-              setThemeClassName('bodyControlClassName', id, themeCss)
+              setThemeClassName({
+                ...this.props,
+                name: 'bodyControlClassName',
+                id,
+                themeCss
+              })
             )}
             role="page-body"
           >
@@ -951,8 +974,18 @@ export default class Page extends React.Component<PageProps> {
           hasAside ? `Page--withSidebar` : '',
           hasAside && asideSticky ? `Page--asideSticky` : '',
           className,
-          setThemeClassName('baseControlClassName', id, themeCss),
-          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+          setThemeClassName({
+            name: 'baseControlClassName',
+            id,
+            themeCss,
+            ...this.props
+          }),
+          setThemeClassName({
+            name: 'wrapperCustomStyle',
+            id,
+            themeCss: wrapperCustomStyle,
+            ...this.props
+          })
         )}
         onClick={this.handleClick}
         style={styleVar}
@@ -963,7 +996,12 @@ export default class Page extends React.Component<PageProps> {
               `Page-aside`,
               asideResizor ? 'relative' : 'Page-aside--withWidth',
               asideClassName,
-              setThemeClassName('asideControlClassName', id, themeCss)
+              setThemeClassName({
+                ...this.props,
+                name: 'asideControlClassName',
+                id,
+                themeCss
+              })
             )}
           >
             {render('aside', aside || '', {
@@ -1032,6 +1070,7 @@ export default class Page extends React.Component<PageProps> {
           }
         )}
         <CustomStyle
+          {...this.props}
           config={{
             wrapperCustomStyle,
             id,

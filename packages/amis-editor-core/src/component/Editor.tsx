@@ -10,7 +10,7 @@ import {PluginEventListener, RendererPluginAction} from '../plugin';
 import {reGenerateID} from '../util';
 import {SubEditor} from './SubEditor';
 import Breadcrumb from './Breadcrumb';
-import {destroy} from 'mobx-state-tree';
+import {destroy, isAlive} from 'mobx-state-tree';
 import {ScaffoldModal} from './ScaffoldModal';
 import {PopOverForm} from './PopOverForm';
 import {ContextMenuPanel} from './Panel/ContextMenuPanel';
@@ -210,7 +210,13 @@ export default class Editor extends Component<EditorProps> {
   }
 
   componentDidMount() {
-    if (!this.props.isSubEditor) {
+    const store = this.manager.store;
+    if (this.props.isSubEditor) {
+      // 等待子编辑器动画结束重新获取高亮组件位置
+      setTimeout(() => {
+        store.calculateHighlightBox(store.highlightNodes.map(node => node.id));
+      }, 500);
+    } else {
       this.manager.trigger('init', {
         data: this.manager
       });
@@ -249,7 +255,7 @@ export default class Editor extends Component<EditorProps> {
     this.toDispose.forEach(fn => fn());
     this.toDispose = [];
     this.manager.dispose();
-    destroy(this.store);
+    setTimeout(() => destroy(this.store), 4);
   }
 
   // 快捷功能键
@@ -535,9 +541,9 @@ export default class Editor extends Component<EditorProps> {
       );
       if (this.store.activeId === this.curCopySchemaData.$$id) {
         // 复制和粘贴是同一个元素，则直接追加到当前元素后面
-        this.manager.appendSiblingSchema(reGenerateID(curSimpleSchema));
+        this.manager.appendSiblingSchema(reGenerateID(curSimpleSchema), false);
       } else {
-        this.manager.addElem(reGenerateID(curSimpleSchema));
+        this.manager.addElem(reGenerateID(curSimpleSchema), false);
       }
     }
   }

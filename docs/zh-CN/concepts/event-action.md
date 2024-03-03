@@ -1034,10 +1034,11 @@ run action ajax
 
 > `< 1.8.0 及以下版本`，以下属性与 args 同级。
 
-| 属性名 | 类型     | 默认值 | 说明                                                                                                              |
-| ------ | -------- | ------ | ----------------------------------------------------------------------------------------------------------------- |
-| link   | `string` | `link` | 用来指定跳转地址，跟 url 不同的是，这是单页跳转方式，不会渲染浏览器，请指定 amis 平台内的页面。可用 `${xxx}` 取值 |
-| params | `object` | -      | 页面参数`{key:value}`，支持数据映射，`> 1.9.0 及以上版本`                                                         |
+| 属性名     | 类型     | 默认值 | 说明                                                                                                                          |
+| ---------- | -------- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| link       | `string` | `link` | 用来指定跳转地址，跟 url 不同的是，这是单页跳转方式，不会渲染浏览器，请指定 amis 平台内的页面。可用 `${xxx}` 取值             |
+| params     | `object` | -      | 页面参数`{key:value}`，支持数据映射，`> 1.9.0 及以上版本`                                                                     |
+| targetType | `string` | `page` | 默认为内容区打开`page`，可设置为新窗口打开`blank`，当前页签打开`self`，`blank\|self` 方式会重新渲染浏览器`> 6.1.0 及以上版本` |
 
 ### 浏览器回退
 
@@ -1442,6 +1443,75 @@ run action ajax
 | ---------- | ------------------------------------ | ----------- | ---------------------------------- |
 | copyFormat | `string`                             | `text/html` | 复制格式                           |
 | content    | [模板](../../docs/concepts/template) | -           | 指定复制的内容。可用 `${xxx}` 取值 |
+
+### 打印
+
+> 6.2.0 及以后版本
+
+打印页面中的某个组件，对应的组件需要配置 `testid`，如果要打印多个，可以使用 `"testids": ["x", "y"]` 来打印多个组件
+
+```schema
+{
+  type: 'page',
+  body: [
+    {
+      type: 'button',
+      label: '打印',
+      level: 'primary',
+      className: 'mr-2',
+      onEvent: {
+        click: {
+          actions: [
+            {
+              actionType: 'print',
+              args: {
+                testid: 'mycrud'
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "crud",
+      "api": "/api/mock2/sample",
+      "testid": "mycrud",
+      "syncLocation": false,
+      "columns": [
+        {
+          "name": "id",
+          "label": "ID"
+        },
+        {
+          "name": "engine",
+          "label": "Rendering engine"
+        },
+        {
+          "name": "browser",
+          "label": "Browser"
+        },
+        {
+          "name": "platform",
+          "label": "Platform(s)"
+        },
+        {
+          "name": "version",
+          "label": "Engine version"
+        },
+        {
+          "name": "grade",
+          "label": "CSS grade"
+        }
+      ]
+    }
+  ]
+}
+```
+
+| 属性名  | 类型       | 默认值 | 说明              |
+| ------- | ---------- | ------ | ----------------- |
+| testid  | `string`   |        | 组件的 testid     |
+| testids | `string[]` | -      | 多个组件的 testid |
 
 ### 发送邮件
 

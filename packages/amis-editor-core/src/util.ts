@@ -14,6 +14,7 @@ import isPlainObject from 'lodash/isPlainObject';
 import isEqual from 'lodash/isEqual';
 import isNumber from 'lodash/isNumber';
 import debounce from 'lodash/debounce';
+import merge from 'lodash/merge';
 
 const {
   guid,
@@ -133,6 +134,8 @@ export function JSONPipeIn(
   if (obj.type) {
     // 处理下历史style数据，整理到themeCss
     obj = style2ThemeCss(obj);
+    // 处理下旧数据css被错误转成属性的问题
+    obj = clearDirtyCssKey(obj);
 
     // 重新生成组件ID
     if (reGenerateId) {
@@ -575,7 +578,17 @@ export function JSONDuplicate(
 }
 
 /**
- * 用于复制或粘贴的时候重新生成
+ * 用于复制或粘贴的时候重新生成组件id
+ * 【备注】需考虑以下两类使用场景：
+ * 1. 组件模板插入到页面中，组件模板含事件动作，事件动作中的componentId需替换成最新的；
+ * 2. 页面中的复制&粘贴，复制的组件含事件动作，且componentId关联的是页面其他组件，此时无需重置componentId。
+ * 【逻辑说明】
+ * 1. 第一次遍历，确保重置所有组件id，并记录下当前所有组件的新旧id对应关系(reIds)；
+ * 2. 第一次遍历中，如果遇到事件动作，则将componentId替换成reIds中的新id，如果reIds中不存在对应的id，则重置componentId，并记录在reComptIds中；
+ * 3. 完成第一次遍历后，检测reComptIds中是否存在reIds中没有的组件id（识别第2种场景），并将不在reIds种的id记录到resetComptIds，然后开始第二次遍历；
+ * 4. 第二次遍历，恢复resetComptIds中的componentId。
+ * 【额外说明】
+ * 1. 仅第二类使用场景会触发第二次遍历，如果是第一类使用情况或者其他通用场景，则不会触发第二次遍历。
  * @param json
  */
 export function reGenerateID(
@@ -583,21 +596,50 @@ export function reGenerateID(
   // 有时候复制时因为局部会有事件动作等内容，需要改为复制部分的新id，这里把老id与新id的关系存下来
   reIds: {[propKey: string]: string} = {}
 ) {
+  const reComptIds: {[propKey: string]: string} = {}; // 记录事件动作中的id
   JSONTraverse(json, (value: any, key: string, host: any) => {
     const isNodeIdFormat =
       typeof value === 'string' && value.indexOf('u:') === 0;
-    if (key === 'id' && isNodeIdFormat && host) {
-      const newID = generateNodeId();
-      reIds[host.id] = newID;
-      host.id = newID;
-    }
-    // 组件ID，给新的id内容
-    else if (key === 'componentId' && isNodeIdFormat) {
-      host.componentId = reIds[value] ?? value;
+    if ((key === 'id' || key === 'componentId') && isNodeIdFormat && host) {
+      if (reIds[value]) {
+        host[key] = reIds[value];
+      } else if (reComptIds[value]) {
+        host[key] = reComptIds[value];
+        reIds[value] = reComptIds[value];
+      } else {
+        const newID = generateNodeId();
+        host[key] = newID;
+        if (key === 'id') {
+          reIds[value] = newID;
+        } else if (key === 'componentId') {
+          reComptIds[value] = newID;
+        }
+      }
     }
 
     return value;
   });
+
+  const resetComptIds: {[propKey: string]: string} = {};
+  let needSecondTraverse = false;
+  Object.keys(reComptIds).forEach((uidKey: string) => {
+    if (!reIds[uidKey]) {
+      resetComptIds[reComptIds[uidKey]] = uidKey; // 以新id为key
+      needSecondTraverse = true;
+    }
+  });
+
+  // 恢复resetComptIds中的componentId，避免事件动作失效
+  if (needSecondTraverse) {
+    JSONTraverse(json, (value: any, key: string, host: any) => {
+      const isNodeIdFormat =
+        typeof value === 'string' && value.indexOf('u:') === 0;
+      if (key === 'componentId' && isNodeIdFormat && resetComptIds[value]) {
+        host.componentId = resetComptIds[value];
+      }
+      return value;
+    });
+  }
   return json;
 }
 
@@ -1185,16 +1227,29 @@ export function style2ThemeCss(data: any) {
       baseControlClassName
     };
   } else {
-    themeCss.baseControlClassName = {
-      ...data.themeCss.baseControlClassName,
-      ...baseControlClassName
-    };
+    themeCss.baseControlClassName = merge(
+      data.themeCss.baseControlClassName,
+      baseControlClassName
+    );
   }
   return {
     ...data,
     style,
     themeCss
   };
+}
+
+export function clearDirtyCssKey(data: any) {
+  if (!data?.type) {
+    return data;
+  }
+  const temp = {...data};
+  Object.keys(temp).forEach(key => {
+    if (key.startsWith('.') || key.startsWith('#')) {
+      delete temp[key];
+    }
+  });
+  return temp;
 }
 
 /**
@@ -1338,18 +1393,56 @@ export const scrollToActive = debounce((selector: string) => {
   }
 }, 200);
 
+export function addModal(schema: any, modal: any) {
+  schema = {...schema, definitions: {...schema.definitions}};
+
+  let idx = 1;
+  while (true) {
+    if (!schema.definitions[`modal-ref-${idx}`]) {
+      break;
+    }
+    idx++;
+  }
+  modal = {
+    type: 'dialog',
+    body: [{type: 'tpl', tpl: '这是一个弹窗'}],
+    title: `未命名弹窗${idx}`,
+    ...modal,
+    $$id: guid()
+  } as any;
+  schema.definitions[`modal-ref-${idx}`] = JSONPipeIn(modal);
+
+  return [schema, `modal-ref-${idx}`];
+}
+
 /**
  * 获取弹窗事件
  * @param schema 遍历的schema
  * @param listType 列表形式，弹窗list或label value形式的数据源
  * @param filterId 要过滤弹窗的id
  */
-export const getDialogActions = (
+export const getDialogListBySchema = (
   schema: Schema,
   listType: 'list' | 'source',
   filterId?: string
 ) => {
-  let dialogActions: any[] = [];
+  let items: any[] = [];
+  const dialogMap: any = {
+    dialog: {
+      title: '弹窗',
+      body: 'dialog'
+    },
+    drawer: {
+      title: '抽屉式弹窗',
+      body: 'drawer'
+    },
+    confirmDialog: {
+      title: '确认对话框',
+      // 兼容历史args参数
+      body: ['dialog', 'args']
+    }
+  };
+
   JSONTraverse(
     schema,
     (value: any, key: string, object: any) => {
@@ -1360,16 +1453,11 @@ export const getDialogActions = (
           Object.keys(definitions).forEach(key => {
             if (key.includes('ref-')) {
               if (listType === 'list') {
-                dialogActions.push(definitions[key]);
+                items.push(definitions[key]);
               } else {
                 const dialog = definitions[key];
-                const dialogTypeName =
-                  dialog.type === 'drawer'
-                    ? '抽屉式弹窗'
-                    : dialog.dialogType
-                    ? '确认对话框'
-                    : '弹窗';
-                dialogActions.push({
+                const dialogTypeName = dialogMap[dialog.type].title;
+                items.push({
                   label: `${dialog.title || '-'}（${dialogTypeName}）`,
                   value: dialog.$$id
                 });
@@ -1377,58 +1465,30 @@ export const getDialogActions = (
             }
           });
         }
-      }
-      if (
+      } else if (
         (key === 'actionType' && value === 'dialog') ||
         (key === 'actionType' && value === 'drawer') ||
         (key === 'actionType' && value === 'confirmDialog')
       ) {
-        const dialogBodyMap = new Map([
-          [
-            'dialog',
-            {
-              title: '弹窗',
-              body: 'dialog'
-            }
-          ],
-          [
-            'drawer',
-            {
-              title: '抽屉式弹窗',
-              body: 'drawer'
-            }
-          ],
-          [
-            'confirmDialog',
-            {
-              title: '确认对话框',
-              // 兼容历史args参数
-              body: ['dialog', 'args']
-            }
-          ]
-        ]);
-        let dialogBody = dialogBodyMap.get(value)?.body!;
+        let dialogBody = dialogMap[value].body!;
         let dialogBodyContent = Array.isArray(dialogBody)
           ? object[dialogBody[0]] || object[dialogBody[1]]
           : object[dialogBody];
 
-        if (
-          dialogBodyMap.has(value) &&
-          dialogBodyContent &&
-          !dialogBodyContent.$ref
-        ) {
+        // 有 $ref 的弹窗在definitions中
+        if (dialogMap[value] && dialogBodyContent && !dialogBodyContent.$ref) {
           if (listType == 'list') {
             // 没有 type: dialog的历史数据兼容一下
-            dialogActions.push({
+            items.push({
               ...dialogBodyContent,
               type: Array.isArray(dialogBody) ? 'dialog' : dialogBody
             });
           } else {
             // 新建弹窗切换到现有弹窗把自身过滤掉
             if (!filterId || (filterId && filterId !== dialogBodyContent.id)) {
-              dialogActions.push({
+              items.push({
                 label: `${dialogBodyContent?.title || '-'}（${
-                  dialogBodyMap.get(value)?.title
+                  dialogMap[value].title
                 }）`,
                 value: dialogBodyContent.$$id
               });
@@ -1439,7 +1499,7 @@ export const getDialogActions = (
     },
     (value, key) => key.toString().startsWith('__')
   );
-  return dialogActions;
+  return items;
 };
 
 /**

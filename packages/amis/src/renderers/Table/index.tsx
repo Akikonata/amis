@@ -40,7 +40,9 @@ import {
   resolveVariableAndFilter,
   resizeSensor,
   offset,
-  getStyleNumber
+  getStyleNumber,
+  getPropValue,
+  buildTestId
 } from 'amis-core';
 import {
   Button,
@@ -223,6 +225,11 @@ export interface TableSchema extends BaseSchema {
   affixHeader?: boolean;
 
   /**
+   * 是否固底
+   */
+  affixFooter?: boolean;
+
+  /**
    * 表格的列信息
    */
   columns?: Array<TableColumn>;
@@ -371,6 +378,7 @@ export interface TableProps extends RendererProps, SpinnerExtraProps {
   selectable?: boolean;
   selected?: Array<any>;
   maxKeepItemSelectionLength?: number;
+  maxItemSelectionLength?: number;
   valueField?: string;
   draggable?: boolean;
   columnsTogglable?: boolean | 'auto';
@@ -503,6 +511,7 @@ export default class Table extends React.Component<TableProps, object> {
     'onSelect',
     'keepItemSelectionOnPageChange',
     'maxKeepItemSelectionLength',
+    'maxItemSelectionLength',
     'autoGenerateFilter'
   ];
   static defaultProps: Partial<TableProps> = {
@@ -600,6 +609,7 @@ export default class Table extends React.Component<TableProps, object> {
       formItem,
       keepItemSelectionOnPageChange,
       maxKeepItemSelectionLength,
+      maxItemSelectionLength,
       onQuery,
       autoGenerateFilter,
       loading,
@@ -636,6 +646,7 @@ export default class Table extends React.Component<TableProps, object> {
         combineFromIndex,
         keepItemSelectionOnPageChange,
         maxKeepItemSelectionLength,
+        maxItemSelectionLength,
         loading,
         canAccessSuperData,
         lazyRenderAfter,
@@ -675,14 +686,18 @@ export default class Table extends React.Component<TableProps, object> {
     prevProps?: TableProps
   ) {
     const source = props.source;
-    const value = props.value || props.items;
+    const value = getPropValue(props, (props: TableProps) => props.items);
     let rows: Array<object> = [];
     let updateRows = false;
 
     // 要严格比较前后的value值，否则某些情况下会导致循环update无限渲染
     if (
       Array.isArray(value) &&
-      (!prevProps || !isEqual(prevProps.value || prevProps.items, value))
+      (!prevProps ||
+        !isEqual(
+          getPropValue(prevProps, (props: TableProps) => props.items),
+          value
+        ))
     ) {
       updateRows = true;
       rows = value;
@@ -765,7 +780,7 @@ export default class Table extends React.Component<TableProps, object> {
         throw new Error(response.msg);
       }
 
-      row.setDeferData(response.data);
+      row.updateData(response.data);
       row.markLoaded(true);
       row.setError('');
     } catch (e) {
@@ -931,8 +946,18 @@ export default class Table extends React.Component<TableProps, object> {
         .join(',');
 
       store.updateSelected(props.selected || [], props.valueField);
-      const selectedRows = store.selectedRows.map(item => item.id).join(',');
-      prevSelectedRows !== selectedRows && this.syncSelected();
+
+      if (
+        Array.isArray(props.selected) &&
+        Array.isArray(prevProps.selected) &&
+        props.selected.length === prevProps.selected.length
+      ) {
+        // 只有长度一样才检测具体的值是否变了
+        const selectedRows = store.selectedRows.map(item => item.id).join(',');
+        prevSelectedRows !== selectedRows && this.syncSelected();
+      } else {
+        this.syncSelected();
+      }
     }
   }
 
@@ -1277,8 +1302,8 @@ export default class Table extends React.Component<TableProps, object> {
     if (this.resizeLine) {
       return;
     }
-    this.props.store.syncTableWidth();
     this.props.store.initTableWidth();
+    this.props.store.syncTableWidth();
     this.handleOutterScroll();
     callback && setTimeout(callback, 20);
   }
@@ -1350,7 +1375,12 @@ export default class Table extends React.Component<TableProps, object> {
 
           const parent = e.to as HTMLElement;
           if (e.oldIndex < parent.childNodes.length - 1) {
-            parent.insertBefore(e.item, parent.childNodes[e.oldIndex]);
+            parent.insertBefore(
+              e.item,
+              parent.childNodes[
+                e.oldIndex > e.newIndex ? e.oldIndex + 1 : e.oldIndex
+              ]
+            );
           } else {
             parent.appendChild(e.item);
           }
@@ -1633,6 +1663,7 @@ export default class Table extends React.Component<TableProps, object> {
     const {store} = this.props;
 
     store.updateColumns(columns);
+    store.persistSaveToggledColumns();
   }
 
   renderAutoFilterForm(): React.ReactNode {
@@ -1833,7 +1864,7 @@ export default class Table extends React.Component<TableProps, object> {
               classPrefix={ns}
               partial={store.someChecked && !store.allChecked}
               checked={store.someChecked}
-              disabled={store.isSelectionThresholdReached}
+              disabled={store.isSelectionThresholdReached && !store.someChecked}
               onChange={this.handleCheckAll}
             />
           ) : (
@@ -2210,6 +2241,9 @@ export default class Table extends React.Component<TableProps, object> {
     } else if (type === 'export-excel') {
       this.renderedToolbars.push(type);
       return this.renderExportExcel(toolbar);
+    } else if (type === 'export-excel-template') {
+      this.renderedToolbars.push(type);
+      return this.renderExportExcelTemplate(toolbar);
     }
 
     return void 0;
@@ -2372,15 +2406,7 @@ export default class Table extends React.Component<TableProps, object> {
   }
 
   renderExportExcel(toolbar: ExportExcelToolbar) {
-    const {
-      store,
-      env,
-      classPrefix: ns,
-      classnames: cx,
-      translate: __,
-      data,
-      render
-    } = this.props;
+    const {store, translate: __, render} = this.props;
     let columns = store.filteredColumns || [];
 
     if (!columns) {
@@ -2406,6 +2432,38 @@ export default class Table extends React.Component<TableProps, object> {
               console.error(error);
             } finally {
               store.update({exportExcelLoading: false});
+            }
+          });
+        }
+      }
+    );
+  }
+
+  /**
+   * 导出 Excel 模板
+   */
+  renderExportExcelTemplate(toolbar: ExportExcelToolbar) {
+    const {store, translate: __, render} = this.props;
+    let columns = store.filteredColumns || [];
+
+    if (!columns) {
+      return null;
+    }
+
+    return render(
+      'exportExcelTemplate',
+      {
+        label: __('CRUD.exportExcelTemplate'),
+        ...(toolbar as any),
+        type: 'button'
+      },
+      {
+        onAction: () => {
+          import('exceljs').then(async (ExcelJS: any) => {
+            try {
+              await exportExcel(ExcelJS, this.props, toolbar, true);
+            } catch (error) {
+              console.error(error);
             }
           });
         }
@@ -2544,7 +2602,8 @@ export default class Table extends React.Component<TableProps, object> {
       showFooter,
       store,
       data,
-      classnames: cx
+      classnames: cx,
+      affixFooter
     } = this.props;
 
     if (showFooter === false) {
@@ -2564,26 +2623,35 @@ export default class Table extends React.Component<TableProps, object> {
       : null;
     const actions = this.renderActions('footer');
 
+    const footerNode =
+      footer && (!Array.isArray(footer) || footer.length) ? (
+        <div
+          className={cx(
+            'Table-footer',
+            footerClassName,
+            affixFooter ? 'Table-footer--affix' : ''
+          )}
+          key="footer"
+        >
+          {render('footer', footer, {
+            data: store.getData(data)
+          })}
+        </div>
+      ) : null;
+
     const toolbarNode =
       actions || child ? (
         <div
           className={cx(
             'Table-toolbar Table-footToolbar',
             toolbarClassName,
-            footerToolbarClassName
+            footerToolbarClassName,
+            !footerNode && affixFooter ? 'Table-footToolbar--affix' : ''
           )}
           key="footer-toolbar"
         >
           {actions}
           {child}
-        </div>
-      ) : null;
-    const footerNode =
-      footer && (!Array.isArray(footer) || footer.length) ? (
-        <div className={cx('Table-footer', footerClassName)} key="footer">
-          {render('footer', footer, {
-            data: store.getData(data)
-          })}
         </div>
       ) : null;
     return footerNode && toolbarNode
@@ -2736,7 +2804,8 @@ export default class Table extends React.Component<TableProps, object> {
       affixHeader,
       autoFillHeight,
       autoGenerateFilter,
-      mobileUI
+      mobileUI,
+      testid
     } = this.props;
 
     this.renderedToolbars = []; // 用来记录哪些 toolbar 已经渲染了，已经渲染了就不重复渲染了。
@@ -2755,6 +2824,7 @@ export default class Table extends React.Component<TableProps, object> {
           'Table--autoFillHeight': autoFillHeight
         })}
         style={store.buildStyles(style)}
+        {...buildTestId(testid)}
       >
         {autoGenerateFilter ? this.renderAutoFilterForm() : null}
         {this.renderAffixHeader(tableClassName)}
@@ -2822,7 +2892,6 @@ export class TableRenderer extends Table {
     condition?: any
   ) {
     const {store} = this.props;
-    const len = store.data.rows.length;
 
     if (index !== undefined) {
       let items = [...store.data.rows];
@@ -2835,6 +2904,7 @@ export class TableRenderer extends Table {
       return store.updateData({rows: items}, undefined, replace);
     } else if (condition !== undefined) {
       let items = [...store.data.rows];
+      const len = items.length;
       for (let i = 0; i < len; i++) {
         const item = items[i];
         const isUpdate = await evalExpressionWithConditionBuilder(

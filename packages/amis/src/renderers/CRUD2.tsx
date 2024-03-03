@@ -30,7 +30,8 @@ import {
   isApiOutdated,
   isPureVariable,
   resolveVariableAndFilter,
-  parsePrimitiveQueryString
+  parsePrimitiveQueryString,
+  buildTestId
 } from 'amis-core';
 import {Html, SpinnerExtraProps} from 'amis-ui';
 import {
@@ -1097,13 +1098,14 @@ export default class CRUD2 extends React.Component<CRUD2Props, any> {
   }
 
   @autobind
-  toggleToggle(toggled: boolean, index: number) {
+  toggleToggle(index: number) {
     const {store} = this.props;
-
+    const column = store.columns[index];
+    const toggled = column.toggled;
     store.updateColumns(
       store.columns.map((c: any, i: number) => ({
         ...c,
-        toggled: index === i ? toggled : c.toggled !== false
+        toggled: index === i ? !toggled : c.toggled !== false
       }))
     );
   }
@@ -1307,6 +1309,7 @@ export default class CRUD2 extends React.Component<CRUD2Props, any> {
       columnsTogglable,
       headerToolbarClassName,
       footerToolbarClassName,
+      testid,
       ...rest
     } = this.props;
 
@@ -1316,6 +1319,7 @@ export default class CRUD2 extends React.Component<CRUD2Props, any> {
           'is-loading': store.loading
         })}
         style={style}
+        {...buildTestId(testid)}
       >
         <div className={cx('Crud2-filter')}>
           {this.renderFilter(filterSchema)}
@@ -1354,6 +1358,8 @@ export default class CRUD2 extends React.Component<CRUD2Props, any> {
             selectable: !!(selectable ?? pickerMode),
             itemActions,
             multiple: multiple,
+            // columnsTogglable在CRUD2中渲染 但需要给table2传columnsTogglable为false 否则列数超过5 table2会自动渲染
+            columnsTogglable: false,
             selected:
               pickerMode || keepItemSelectionOnPageChange
                 ? store.selectedItemsAsArray

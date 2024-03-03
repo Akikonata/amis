@@ -8,7 +8,8 @@ import {
   Renderer,
   RendererProps,
   CustomStyle,
-  setThemeClassName
+  setThemeClassName,
+  buildTestId
 } from 'amis-core';
 import {Schema} from 'amis-core';
 import {BaseSchema, SchemaCollection, SchemaObject} from '../Schema';
@@ -111,7 +112,8 @@ export default class Flex extends React.Component<FlexProps, object> {
       wrapperCustomStyle,
       env,
       themeCss,
-      classnames: cx
+      classnames: cx,
+      testid
     } = this.props;
     const styleVar = buildStyle(style, data);
     const flexStyle = {
@@ -137,9 +139,20 @@ export default class Flex extends React.Component<FlexProps, object> {
         className={cx(
           'Flex',
           className,
-          setThemeClassName('baseControlClassName', id, themeCss),
-          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+          setThemeClassName({
+            ...this.props,
+            name: 'baseControlClassName',
+            id,
+            themeCss
+          }),
+          setThemeClassName({
+            ...this.props,
+            name: 'wrapperCustomStyle',
+            id,
+            themeCss: wrapperCustomStyle
+          })
         )}
+        {...buildTestId(testid)}
       >
         {(Array.isArray(items) ? items : items ? [items] : []).map(
           (item, key) =>
@@ -149,6 +162,7 @@ export default class Flex extends React.Component<FlexProps, object> {
             })
         )}
         <CustomStyle
+          {...this.props}
           config={{
             wrapperCustomStyle,
             id,

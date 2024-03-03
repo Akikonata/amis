@@ -38,6 +38,11 @@ interface ActionDialogProp {
     node: SchemaNode,
     props?: PlainObject
   ) => JSX.Element;
+
+  subscribeSchemaSubmit: (
+    fn: (schema: any, value: any, id: string, diff?: any) => any
+  ) => () => void;
+  subscribeActionSubmit: (fn: (value: any) => any) => () => void;
 }
 
 export default class ActionDialog extends React.Component<ActionDialogProp> {
@@ -100,7 +105,7 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
           [key: string]: any;
         } = {};
         let groupType = '';
-
+        let __statusType = '';
         Object.keys(form.data).forEach((key: string) => {
           if (!BASE_ACTION_PROPS.includes(key)) {
             removeKeys[key] = undefined;
@@ -124,14 +129,17 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
           value === 'visibility' &&
           !['show', 'hidden', 'visibility'].includes(groupType)
         ) {
-          groupType = 'show';
+          groupType = 'static';
+          // 多个动作共用字段需要处理一下默认值，否则设为undefined会导致视觉上勾选，但是value实际为空
+          __statusType = 'show';
         }
 
         if (
           value === 'usability' &&
           !['enabled', 'disabled', 'usability'].includes(groupType)
         ) {
-          groupType = 'enabled';
+          groupType = 'static';
+          __statusType = 'enabled';
         }
 
         const actionNode = findActionNode(actionTree, value);
@@ -142,6 +150,7 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
           componentId: form.data.componentId ? '' : undefined,
           ...(form.data.args ? {args: {}} : {}), // 切换动作时清空args
           groupType,
+          __statusType,
           __actionDesc: actionNode?.description,
           __actionSchema: actionNode?.schema,
           __subActions: actionNode?.actions,
@@ -205,6 +214,8 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
   render() {
     const {
       data,
+      subscribeSchemaSubmit,
+      subscribeActionSubmit,
       show,
       type,
       actionTree,
@@ -422,7 +433,10 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
         onClose
       },
       {
-        data // 必须这样，不然变量会被当作数据映射处理掉
+        data, // 必须这样，不然变量会被当作数据映射处理掉
+
+        subscribeActionSubmit,
+        subscribeSchemaSubmit
       }
     );
     //   : null;
