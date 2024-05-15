@@ -10,7 +10,7 @@ import type {SchemaObject} from 'amis';
 import flatten from 'lodash/flatten';
 import {InputComponentName} from '../component/InputComponentName';
 import {FormulaDateType} from '../renderer/FormulaControl';
-import {VariableItem} from 'amis-ui/lib/components/formula/Editor';
+import type {VariableItem} from 'amis-ui/src/components/formula/CodeEditor';
 import reduce from 'lodash/reduce';
 import map from 'lodash/map';
 import omit from 'lodash/omit';
@@ -171,7 +171,7 @@ setSchemaTpl('formItemInline', {
   type: 'switch',
   label: '表单项内联',
   name: 'inline',
-  visibleOn: 'data.mode != "inline"',
+  visibleOn: 'this.mode != "inline"',
   inputClassName: 'is-inline',
   pipeIn: defaultValue(false)
   // onChange: (value:any, origin:any, item:any, form:any) => form.getValueByName('size') === "full" && form.setValueByName('')
@@ -250,7 +250,7 @@ setSchemaTpl('labelHide', () =>
     pipeIn: (value: any) => value === false,
     pipeOut: (value: any) => (value === true ? false : ''),
     visibleOn:
-      'this.__props__ && this.__props__.formMode === "horizontal" || data.mode === "horizontal"'
+      'this.__props__ && this.__props__.formMode === "horizontal" || this.mode === "horizontal"'
   })
 );
 
@@ -1325,11 +1325,12 @@ setSchemaTpl('pageSubTitle', {
   type: 'textarea'
 });
 
-setSchemaTpl('textareaDefaultValue', () => {
+setSchemaTpl('textareaDefaultValue', (options: any) => {
   return getSchemaTpl('textareaFormulaControl', {
     label: '默认值',
     name: 'value',
-    mode: 'normal'
+    mode: 'normal',
+    ...options
   });
 });
 
@@ -1503,7 +1504,7 @@ setSchemaTpl('avatarText', {
   name: 'text',
   type: 'input-text',
   pipeOut: (value: any) => (value === '' ? undefined : value),
-  visibleOn: 'data.showtype === "text"'
+  visibleOn: 'this.showtype === "text"'
 });
 
 setSchemaTpl('cardTitle', {
@@ -1753,3 +1754,54 @@ setSchemaTpl('deferField', {
   type: 'input-text',
   placeholder: '自定义开启懒加载的字段'
 });
+
+setSchemaTpl(
+  'signBtn',
+  (options: {label: string; name: string; icon: string}) => {
+    return {
+      type: 'flex',
+      justify: 'space-between',
+      alignItems: 'center',
+      items: [
+        {
+          style: {
+            color: '#5c5f66'
+          },
+          type: 'tpl',
+          tpl: options.label
+        },
+        {
+          type: 'action',
+          label: '设置',
+          level: 'link',
+          actionType: 'dialog',
+          dialog: {
+            title: '设置',
+            body: {
+              type: 'form',
+              body: [
+                {
+                  name: options.name,
+                  label: '按钮文案',
+                  type: 'input-text'
+                },
+                getSchemaTpl('icon', {
+                  name: options.icon,
+                  label: '图标'
+                })
+              ]
+            },
+            actions: [
+              {
+                type: 'submit',
+                label: '确认',
+                mergeData: true,
+                level: 'primary'
+              }
+            ]
+          }
+        }
+      ]
+    };
+  }
+);

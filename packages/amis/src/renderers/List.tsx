@@ -2,7 +2,13 @@ import React from 'react';
 import {findDOMNode} from 'react-dom';
 import Sortable from 'sortablejs';
 import omit from 'lodash/omit';
-import {filterClassNameObject, getPropValue} from 'amis-core';
+import {
+  ScopedContext,
+  evalExpressionWithConditionBuilder,
+  filterClassNameObject,
+  getMatchedEventTargets,
+  getPropValue
+} from 'amis-core';
 import {Button, Spinner, Checkbox, Icon, SpinnerExtraProps} from 'amis-ui';
 import {
   ListStore,
@@ -43,7 +49,7 @@ import {
 } from '../Schema';
 import {ActionSchema} from './Action';
 import {SchemaRemark} from './Remark';
-import type {IItem} from 'amis-core';
+import type {IItem, IScopedContext} from 'amis-core';
 import type {OnEventProps} from 'amis-core';
 import find from 'lodash/find';
 
@@ -437,7 +443,11 @@ export default class List extends React.Component<ListProps, object> {
     return findDOMNode(this);
   }
 
-  handleAction(e: React.UIEvent<any>, action: ActionObject, ctx: object) {
+  handleAction(
+    e: React.UIEvent<any> | undefined,
+    action: ActionObject,
+    ctx: object
+  ) {
     const {data, dispatchEvent, onAction, onEvent} = this.props;
     const hasClickActions =
       onEvent &&
@@ -539,7 +549,8 @@ export default class List extends React.Component<ListProps, object> {
     const unModifiedItems = store.items
       .filter(item => !item.modified)
       .map(item => item.data);
-    onSave(
+
+    return onSave(
       items,
       diff,
       itemIndexes,
@@ -959,7 +970,8 @@ export default class List extends React.Component<ListProps, object> {
       checkOnItemClick,
       itemAction,
       classnames: cx,
-      translate: __
+      translate: __,
+      testIdBuilder
     } = this.props;
     const hasClickActions =
       onEvent &&
@@ -979,6 +991,7 @@ export default class List extends React.Component<ListProps, object> {
           'is-modified': item.modified,
           'is-moved': item.moved
         }),
+        testIdBuilder: testIdBuilder?.getChild(index),
         selectable: store.selectable,
         checkable: item.checkable,
         multiple,
@@ -1082,6 +1095,143 @@ export class ListRenderer extends List {
   body?: SchemaNode;
   actions?: Array<ActionObject>;
   onCheck: (item: IItem) => void;
+
+  static contextType = ScopedContext;
+  declare context: React.ContextType<typeof ScopedContext>;
+
+  constructor(props: ListProps, scoped: IScopedContext) {
+    super(props);
+
+    scoped.registerComponent(this);
+  }
+
+  componentWillUnmount(): void {
+    super.componentWillUnmount?.();
+    this.context.unRegisterComponent(this);
+  }
+
+  receive(values: any, subPath?: string) {
+    const scoped = this.context as IScopedContext;
+
+    /**
+     * 因为List在scope上注册，导致getComponentByName查询组件时会优先找到List，和CRUD联动的动作都会失效
+     * 这里先做兼容处理，把动作交给上层的CRUD处理
+     */
+    if (this.props?.host) {
+      // CRUD会把自己透传给List，这样可以保证找到CRUD
+      return this.props.host.receive?.(values, subPath);
+    }
+
+    if (subPath) {
+      return scoped.send(subPath, values);
+    }
+  }
+
+  async reload(
+    subPath?: string,
+    query?: any,
+    ctx?: any,
+    silent?: boolean,
+    replace?: boolean,
+    args?: any
+  ) {
+    const {store} = this.props;
+    if (args?.index || args?.condition) {
+      // 局部刷新
+      // todo 后续考虑添加局部刷新
+      // const targets = await getMatchedEventTargets<IItem>(
+      //   store.items,
+      //   ctx || this.props.data,
+      //   args.index,
+      //   args?.condition
+      // );
+      // await Promise.all(targets.map(target => this.loadDeferredRow(target)));
+      return;
+    }
+
+    const scoped = this.context as IScopedContext;
+
+    if (this.props?.host) {
+      // CRUD会把自己透传给List，这样可以保证找到CRUD
+      return this.props?.host.reload?.(subPath, query, ctx);
+    }
+
+    if (subPath) {
+      return scoped.reload(subPath, ctx);
+    }
+  }
+
+  async setData(
+    values: any,
+    replace?: boolean,
+    index?: number | string,
+    condition?: any
+  ) {
+    const {store} = this.props;
+
+    if (index !== undefined || condition !== undefined) {
+      const targets = await getMatchedEventTargets<IItem>(
+        store.items,
+        this.props.data,
+        index,
+        condition
+      );
+      targets.forEach(target => {
+        target.updateData(values);
+      });
+    } else {
+      return store.updateData(values, undefined, replace);
+    }
+  }
+
+  getData() {
+    const {store, data} = this.props;
+    return store.getData(data);
+  }
+
+  async doAction(
+    action: ActionObject,
+    ctx: any,
+    throwErrors: boolean,
+    args: any
+  ) {
+    const {store, valueField, data} = this.props;
+
+    const actionType = action?.actionType;
+    switch (actionType) {
+      case 'selectAll':
+        store.clear();
+        store.toggleAll();
+        break;
+      case 'clearAll':
+        store.clear();
+        break;
+      case 'select':
+        const rows = await getMatchedEventTargets<IItem>(
+          store.items,
+          ctx || this.props.data,
+          args.index,
+          args.condition,
+          args.selected
+        );
+        store.updateSelected(
+          rows.map(item => item.data),
+          valueField
+        );
+        break;
+      case 'initDrag':
+        store.startDragging();
+        break;
+      case 'cancelDrag':
+        store.stopDragging();
+        break;
+      case 'submitQuickEdit':
+        await this.handleSave();
+        break;
+      default:
+        return this.handleAction(undefined, action, data);
+    }
+  }
 }
 
 export interface ListItemProps
@@ -1180,7 +1330,8 @@ export class ListItem extends React.Component<ListItemProps> {
       hideCheckToggler,
       checkOnItemClick,
       classnames: cx,
-      classPrefix: ns
+      classPrefix: ns,
+      testIdBuilder
     } = this.props;
 
     if (dragging) {
@@ -1199,6 +1350,7 @@ export class ListItem extends React.Component<ListItemProps> {
             checked={selected}
             onChange={this.handleCheck}
             inline
+            testIdBuilder={testIdBuilder?.getChild('checkbox')}
           />
         </div>
       );

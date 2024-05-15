@@ -101,21 +101,40 @@ export function SchemaFrom({
     return schema;
   }, [body, controls, submitOnChange]);
 
-  value = value || {};
-  const finalValue = pipeIn ? pipeIn(value) : value;
   const themeConfig = React.useMemo(() => getThemeConfig(), []);
   const submitSubscribers = React.useRef<Array<Function>>([]);
   const subscribeSubmit = React.useCallback(
-    (fn: (schema: any, value: any, id: string, diff?: any) => any) => {
-      submitSubscribers.current.push(fn);
-      return () => {
+    (
+      fn: (schema: any, value: any, id: string, diff?: any) => any,
+      once = false
+    ) => {
+      let raw = fn;
+      const unsubscribe = () => {
         submitSubscribers.current = submitSubscribers.current.filter(
-          item => item !== fn
+          item => ((item as any).__raw ?? item) !== raw
         );
       };
+
+      if (once) {
+        fn = (schema: any, value: any, id: string, diff?: any) => {
+          const ret = raw(schema, value, id, diff);
+          unsubscribe();
+          return ret;
+        };
+        (fn as any).__raw = raw;
+      }
+      submitSubscribers.current.push(fn);
+      return unsubscribe;
     },
     []
   );
+
+  const data = React.useMemo(() => {
+    value = value || {};
+    const finalValue = pipeIn ? pipeIn(value) : value;
+
+    return createObjectFromChain([ctx, themeConfig, finalValue]);
+  }, [value, themeConfig, ctx]);
 
   return render(
     schema,
@@ -123,13 +142,18 @@ export function SchemaFrom({
       onFinished: async (newValue: any) => {
         newValue = pipeOut ? await pipeOut(newValue, value) : newValue;
         const diffValue = diff(value, newValue);
+        // 没有变化时不触发onChange
+        if (!diffValue) {
+          return;
+        }
+
         onChange(newValue, diffValue, (schema, value, id, diff) => {
           return submitSubscribers.current.reduce((schema, fn) => {
             return fn(schema, value, id, diff);
           }, schema);
         });
       },
-      data: createObjectFromChain([ctx, themeConfig, finalValue]),
+      data: data,
       node: node,
       manager: manager,
       popOverContainer,

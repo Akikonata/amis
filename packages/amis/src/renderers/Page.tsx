@@ -481,15 +481,36 @@ export default class Page extends React.Component<PageProps> {
 
     if (action.actionType === 'dialog') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
-      store.openDialog(
-        ctx,
-        undefined,
-        action.callback,
-        delegate || (this.context as any)
-      );
+      return new Promise<any>(resolve => {
+        store.openDialog(
+          ctx,
+          undefined,
+          (confirmed: any, value: any) => {
+            action.callback?.(confirmed, value);
+            resolve({
+              confirmed,
+              value
+            });
+          },
+          delegate || (this.context as any)
+        );
+      });
     } else if (action.actionType === 'drawer') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
-      store.openDrawer(ctx, undefined, undefined, delegate);
+      return new Promise<any>(resolve => {
+        store.openDrawer(
+          ctx,
+          undefined,
+          (confirmed: any, value: any) => {
+            action.callback?.(confirmed, value);
+            resolve({
+              confirmed,
+              value
+            });
+          },
+          delegate
+        );
+      });
     } else if (action.actionType === 'ajax') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
 
@@ -577,7 +598,7 @@ export default class Page extends React.Component<PageProps> {
       return;
     }
 
-    store.closeDialog(true);
+    store.closeDialog(true, values);
   }
 
   handleDialogClose(confirmed = false) {
@@ -605,12 +626,12 @@ export default class Page extends React.Component<PageProps> {
       return;
     }
 
-    store.closeDrawer();
+    store.closeDrawer(true, values);
   }
 
   handleDrawerClose() {
     const {store} = this.props;
-    store.closeDrawer();
+    store.closeDrawer(false);
   }
 
   handleClick(e: any) {
@@ -797,7 +818,10 @@ export default class Page extends React.Component<PageProps> {
 
     const subProps = {
       onAction: this.handleAction,
-      onQuery: initApi ? this.handleQuery : undefined
+      onQuery: initApi ? this.handleQuery : undefined,
+      onChange: this.handleChange,
+      onBulkChange: this.handleBulkChange,
+      pageLoading: store.loading
     };
     let header, right;
 
@@ -1140,7 +1164,7 @@ export class PageRenderer extends Page {
     scoped.reload(target, data);
   }
 
-  handleAction(
+  async handleAction(
     e: React.UIEvent<any>,
     action: ActionObject,
     ctx: object,
@@ -1165,7 +1189,13 @@ export class PageRenderer extends Page {
           );
       });
     } else {
-      super.handleAction(e, action, ctx, throwErrors, delegate);
+      const ret = await super.handleAction(
+        e,
+        action,
+        ctx,
+        throwErrors,
+        delegate
+      );
 
       if (
         action.reload &&
@@ -1173,6 +1203,8 @@ export class PageRenderer extends Page {
       ) {
         scoped.reload(action.reload, ctx);
       }
+
+      return ret;
     }
   }
 

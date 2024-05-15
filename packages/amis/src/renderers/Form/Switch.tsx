@@ -3,7 +3,9 @@ import {
   FormItem,
   FormControlProps,
   FormBaseControl,
-  resolveEventData
+  resolveEventData,
+  getVariable,
+  ListenerAction
 } from 'amis-core';
 import {Icon, Switch} from 'amis-ui';
 import {autobind, isObject} from 'amis-core';
@@ -54,8 +56,6 @@ export interface SwitchControlSchema extends FormBaseControlSchema {
 
   /** 是否处于加载状态 */
   loading?: boolean;
-
-  testid?: string;
 }
 
 export interface SwitchProps extends FormControlProps, SpinnerExtraProps {
@@ -132,6 +132,24 @@ export default class SwitchControl extends React.Component<SwitchProps, any> {
     return this.renderBody(body);
   }
 
+  doAction(
+    action: ListenerAction,
+    data: any,
+    throwErrors: boolean = false,
+    args?: any
+  ) {
+    const actionType = action?.actionType as string;
+    const {onChange, formStore, store, name, resetValue} = this.props;
+
+    if (actionType === 'clear') {
+      onChange?.(''); // switch的value可能是任何类型，空值可能是'' or null，但因为form的clear的清空现在是''，则这里为了保持一致也用''
+    } else if (actionType === 'reset') {
+      const pristineVal =
+        getVariable(formStore?.pristine ?? store?.pristine, name) ?? resetValue;
+      onChange?.(pristineVal);
+    }
+  }
+
   @supportStatic()
   render() {
     const {
@@ -147,7 +165,7 @@ export default class SwitchControl extends React.Component<SwitchProps, any> {
       disabled,
       loading,
       loadingConfig,
-      testid
+      testIdBuilder
     } = this.props;
 
     const {on, off} = this.getResult();
@@ -167,7 +185,7 @@ export default class SwitchControl extends React.Component<SwitchProps, any> {
             size={size as any}
             loading={loading}
             loadingConfig={loadingConfig}
-            testid={testid}
+            testIdBuilder={testIdBuilder}
           />
         )}
       </div>

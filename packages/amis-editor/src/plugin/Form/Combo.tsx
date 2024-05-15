@@ -162,6 +162,51 @@ export class ComboControlPlugin extends BasePlugin {
       }
     },
     {
+      eventName: 'dragEnd',
+      eventLabel: '拖拽结束',
+      description: '当组合项拖拽结束且位置发生变化时触发',
+      dataSchema: (manager: EditorManager) => {
+        const {value, item} = resolveInputTableEventDataSchame(manager);
+
+        return [
+          {
+            type: 'object',
+            properties: {
+              data: {
+                type: 'object',
+                title: '数据',
+                properties: {
+                  index: {
+                    type: 'number',
+                    title: '拖拽后的索引'
+                  },
+                  oldIndex: {
+                    type: 'number',
+                    title: '拖拽前的索引'
+                  },
+                  item: {
+                    type: 'object',
+                    ...item,
+                    title: '被拖拽的项'
+                  },
+                  value: {
+                    type: 'string',
+                    ...value,
+                    title: '拖拽前组合项的值'
+                  },
+                  oldValue: {
+                    type: 'string',
+                    ...value,
+                    title: '拖拽后组合项的值'
+                  }
+                }
+              }
+            }
+          }
+        ];
+      }
+    },
+    {
       eventName: 'tabsChange',
       eventLabel: '切换tab',
       description: '当设置 tabsMode 为 true 时，切换选项卡时触发',
@@ -209,7 +254,7 @@ export class ComboControlPlugin extends BasePlugin {
     {
       actionType: 'reset',
       actionLabel: '重置',
-      description: '将值重置为resetValue，若没有配置resetValue，则清空'
+      description: '将值重置为初始值'
     },
     {
       actionType: 'addItem',
@@ -319,7 +364,7 @@ export class ComboControlPlugin extends BasePlugin {
                 {
                   type: 'container',
                   className: 'ae-ExtendMore mb-3',
-                  visibleOn: 'data.multiple',
+                  visibleOn: 'this.multiple',
                   body: [
                     {
                       label: '最多条数',
@@ -340,12 +385,12 @@ export class ComboControlPlugin extends BasePlugin {
                     '默认数组内的数据结构为对象，如果只有一个表单项，可以配置将值打平，那么数组内放置的就是那个表单项的值'
                   ),
                   visibleOn:
-                    'Array.isArray(data.items) && data.items.length === 1 && data.multiple'
+                    'Array.isArray(this.items) && this.items.length === 1 && this.multiple'
                 }),
                 {
                   type: 'container',
                   className: 'ae-ExtendMore mb-3',
-                  visibleOn: 'data.multiple && data.flat',
+                  visibleOn: 'this.multiple && this.flat',
                   body: [getSchemaTpl('joinValues'), getSchemaTpl('delimiter')]
                 },
                 // 可排序，排序和新增无关，和多选模式有关
@@ -353,12 +398,12 @@ export class ComboControlPlugin extends BasePlugin {
                   name: 'draggable',
                   label: '可排序',
                   pipeIn: defaultValue(false),
-                  visibleOn: 'data.multiple'
+                  visibleOn: 'this.multiple'
                 }),
                 {
                   type: 'container',
                   className: 'ae-ExtendMore mb-3',
-                  visibleOn: 'data.draggable',
+                  visibleOn: 'this.draggable',
                   body: [getSchemaTpl('draggableTip')]
                 },
 
@@ -369,7 +414,7 @@ export class ComboControlPlugin extends BasePlugin {
                     '可新增',
                     '如需要拓展自定义的新增功能，可通过配置组件-新增项来拓展'
                   ),
-                  visibleOn: 'data.multiple',
+                  visibleOn: 'this.multiple',
                   pipeIn: defaultValue(false),
                   onChange: (
                     value: any,
@@ -393,7 +438,7 @@ export class ComboControlPlugin extends BasePlugin {
                   name: 'removable',
                   label: '可删除',
                   pipeIn: defaultValue(false),
-                  visibleOn: 'data.multiple',
+                  visibleOn: 'this.multiple',
                   onChange: (
                     value: any,
                     oldValue: any,
@@ -410,7 +455,7 @@ export class ComboControlPlugin extends BasePlugin {
                 {
                   type: 'container',
                   className: 'ae-ExtendMore mb-3',
-                  visibleOn: 'data.removable',
+                  visibleOn: 'this.removable',
                   body: [
                     // 自定义删除按钮开关
                     {
@@ -446,18 +491,18 @@ export class ComboControlPlugin extends BasePlugin {
                     // getSchemaTpl('icon', {
                     //   name: 'deleteIcon',
                     //   label: '图标',
-                    //   visibleOn: 'data.removableMode === "icon"'
+                    //   visibleOn: 'this.removableMode === "icon"'
                     // }),
                     {
                       label: '文案',
                       name: 'deleteBtn.label',
                       type: i18nEnabled ? 'input-text-i18n' : 'input-text',
-                      visibleOn: 'data.removableMode === "button"'
+                      visibleOn: 'this.removableMode === "button"'
                     },
                     getSchemaTpl('buttonLevel', {
                       label: '样式',
                       name: 'deleteBtn.level',
-                      visibleOn: 'data.removableMode === "button"'
+                      visibleOn: 'this.removableMode === "button"'
                     }),
                     getSchemaTpl('apiControl', {
                       name: 'deleteApi',
@@ -498,7 +543,7 @@ export class ComboControlPlugin extends BasePlugin {
 
                   getSchemaTpl('combo-container', {
                     name: 'syncFields',
-                    visibleOn: '!data.strictMode',
+                    visibleOn: '!this.strictMode',
                     label: tipedLabel(
                       '同步字段',
                       '如果 Combo 层级比较深，底层的获取外层的数据可能不同步。但是给 combo 配置这个属性就能同步下来。'
@@ -532,7 +577,7 @@ export class ComboControlPlugin extends BasePlugin {
                       '如果数据比较多，比较卡顿时，可开启此配置项'
                     ),
                     pipeIn: defaultValue(false),
-                    visibleOn: 'data.multiple && !data.tabsMode'
+                    visibleOn: 'this.multiple && !this.tabsMode'
                   })
                 ]
               }
@@ -551,7 +596,7 @@ export class ComboControlPlugin extends BasePlugin {
         body: getSchemaTpl('collapseGroup', [
           {
             title: '基本',
-            visibleOn: 'data.multiple',
+            visibleOn: 'this.multiple',
             body: [
               {
                 name: 'tabsMode',
@@ -578,7 +623,7 @@ export class ComboControlPlugin extends BasePlugin {
               {
                 type: 'container',
                 className: 'ae-ExtendMore mb-3',
-                visibleOn: 'data.tabsMode',
+                visibleOn: 'this.tabsMode',
                 body: [
                   {
                     type: 'select',
@@ -615,7 +660,7 @@ export class ComboControlPlugin extends BasePlugin {
                 name: 'multiLine',
                 label: '多行展示',
                 pipeIn: defaultValue(false),
-                visibleOn: '!data.tabsMode',
+                visibleOn: '!this.tabsMode',
                 onChange: (
                   value: boolean,
                   oldValue: any,
@@ -629,7 +674,7 @@ export class ComboControlPlugin extends BasePlugin {
                 }
               }),
               getSchemaTpl('switch', {
-                visibleOn: '!data.tabsMode && data.multiLine',
+                visibleOn: '!this.tabsMode && this.multiLine',
                 name: 'noBorder',
                 label: '去掉边框',
                 pipeIn: defaultValue(false)
@@ -640,7 +685,7 @@ export class ComboControlPlugin extends BasePlugin {
             renderer: context.info.renderer,
             schema: [
               getSchemaTpl('subFormItemMode', {
-                visibleOn: 'data.multiLine',
+                visibleOn: 'this.multiLine',
                 type: 'select',
                 label: '子表单'
               })

@@ -2,7 +2,7 @@
  * zip 文件解析
  */
 
-import {zipSync, unzipSync, Unzipped, strFromU8, strToU8} from 'fflate';
+import {zipSync, unzipSync, Unzipped, strFromU8, strToU8} from '../util/fflate';
 
 import {PackageParser} from './PackageParser';
 
@@ -13,7 +13,10 @@ export default class ZipPackageParser implements PackageParser {
    * 加载 zip 文件
    */
   load(docxFile: ArrayBuffer) {
-    this.zip = unzipSync(new Uint8Array(docxFile));
+    // 避免重复解析
+    if (!this.zip) {
+      this.zip = unzipSync(new Uint8Array(docxFile));
+    }
   }
 
   /**
@@ -37,9 +40,22 @@ export default class ZipPackageParser implements PackageParser {
   /**
    * 根据类型读取文件
    */
-  getFileByType(filePath: string, type: 'string' | 'blob' | 'uint8array') {
+  getFileByType(
+    filePath: string,
+    type: 'string' | 'blob' | 'uint8array' = 'string'
+  ) {
     filePath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-    const file = this.zip[filePath];
+    let file = this.zip[filePath];
+    if (!file) {
+      // 使用大小写不敏感的方式查找
+      for (const key in this.zip) {
+        if (key.toLowerCase() === filePath.toLowerCase()) {
+          file = this.zip[key];
+          break;
+        }
+      }
+    }
+
     if (file) {
       if (type === 'string') {
         return strFromU8(file);
@@ -49,8 +65,16 @@ export default class ZipPackageParser implements PackageParser {
         return file;
       }
     }
+
     console.warn('getFileByType', filePath, 'not found');
     return null;
+  }
+
+  /**
+   * 读取文本内容
+   */
+  getString(filePath: string): string {
+    return this.getFileByType(filePath, 'string') as string;
   }
 
   /**
@@ -68,16 +92,37 @@ export default class ZipPackageParser implements PackageParser {
    */
   fileExists(filePath: string) {
     filePath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-    return filePath in this.zip;
+    if (filePath in this.zip) {
+      return true;
+    }
+
+    // 支持大小写不敏感
+    for (const key in this.zip) {
+      if (key.toLowerCase() === filePath.toLowerCase()) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
    * 生成新的 zip 文件
    */
-  generateZip(docContent: string) {
-    // 其实最好是生成个新的，后续再优化
-    this.zip['word/document.xml'] = strToU8(docContent);
+  generateZipBlob(docContent?: string) {
+    if (docContent) {
+      // 其实最好是生成个新的，后续再优化
+      this.zip['word/document.xml'] = strToU8(docContent);
+    }
 
     return new Blob([zipSync(this.zip)]);
+  }
+
+  generateZip() {
+    return zipSync(this.zip);
+  }
+
+  getZip() {
+    return this.zip;
   }
 }

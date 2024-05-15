@@ -43,6 +43,15 @@ export class KVControlPlugin extends BasePlugin {
     ]
   };
 
+  patchSchema: any = (patched: any) => {
+    if (patched.pipeIn || patched.pipeOut) {
+      patched = {...patched};
+      delete patched.pipeIn;
+      delete patched.pipeOut;
+    }
+    return patched;
+  };
+
   // 事件定义，定义了而已，配置面板还没升级，未暴露入口
   events: RendererPluginEvent[] = [
     {
@@ -109,7 +118,7 @@ export class KVControlPlugin extends BasePlugin {
     {
       actionType: 'reset',
       actionLabel: '重置',
-      description: '将值重置为resetValue，若没有配置resetValue，则清空'
+      description: '将值重置为初始值'
     },
     {
       actionType: 'setValue',

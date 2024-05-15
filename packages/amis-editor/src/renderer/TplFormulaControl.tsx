@@ -5,7 +5,7 @@
 import React from 'react';
 import cx from 'classnames';
 import {reaction} from 'mobx';
-import {CodeMirrorEditor, FormulaEditor} from 'amis-ui';
+import {CodeMirrorEditor, FormulaCodeEditor, FormulaEditor} from 'amis-ui';
 import type {VariableItem, CodeMirror} from 'amis-ui';
 import {Icon, Button, FormItem, TooltipWrapper} from 'amis';
 import {autobind, FormControlProps} from 'amis-core';
@@ -128,6 +128,9 @@ export class TplFormulaControl extends React.Component<
         true
       );
     }
+
+    const variables = await getVariables(this);
+    this.setState({variables});
   }
 
   componentWillUnmount() {
@@ -195,9 +198,12 @@ export class TplFormulaControl extends React.Component<
   handleConfirm(value: any) {
     const {expressionBrace} = this.state;
     // 去除可能包裹的最外层的${}
-    value = value.replace(/^\$\{(.*)\}$/, (match: string, p1: string) => p1);
+    value = value.replace(
+      /^\$\{([\s\S]*)\}$/m,
+      (match: string, p1: string) => p1
+    );
     value = value ? `\${${value}}` : value;
-    value = value.replace(/\r\n|\r|\n/g, ' ');
+    // value = value.replace(/\r\n|\r|\n/g, ' ');
     this.editorPlugin?.insertContent(value, 'expression', expressionBrace);
     this.setState({
       formulaPickerOpen: false,
@@ -382,7 +388,6 @@ export class TplFormulaControl extends React.Component<
     } = this.state;
 
     const FormulaPickerCmp = customFormulaPicker ?? FormulaPicker;
-
     const highlightValue = FormulaEditor.highlightValue(
       formulaPickerValue,
       variables

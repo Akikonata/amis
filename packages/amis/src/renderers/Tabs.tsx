@@ -677,7 +677,12 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
   /**
    * 动作处理
    */
-  doAction(action: ActionObject, args: any) {
+  doAction(
+    action: ActionObject,
+    data: any,
+    throwErrors: boolean = false,
+    args?: any
+  ) {
     const actionType = action?.actionType as string;
     const tmpKey = Number(args?.activeKey);
     let activeKey = isNaN(tmpKey) ? args?.activeKey : tmpKey;
@@ -769,7 +774,8 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
       collapseBtnLabel,
       disabled,
       mobileUI,
-      swipeable
+      swipeable,
+      testIdBuilder
     } = this.props;
 
     const mode = tabsMode || dMode;
@@ -815,6 +821,9 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
                 : unmountOnExit
             }
             onSelect={this.handleSelect}
+            testIdBuilder={testIdBuilder?.getChild(
+              `tab-${typeof tab.title === 'string' ? tab.title : index}`
+            )}
           >
             {render(
               `item/${index}`,
@@ -856,6 +865,9 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
                 : unmountOnExit
             }
             onSelect={this.handleSelect}
+            testIdBuilder={testIdBuilder?.getChild(
+              `tab-${typeof tab.title === 'string' ? tab.title : index}`
+            )}
           >
             {this.renderTab
               ? this.renderTab(tab, this.props, index)
@@ -903,6 +915,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
         collapseOnExceed={collapseOnExceed}
         collapseBtnLabel={collapseBtnLabel}
         mobileUI={mobileUI}
+        testIdBuilder={testIdBuilder}
       >
         {children}
       </CTabs>

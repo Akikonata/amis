@@ -78,6 +78,7 @@ export interface ControlOutterProps extends RendererProps {
     changePristine?: boolean
   ) => void;
   formItemDispatchEvent: (type: string, data: any) => void;
+  formItemRef?: (control: any) => void;
 }
 
 export interface ControlProps {
@@ -306,6 +307,8 @@ export function wrapControl<
               };
               addHook?.(this.hook2);
             }
+
+            formItem?.init();
           }
 
           componentDidUpdate(prevProps: OuterProps) {
@@ -471,45 +474,46 @@ export function wrapControl<
             const {formStore: form, data, canAccessSuperData} = this.props;
             const isExp = isExpression(value);
 
-            if (isExp) {
-              model.changeTmpValue(
-                FormulaExec['formula'](value, data), // 对组件默认值进行运算
-                'formulaChanged'
-              );
-            } else {
-              let initialValue = model.extraName
-                ? [
-                    getVariable(
-                      data,
-                      model.name,
-                      canAccessSuperData ?? form?.canAccessSuperData
-                    ),
-                    getVariable(
-                      data,
-                      model.extraName,
-                      canAccessSuperData ?? form?.canAccessSuperData
-                    )
-                  ]
-                : getVariable(
+            let initialValue = model.extraName
+              ? [
+                  getVariable(
                     data,
                     model.name,
                     canAccessSuperData ?? form?.canAccessSuperData
-                  );
+                  ),
+                  getVariable(
+                    data,
+                    model.extraName,
+                    canAccessSuperData ?? form?.canAccessSuperData
+                  )
+                ]
+              : getVariable(
+                  data,
+                  model.name,
+                  canAccessSuperData ?? form?.canAccessSuperData
+                );
 
-              if (
-                model.extraName &&
-                initialValue.every((item: any) => item === undefined)
-              ) {
-                initialValue = undefined;
-              }
-
-              model.changeTmpValue(
-                initialValue ?? replaceExpression(value),
-                typeof initialValue !== 'undefined'
-                  ? 'initialValue'
-                  : 'defaultValue'
-              );
+            if (
+              model.extraName &&
+              initialValue.every((item: any) => item === undefined)
+            ) {
+              initialValue = undefined;
             }
+
+            if (typeof initialValue === 'undefined') {
+              value = isExp
+                ? FormulaExec['formula'](value, data)
+                : replaceExpression(value);
+            }
+
+            model.changeTmpValue(
+              initialValue ?? value, // 对组件默认值进行运算
+              typeof initialValue !== 'undefined'
+                ? 'initialValue'
+                : isExp
+                ? 'formulaChanged'
+                : 'defaultValue'
+            );
           }
 
           disposeModel() {
@@ -539,7 +543,12 @@ export function wrapControl<
           }
 
           controlRef(control: any) {
-            const {addHook, removeHook, formStore: form} = this.props;
+            const {
+              addHook,
+              removeHook,
+              formStore: form,
+              formItemRef
+            } = this.props;
 
             // 因为 control 有可能被 n 层 hoc 包裹。
             while (control && control.getWrappedInstance) {
@@ -568,6 +577,7 @@ export function wrapControl<
               this.hook = undefined;
             }
 
+            formItemRef?.(control);
             // 注册到 Scoped 上
             const originRef = this.control;
             this.control = control;
@@ -619,9 +629,9 @@ export function wrapControl<
             }
 
             const valid = !result.some(item => item === false);
-            formItemDispatchEvent?.(
+            (formItemDispatchEvent ?? this.props.dispatchEvent)?.(
               valid ? 'formItemValidateSucc' : 'formItemValidateError',
-              data
+              form?.data ?? this.props.data // form里的一定是最新的数据
             );
             return valid;
           }

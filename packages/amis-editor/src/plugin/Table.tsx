@@ -342,6 +342,10 @@ export class TablePlugin extends BasePlugin {
                 index: {
                   type: 'number',
                   title: '当前行索引'
+                },
+                indexPath: {
+                  type: 'number',
+                  title: '行索引路劲'
                 }
               }
             }
@@ -368,6 +372,10 @@ export class TablePlugin extends BasePlugin {
                 index: {
                   type: 'number',
                   title: '当前行索引'
+                },
+                indexPath: {
+                  type: 'number',
+                  title: '行索引路劲'
                 }
               }
             }
@@ -394,6 +402,10 @@ export class TablePlugin extends BasePlugin {
                 index: {
                   type: 'number',
                   title: '当前行索引'
+                },
+                indexPath: {
+                  type: 'number',
+                  title: '行索引路劲'
                 }
               }
             }
@@ -420,6 +432,10 @@ export class TablePlugin extends BasePlugin {
                 index: {
                   type: 'number',
                   title: '当前行索引'
+                },
+                indexPath: {
+                  type: 'number',
+                  title: '行索引路劲'
                 }
               }
             }
@@ -459,6 +475,11 @@ export class TablePlugin extends BasePlugin {
       actionType: 'initDrag',
       actionLabel: '开启排序',
       description: '开启表格拖拽排序功能'
+    },
+    {
+      actionType: 'cancelDrag',
+      actionLabel: '取消排序',
+      description: '取消表格拖拽排序功能'
     }
   ];
 
@@ -644,7 +665,7 @@ export class TablePlugin extends BasePlugin {
                 name: 'footable.expand',
                 type: 'button-group-select',
                 size: 'sm',
-                visibleOn: 'data.footable',
+                visibleOn: 'this.footable',
                 label: '底部默认展开',
                 pipeIn: defaultValue('none'),
                 options: [
@@ -675,7 +696,7 @@ export class TablePlugin extends BasePlugin {
                 name: 'rowClassNameExpr',
                 type: 'input-text',
                 label: '行高亮规则',
-                placeholder: `支持模板语法，如 <%= data.id % 2 ? 'bg-success' : '' %>`
+                placeholder: `支持模板语法，如 <%= this.id % 2 ? 'bg-success' : '' %>`
               }
             ]
           },

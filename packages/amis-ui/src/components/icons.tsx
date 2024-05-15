@@ -9,6 +9,7 @@ import CloseIcon from '../icons/close.svg';
 import CloseSmallIcon from '../icons/close-small.svg';
 import StatusCloseIcon from '../icons/status-close.svg';
 import UnDoIcon from '../icons/undo.svg';
+import UnDoNormalIcon from '../icons/undo-normal.svg';
 import ReDoIcon from '../icons/redo.svg';
 import EnterIcon from '../icons/enter.svg';
 import VolumeIcon from '../icons/volume.svg';
@@ -21,6 +22,7 @@ import ArrowDoubleLeftIcon from '../icons/arrow-double-left.svg';
 import ArrowDoubleRightIcon from '../icons/arrow-double-right.svg';
 import CheckIcon from '../icons/check.svg';
 import PlusIcon from '../icons/plus.svg';
+import SubPlusIcon from '../icons/sub-plus.svg';
 import MinusIcon from '../icons/minus.svg';
 import PencilIcon from '../icons/pencil.svg';
 import ViewIcon from '../icons/view.svg';
@@ -49,6 +51,8 @@ import RefreshIcon from '../icons/refresh.svg';
 import DragIcon from '../icons/drag.svg';
 import EditIcon from '../icons/edit.svg';
 import DeskEmptyIcon from '../icons/desk-empty.svg';
+import FullScreen from '../icons/fullscreen.svg';
+import UnFullscreen from '../icons/unfullscreen.svg';
 
 import CopyIcon from '../icons/copy.svg';
 import FilterIcon from '../icons/filter.svg';
@@ -106,6 +110,7 @@ import ScaleOrigin from '../icons/scale-origin.svg';
 import If from '../icons/if.svg';
 
 import isObject from 'lodash/isObject';
+import type {TestIdBuilder} from 'amis-core';
 
 // 兼容原来的用法，后续不直接试用。
 
@@ -143,6 +148,9 @@ registerIcon('close', CloseIcon);
 registerIcon('close-small', CloseSmallIcon);
 registerIcon('status-close', StatusCloseIcon);
 registerIcon('undo', UnDoIcon);
+registerIcon('undo-normal', UnDoNormalIcon);
+registerIcon('full-screen', FullScreen);
+registerIcon('un-fullscreen', UnFullscreen);
 registerIcon('redo', ReDoIcon);
 registerIcon('enter', EnterIcon);
 registerIcon('volume', VolumeIcon);
@@ -155,6 +163,7 @@ registerIcon('prev', LeftArrowIcon);
 registerIcon('next', RightArrowIcon);
 registerIcon('check', CheckIcon);
 registerIcon('plus', PlusIcon);
+registerIcon('sub-plus', SubPlusIcon);
 registerIcon('add', PlusIcon);
 registerIcon('minus', MinusIcon);
 registerIcon('pencil', PencilIcon);
@@ -276,10 +285,12 @@ export function Icon({
   onTouchMove,
   onTouchEnd,
   onTouchCancel,
-  style
+  style,
+  testIdBuilder
 }: {
   icon: string;
   iconContent?: string;
+  testIdBuilder?: TestIdBuilder;
 } & React.ComponentProps<any>) {
   let cx = iconCx || cxClass;
 
@@ -348,6 +359,7 @@ export function Icon({
         className={cx(iconContent, className, classNameProp)}
         ref={refFn}
         style={style}
+        {...testIdBuilder?.getTestId()}
       ></div>
     );
   }
@@ -362,6 +374,7 @@ export function Icon({
         // @ts-ignore
         icon={icon}
         style={style}
+        {...testIdBuilder?.getTestId()}
       />
     );
   }
@@ -402,12 +415,13 @@ export function Icon({
   // 直接传入svg字符串
   if (typeof icon === 'string' && icon.startsWith('<svg')) {
     const svgStr = /<svg .*?>(.*?)<\/svg>/.exec(icon);
+    const viewBox = /viewBox="(.*?)"/.exec(icon);
     const svgHTML = createElement('svg', {
       ...events,
       className: cx('icon', className, classNameProp),
       style,
       dangerouslySetInnerHTML: {__html: svgStr ? svgStr[1] : ''},
-      viewBox: '0 0 16 16'
+      viewBox: viewBox?.[1] || '0 0 16 16'
     });
     return svgHTML;
   }

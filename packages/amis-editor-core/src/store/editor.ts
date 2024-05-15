@@ -5,7 +5,8 @@ import {
   mapTree,
   eachTree,
   extendObject,
-  createObject
+  createObject,
+  extractObjectChain
 } from 'amis-core';
 import {cast, getEnv, Instance, types} from 'mobx-state-tree';
 import {
@@ -21,9 +22,8 @@ import {
   guid,
   appTranslate,
   JSONGetByPath,
-  getDialogListBySchema,
-  getFixDialogType,
-  addModal
+  addModal,
+  mergeDefinitions
 } from '../../src/util';
 import {
   InsertEventContext,
@@ -126,6 +126,20 @@ export interface TargetName {
   name: string;
   editorId: string;
 }
+
+export type EditorModalBody = (DialogSchema | DrawerSchema) & {
+  // 节点 ID
+  $$id?: string;
+  // 如果是公共弹窗，在 definitions 中的 key
+  $$ref?: string;
+
+  // 内嵌弹窗会转成公共弹窗下发给子弹窗，否则子弹窗里面无法选择
+  // 这类会在 definition 里面标记原始位置
+  $$originId?: string;
+
+  // 弹出方式
+  actionType?: string;
+};
 
 export const MainStore = types
   .model('EditorRoot', {
@@ -538,16 +552,28 @@ export const MainStore = types
           return undefined;
         }
 
+        const isSubEditor = self.isSubEditor;
+        const isHiddenProps = getEnv(self).isHiddenProps;
+
         return JSONPipeOut(
           JSONGetById(self.schema, self.activeId),
-          getEnv(self).isHiddenProps ||
-            ((key, props) =>
+          (key, props) => {
+            if (isSubEditor && key === 'definitions') {
+              return true;
+            }
+
+            if (typeof isHiddenProps === 'function') {
+              return isHiddenProps(key, props);
+            }
+
+            return (
               (key.substring(0, 2) === '$$' &&
                 key !== '$$comments' &&
                 key !== '$$commonSchema') ||
               typeof props === 'function' || // pipeIn 和 pipeOut
-              key.substring(0, 2) === '__' ||
-              key === 'editorState') // 样式不需要出现做json中,
+              key.substring(0, 2) === '__'
+            );
+          }
         );
       },
 
@@ -1003,18 +1029,10 @@ export const MainStore = types
       },
 
       // 获取弹窗大纲列表
-      get modals(): Array<DialogSchema | DrawerSchema> {
+      get modals(): Array<EditorModalBody> {
         const schema = self.schema;
         const modals: Array<DialogSchema | DrawerSchema> = [];
-        Object.keys(schema.definitions || {}).forEach(key => {
-          const definition = schema.definitions[key];
-          if (['dialog', 'drawer'].includes(definition.type)) {
-            modals.push({
-              ...definition,
-              $$ref: key
-            });
-          }
-        });
+
         JSONTraverse(schema, (value: any, key: string, host: any) => {
           if (
             key === 'actionType' &&
@@ -1022,7 +1040,11 @@ export const MainStore = types
           ) {
             const key = value === 'drawer' ? 'drawer' : 'dialog';
             const body = host[key] || host['args'];
-            if (body && !body.$ref) {
+            if (
+              body &&
+              !body.$ref &&
+              !modals.find(item => item.$$id === body.$$id)
+            ) {
               modals.push({
                 ...body,
                 actionType: value
@@ -1031,11 +1053,47 @@ export const MainStore = types
           }
           return value;
         });
+
+        // 公共组件排在前面
+        Object.keys(schema.definitions || {})
+          .reverse()
+          .forEach(key => {
+            const definition = schema.definitions[key];
+            if (['dialog', 'drawer'].includes(definition.type)) {
+              // 不要把已经内嵌弹窗中的弹窗再放到外面
+              if (
+                definition.$$originId &&
+                modals.find(item => item.$$id === definition.$$originId)
+              ) {
+                return;
+              }
+
+              modals.unshift({
+                ...definition,
+                $$ref: key
+              });
+            }
+          });
+
+        // 子弹窗时，自己就是个弹窗
+        if (['dialog', 'drawer', 'confirmDialog'].includes(schema.type)) {
+          const idx = modals.findIndex(item => item.$$id === schema.$$id);
+          if (~idx) {
+            modals.splice(idx, 1);
+          }
+
+          modals.unshift({
+            ...schema,
+            // 如果还包含这个，子弹窗里面收集弹窗的时候会出现多份内嵌弹窗
+            definitions: undefined
+          });
+        }
+
         return modals;
       },
 
       get modalOptions() {
-        return this.modals.map((modal: any) => {
+        return this.modals.map((modal: EditorModalBody) => {
           return {
             label: `${
               modal.editorSetting?.displayName || modal.title || '未命名弹窗'
@@ -1095,6 +1153,15 @@ export const MainStore = types
       },
 
       setCtx(value: any) {
+        if (value?.__super) {
+          // context 不支持链式，如果这样下发了，需要转成普通对象。
+          // 目前平台会下发这种数据，为了防止数据丢失做个处理
+          value = extractObjectChain(value).reduce(
+            (obj, item) => Object.assign(obj, item),
+            {}
+          );
+        }
+
         self.ctx = value;
       },
 
@@ -1114,7 +1181,9 @@ export const MainStore = types
       setSchema(json: any) {
         const newSchema = JSONPipeIn(json || {});
 
-        if (self.schema) {
+        // schema 里面始终有个 $$id
+        // 如果超过一个元素，说明不是个空配置了，就不要直接替换了。
+        if (self.schema && Object.keys(self.schema).length > 1) {
           // 不直接替换，主要是为了不要重新生成 $$id 什么的。
           const changes = diff(
             self.schema,
@@ -1668,8 +1737,8 @@ export const MainStore = types
         self.jsonSchemaUri = schemaUri;
       },
 
-      addModal(modal?: DialogSchema | DrawerSchema) {
-        const [schema] = addModal(self.schema, modal);
+      addModal(modal?: DialogSchema | DrawerSchema, definitions?: any) {
+        const [schema] = addModal(self.schema, modal, definitions);
         this.traceableSetSchema(schema);
       },
 
@@ -1730,20 +1799,37 @@ export const MainStore = types
         this.traceableSetSchema(schema);
       },
 
-      updateModal(id: string, modal: DialogSchema | DrawerSchema) {
+      updateModal(
+        id: string,
+        modal: DialogSchema | DrawerSchema,
+        definitions?: any
+      ) {
         let schema = self.schema;
-        schema = JSONUpdate(schema, id, modal);
         const parent = JSONGetParentById(schema, id);
+
+        if (!parent) {
+          throw new Error('modal not found');
+        }
+
+        modal = JSONPipeIn(modal);
+        if (definitions && isPlainObject(definitions)) {
+          schema = mergeDefinitions(schema, definitions, modal);
+        }
+
         const newHostKey =
           ((modal as any).actionType || modal.type) === 'drawer'
             ? 'drawer'
             : 'dialog';
 
-        if (parent === schema.definitions) {
+        schema = JSONUpdate(schema, id, modal, true);
+
+        // 如果编辑的是公共弹窗
+        if (!parent.actionType) {
           const modalKey = Object.keys(parent).find(
             key => parent[key]?.$$id === id
           );
 
+          // 所有引用的地方都要更新
           JSONTraverse(schema, (value: any, key: string, host: any) => {
             if (
               key === 'actionType' &&
@@ -1763,12 +1849,36 @@ export const MainStore = types
             return value;
           });
         } else {
+          // 内嵌弹窗只用改自己就行了
           schema = JSONUpdate(schema, parent.$$id, {
             actionType: (modal as any).actionType || modal.type,
             args: undefined,
             dialog: undefined,
             drawer: undefined,
             [newHostKey]: modal
+          });
+        }
+
+        // 如果弹窗里面又弹窗指向自己，那么也要更新
+        let refIds: string[] = [];
+        JSONTraverse(modal, (value: any, key: string, host: any) => {
+          if (key === '$ref' && host.$$originId === id) {
+            refIds.push(host.$$id);
+          }
+        });
+        if (refIds.length) {
+          let refKey = '';
+          [schema, refKey] = addModal(schema, modal);
+          schema = JSONUpdate(schema, parent.$$id, {
+            [newHostKey]: JSONPipeIn({
+              $ref: refKey
+            })
+          });
+          refIds.forEach(refId => {
+            schema = JSONUpdate(schema, refId, {
+              $ref: refKey,
+              $$originId: undefined
+            });
           });
         }
 

@@ -7,7 +7,7 @@ import {
   resolveVariableAndFilter,
   setThemeClassName,
   ValidateError,
-  getTestId
+  RendererEvent
 } from 'amis-core';
 import {Renderer, RendererProps} from 'amis-core';
 import {SchemaNode, Schema, ActionObject} from 'amis-core';
@@ -155,8 +155,6 @@ export interface DrawerSchema extends BaseSchema {
   data?: {
     [propName: string]: any;
   };
-
-  testid?: string;
 }
 
 export type DrawerSchemaBase = Omit<DrawerSchema, 'type'>;
@@ -272,7 +270,7 @@ export default class Drawer extends React.Component<DrawerProps> {
   }
 
   buildActions(): Array<ActionSchema> {
-    const {actions, confirm, testid, translate: __} = this.props;
+    const {actions, confirm, translate: __, testIdBuilder} = this.props;
 
     if (typeof actions !== 'undefined') {
       return actions;
@@ -281,7 +279,7 @@ export default class Drawer extends React.Component<DrawerProps> {
     let ret: Array<ActionSchema> = [];
     ret.push({
       type: 'button',
-      testid: getTestId(testid && `${testid}-cancel`),
+      testIdBuilder: testIdBuilder?.getChild('cancel'),
       actionType: 'close',
       label: __('cancel')
     });
@@ -290,7 +288,7 @@ export default class Drawer extends React.Component<DrawerProps> {
       ret.push({
         type: 'button',
         actionType: 'confirm',
-        testid: getTestId(testid && `${testid}-confirm`),
+        testIdBuilder: testIdBuilder?.getChild('confirm'),
         label: __('confirm'),
         primary: true
       });
@@ -310,6 +308,9 @@ export default class Drawer extends React.Component<DrawerProps> {
     const rendererEvent = await dispatchEvent('cancel', this.props.data);
     if (rendererEvent?.prevented) {
       return;
+    }
+    if (rendererEvent?.pendingPromise.length) {
+      await rendererEvent.allDone();
     }
     // clear error
     store.updateMessage();
@@ -362,7 +363,7 @@ export default class Drawer extends React.Component<DrawerProps> {
       return;
     }
 
-    store.closeDrawer();
+    store.closeDrawer(true, values);
   }
 
   handleDrawerClose(...args: Array<any>) {
@@ -375,7 +376,7 @@ export default class Drawer extends React.Component<DrawerProps> {
       return;
     }
 
-    store.closeDrawer();
+    store.closeDrawer(...args);
   }
 
   handleDialogConfirm(
@@ -399,7 +400,7 @@ export default class Drawer extends React.Component<DrawerProps> {
       return;
     }
 
-    store.closeDialog(true);
+    store.closeDialog(true, values);
   }
 
   handleDialogClose(...args: Array<any>) {
@@ -428,12 +429,11 @@ export default class Drawer extends React.Component<DrawerProps> {
   handleFormChange(data: any, name?: string) {
     const {store} = this.props;
 
+    // 如果 drawer 里面不放 form，而是直接放表单项就会进到这里来。
     if (typeof name === 'string') {
-      data = {
-        [name]: data
-      };
+      store.changeValue(name, data);
+      return;
     }
-
     store.setFormData(data);
   }
 
@@ -460,6 +460,7 @@ export default class Drawer extends React.Component<DrawerProps> {
     statusStore && isAlive(statusStore) && statusStore.resetAll();
     if (isAlive(store)) {
       store.reset();
+      store.clearMessage();
       store.setEntered(false);
       if (typeof lazySchema === 'function') {
         store.setSchema('');
@@ -549,6 +550,7 @@ export default class Drawer extends React.Component<DrawerProps> {
         {actions.map((action, key) =>
           render(`action/${key}`, action, {
             onAction: this.handleAction,
+            onActionSensor: undefined,
             data: store.formData,
             key,
             disabled: action.disabled || store.loading
@@ -683,7 +685,8 @@ export default class Drawer extends React.Component<DrawerProps> {
                   data: store.formData,
                   onConfirm: this.handleDrawerConfirm,
                   onClose: this.handleDrawerClose,
-                  onAction: this.handleAction
+                  onAction: this.handleAction,
+                  onActionSensor: undefined
                 })}
               </div>
             ) : null}
@@ -692,7 +695,8 @@ export default class Drawer extends React.Component<DrawerProps> {
                   data: store.formData,
                   onConfirm: this.handleDrawerConfirm,
                   onClose: this.handleDrawerClose,
-                  onAction: this.handleAction
+                  onAction: this.handleAction,
+                  onActionSensor: undefined
                 })
               : null}
           </div>
@@ -908,12 +912,13 @@ export class DrawerRenderer extends Drawer {
           store.updateMessage(reason.message, true);
           store.markBusying(false);
 
-          if (reason.constructor?.name === ValidateError.name) {
-            clearTimeout(this.clearErrorTimer);
-            this.clearErrorTimer = setTimeout(() => {
-              store.updateMessage('');
-            }, 3000);
-          }
+          // 通常都是数据错误，过 3 秒自动清理错误信息
+          // if (reason.constructor?.name === ValidateError.name) {
+          clearTimeout(this.clearErrorTimer);
+          this.clearErrorTimer = setTimeout(() => {
+            store.updateMessage('');
+          }, 3000);
+          // }
         });
 
       return true;
@@ -931,7 +936,8 @@ export class DrawerRenderer extends Drawer {
     action: ActionObject,
     data: object,
     throwErrors: boolean = false,
-    delegate?: IScopedContext
+    delegate?: IScopedContext,
+    rendererEvent?: RendererEvent<any>
   ) {
     const {onClose, onAction, store, env, dispatchEvent} = this.props;
 
@@ -940,6 +946,10 @@ export class DrawerRenderer extends Drawer {
       return onAction
         ? onAction(e, action, data, throwErrors, delegate || this.context)
         : false;
+    }
+
+    if (rendererEvent?.pendingPromise.length) {
+      await rendererEvent.allDone();
     }
 
     const scoped = this.context as IScopedContext;
@@ -951,6 +961,9 @@ export class DrawerRenderer extends Drawer {
       );
       if (rendererEvent?.prevented) {
         return;
+      }
+      if (rendererEvent?.pendingPromise.length) {
+        await rendererEvent.allDone();
       }
       store.setCurrentAction(action, this.props.resolveDefinitions);
       onClose();
@@ -967,19 +980,38 @@ export class DrawerRenderer extends Drawer {
       if (rendererEvent?.prevented) {
         return;
       }
+      if (rendererEvent?.pendingPromise.length) {
+        await rendererEvent.allDone();
+      }
       store.setCurrentAction(action, this.props.resolveDefinitions);
       this.tryChildrenToHandle(action, data) || onClose();
     } else if (action.actionType === 'drawer') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
-      store.openDrawer(data);
+      return new Promise<any>(resolve => {
+        store.openDrawer(data, undefined, (confirmed: any, value: any) => {
+          action.callback?.(confirmed, value);
+          resolve({
+            confirmed,
+            value
+          });
+        });
+      });
     } else if (action.actionType === 'dialog') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
-      store.openDialog(
-        data,
-        undefined,
-        action.callback,
-        delegate || (this.context as any)
-      );
+      return new Promise<any>(resolve => {
+        store.openDialog(
+          data,
+          undefined,
+          (confirmed: any, value: any) => {
+            action.callback?.(confirmed, value);
+            resolve({
+              confirmed,
+              value
+            });
+          },
+          delegate || (this.context as any)
+        );
+      });
     } else if (action.actionType === 'reload') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
       action.target && scoped.reload(action.target, data);

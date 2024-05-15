@@ -296,7 +296,7 @@ export class TableControlPlugin extends BasePlugin {
       eventLabel: '添加行',
       description: '点击左下角添加按钮 或 某一行右侧操作栏添加按钮时触发',
       dataSchema: (manager: EditorManager) => {
-        const {value} = resolveInputTableEventDataSchame(manager, true);
+        const {value, item} = resolveInputTableEventDataSchame(manager, true);
 
         return [
           {
@@ -311,9 +311,18 @@ export class TableControlPlugin extends BasePlugin {
                     ...value,
                     title: '列表记录'
                   },
+                  item: {
+                    type: 'object',
+                    ...item,
+                    title: '新增行记录'
+                  },
                   index: {
                     type: 'number',
                     title: '新增索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -351,6 +360,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '新增索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -388,6 +401,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '新增索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -425,6 +442,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '新增索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   },
                   error: {
                     type: 'object',
@@ -465,6 +486,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '所在行记录索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -501,7 +526,11 @@ export class TableControlPlugin extends BasePlugin {
                   },
                   index: {
                     type: 'number',
-                    title: '所在行记录索引'
+                    title: '索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -539,6 +568,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '所在行记录索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -576,6 +609,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '所在行记录索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   },
                   error: {
                     type: 'object',
@@ -616,6 +653,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'object',
                     title: '所在行记录索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -652,6 +693,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'object',
                     title: '所在行记录索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -688,6 +733,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '所在行记录索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   },
                   error: {
                     type: 'object',
@@ -777,6 +826,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '当前行索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -808,6 +861,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '当前行索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -839,6 +896,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '当前行索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -870,6 +931,10 @@ export class TableControlPlugin extends BasePlugin {
                   index: {
                     type: 'number',
                     title: '当前行索引'
+                  },
+                  indexPath: {
+                    type: 'string',
+                    title: '索引路径'
                   }
                 }
               }
@@ -1009,13 +1074,13 @@ export class TableControlPlugin extends BasePlugin {
             label: '删除范围',
             size: 'lg',
             placeholder: '请输入行号，输入多个则用英文逗号分隔',
-            hiddenOn: 'data.__deleteType !== "rowIndex"'
+            hiddenOn: 'this.__deleteType !== "rowIndex"'
           },
           getSchemaTpl('formulaControl', {
             name: 'condition',
             variables: '${variables}',
             label: '删除条件',
-            hiddenOn: 'data.__deleteType !== "conditionExpression"',
+            hiddenOn: 'this.__deleteType !== "conditionExpression"',
             mode: 'horizontal',
             required: true,
             horizontal: {
@@ -1029,7 +1094,7 @@ export class TableControlPlugin extends BasePlugin {
     // {
     //   actionType: 'reset',
     //   actionLabel: '重置',
-    //   description: '将值重置为resetValue，若没有配置resetValue，则清空'
+    //   description: '将值重置为初始值'
     // },
     {
       actionType: 'clear',
@@ -1040,6 +1105,11 @@ export class TableControlPlugin extends BasePlugin {
       actionType: 'initDrag',
       actionLabel: '开启排序',
       description: '开启表格拖拽排序功能'
+    },
+    {
+      actionType: 'cancelDrag',
+      actionLabel: '取消排序',
+      description: '取消表格拖拽排序功能'
     }
   ];
 

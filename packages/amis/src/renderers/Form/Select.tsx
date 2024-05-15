@@ -14,7 +14,9 @@ import {
   isEffectiveApi,
   isApiOutdated,
   createObject,
-  autobind
+  autobind,
+  TestIdBuilder,
+  getVariable
 } from 'amis-core';
 import {TransferDropDown, Spinner, Select, SpinnerExtraProps} from 'amis-ui';
 import {FormOptionsSchema, SchemaApi} from '../../Schema';
@@ -154,9 +156,9 @@ export interface SelectControlSchema
      * 检索函数
      */
     filterOption?: 'string';
-
-    testid?: string;
   };
+
+  testIdBuilder?: TestIdBuilder;
 }
 
 export interface SelectProps extends OptionsControlProps, SpinnerExtraProps {
@@ -299,6 +301,7 @@ export default class SelectControl extends React.Component<SelectProps, any> {
     const {onChange, setOptions, options, data, dispatchEvent} = this.props;
 
     let additonalOptions: Array<any> = [];
+
     let newValue: string | Option | Array<Option> | void = this.getValue(
       value,
       additonalOptions
@@ -340,7 +343,7 @@ export default class SelectControl extends React.Component<SelectProps, any> {
       throw new Error('fetcher is required');
     }
 
-    if (!formInited) {
+    if (formInited === false && addHook) {
       this.unHook && this.unHook();
       return (this.unHook = addHook(this.loadRemote.bind(this, input), 'init'));
     }
@@ -411,12 +414,15 @@ export default class SelectControl extends React.Component<SelectProps, any> {
 
   @autobind
   renderMenu(option: Option, state: any) {
-    const {menuTpl, render, data, optionClassName} = this.props;
+    const {menuTpl, render, data, optionClassName, testIdBuilder} = this.props;
 
     return render(`menu/${state.index}`, menuTpl, {
       showNativeTitle: true,
       className: cx('Select-option-content', optionClassName),
-      data: createObject(createObject(data, state), option)
+      data: createObject(createObject(data, state), option),
+      testIdBuilder: testIdBuilder?.getChild(
+        'option-' + option.value || state.index
+      )
     });
   }
 
@@ -438,13 +444,16 @@ export default class SelectControl extends React.Component<SelectProps, any> {
   }
 
   doAction(action: ActionObject, data: object, throwErrors: boolean): any {
-    const {resetValue, onChange} = this.props;
+    const {resetValue, onChange, formStore, store, name, valueField} =
+      this.props;
     const actionType = action?.actionType as string;
 
     if (actionType === 'clear') {
       onChange?.('');
     } else if (actionType === 'reset') {
-      const value = this.getValue(resetValue ?? '');
+      const pristineVal =
+        getVariable(formStore?.pristine ?? store?.pristine, name) ?? resetValue;
+      const value = this.getValue({[valueField]: pristineVal ?? ''});
       onChange?.(value);
     }
   }
@@ -548,8 +557,13 @@ export interface TransferDropDownProps
 class TransferDropdownRenderer extends BaseTransferRenderer<TransferDropDownProps> {
   @autobind
   renderItem(item: Option): any {
-    const {labelField} = this.props;
-    return `${item.scopeLabel || ''}${item[labelField || 'label']}`;
+    const {labelField, menuTpl, data, render} = this.props;
+
+    return menuTpl
+      ? render(`option/${item.value}`, menuTpl, {
+          data: createObject(data, item)
+        })
+      : `${item.scopeLabel || ''}${item[labelField || 'label']}`;
   }
 
   render() {
@@ -615,6 +629,7 @@ class TransferDropdownRenderer extends BaseTransferRenderer<TransferDropDownProp
           options={options}
           onChange={this.handleChange}
           option2value={this.option2value}
+          optionItemRender={this.renderItem}
           itemRender={this.renderItem}
           sortable={sortable}
           searchResultMode={searchResultMode}

@@ -3,7 +3,8 @@ import {
   OptionsControl,
   OptionsControlProps,
   Option,
-  resolveEventData
+  resolveEventData,
+  getVariable
 } from 'amis-core';
 import Downshift from 'downshift';
 import find from 'lodash/find';
@@ -142,13 +143,15 @@ export default class TagControl extends React.PureComponent<
   }
 
   doAction(action: ActionObject, data: object, throwErrors: boolean) {
-    const {resetValue, onChange} = this.props;
+    const {resetValue, onChange, formStore, store, name} = this.props;
     const actionType = action?.actionType as string;
 
     if (actionType === 'clear') {
       onChange?.('');
     } else if (actionType === 'reset') {
-      onChange?.(resetValue ?? '');
+      const pristineVal =
+        getVariable(formStore?.pristine ?? store?.pristine, name) ?? resetValue;
+      onChange?.(pristineVal ?? '');
     }
   }
 
@@ -577,7 +580,8 @@ export default class TagControl extends React.PureComponent<
       valueField,
       env,
       mobileUI,
-      labelField
+      labelField,
+      testIdBuilder
     } = this.props;
 
     const term = this.state.inputValue;
@@ -635,6 +639,7 @@ export default class TagControl extends React.PureComponent<
                 popOverContainer={popOverContainer || env.getModalContainer}
                 allowInput={!mobileUI || (mobileUI && !options?.length)}
                 mobileUI={mobileUI}
+                testIdBuilder={testIdBuilder?.getChild('resule-box')}
               >
                 {loading ? (
                   <Spinner loadingConfig={loadingConfig} size="sm" />
@@ -716,6 +721,7 @@ export default class TagControl extends React.PureComponent<
                         options={finnalOptions}
                         itemRender={this.renderItem}
                         highlightIndex={highlightedIndex}
+                        testIdBuilder={testIdBuilder?.getChild('options')}
                         getItemProps={({
                           item,
                           index

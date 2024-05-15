@@ -1,9 +1,16 @@
 /**
  * @file Flex 常见布局 1:3
  */
-import {PlainObject} from 'amis-core';
-import {LayoutBasePlugin, PluginEvent} from 'amis-editor-core';
-import {getSchemaTpl, tipedLabel} from 'amis-editor-core';
+import React from 'react';
+import {
+  JSONPipeOut,
+  LayoutBasePlugin,
+  PluginEvent,
+  reGenerateID,
+  tipedLabel
+} from 'amis-editor-core';
+import {getSchemaTpl} from 'amis-editor-core';
+import {Button, PlainObject} from 'amis';
 import type {
   BaseEventContext,
   EditorNodeType,
@@ -12,20 +19,29 @@ import type {
   BasicToolbarItem,
   PluginInterface
 } from 'amis-editor-core';
+import {Icon} from 'amis-editor-core';
+import {JSONChangeInArray, JSONPipeIn, repeatArray} from 'amis-editor-core';
+import {isAlive} from 'mobx-state-tree';
 
 // 默认的列容器Schema
-export const defaultFlexColumnSchema = (title?: string) => {
+export const defaultFlexColumnSchema = (
+  title?: string,
+  disableFlexBasis: boolean = true
+) => {
+  let style: PlainObject = {
+    position: 'static',
+    display: 'block',
+    flex: '1 1 auto',
+    flexGrow: 1
+  };
+  if (disableFlexBasis) {
+    style.flexBasis = 0;
+  }
   return {
     type: 'container',
     body: [],
     size: 'none',
-    style: {
-      position: 'static',
-      display: 'block',
-      flex: '1 1 auto',
-      flexGrow: 1,
-      flexBasis: 0
-    },
+    style,
     wrapperBody: false,
     isFixedHeight: false,
     isFixedWidth: false
@@ -88,9 +104,62 @@ export class FlexPluginBase extends LayoutBasePlugin {
 
   panelJustify = true; // 右侧配置项默认左右展示
 
+  // 设置分栏的默认布局比例
+  setFlexLayout = (node: EditorNodeType, value: string) => {
+    if (/^[\d:]+$/.test(value) && isAlive(node)) {
+      let list = value.trim().split(':');
+      let children = node.children || [];
+      const isColumn = String(node.schema?.style?.flexDirection).includes(
+        'column'
+      );
+
+      // 更新flex布局
+      for (let i = 0; i < children.length; i++) {
+        let child = children[i];
+        child.updateSchemaStyle({
+          flexGrow: +list[i],
+          width: undefined,
+          flexBasis: isColumn ? 'auto' : 0,
+          flex: '1 1 auto'
+        });
+      }
+
+      // 增加或删除列
+      if (children.length < list.length) {
+        for (let i = 0; i < list.length - children.length; i++) {
+          let newColumnSchema = defaultFlexColumnSchema('', !isColumn);
+          newColumnSchema.style.flexGrow = +list[i];
+          this.manager.addElem(newColumnSchema, true, false);
+        }
+      } else if (children.length > list.length) {
+        // 如果删除的列里面存在元素，截断生成新的flex放在组件后面
+        const newSchema = JSONPipeIn(JSONPipeOut(node.schema));
+        newSchema.items = newSchema.items.slice(list.length);
+
+        node.updateSchema({
+          items: node.schema.items.slice(0, list.length)
+        });
+
+        if (
+          (newSchema.items as PlainObject[]).some(
+            (item, index) => item.body?.length
+          )
+        ) {
+          const parent = node.parent;
+          this.manager.addChild(
+            parent.id,
+            parent.region,
+            newSchema,
+            parent?.children?.[node.index + 1]?.id
+          );
+        }
+      }
+    }
+    return undefined;
+  };
+
   resetFlexBasis = (node: EditorNodeType, flexSetting: PlainObject = {}) => {
     let schema = node.schema;
-
     if (
       String(flexSetting.flexDirection).includes('column') &&
       !schema?.style?.height
@@ -108,6 +177,30 @@ export class FlexPluginBase extends LayoutBasePlugin {
     }
   };
 
+  insertItem = (node: EditorNodeType, direction: string) => {
+    if (node.info?.plugin !== this) {
+      return;
+    }
+    const store = this.manager.store;
+    const newSchema = JSONPipeIn(JSONPipeOut(node.schema));
+
+    const parent = node.parent;
+    const nextId =
+      direction === 'upper' ? node.id : parent?.children?.[node.index + 1]?.id;
+    const child = this.manager.addChild(
+      parent.id,
+      parent.region,
+      newSchema,
+      nextId
+    );
+    if (child) {
+      // mobx 修改数据是异步的
+      setTimeout(() => {
+        store.setActiveId(child.$$id);
+      }, 100);
+    }
+  };
+
   panelBodyCreator = (context: BaseEventContext) => {
     const curRendererSchema = context?.schema || {};
     const isRowContent =
@@ -118,10 +211,11 @@ export class FlexPluginBase extends LayoutBasePlugin {
     const isFlexColumnItem = this.manager?.isFlexColumnItem(context?.id);
     // 判断是否为吸附容器
     const isSorptionContainer = curRendererSchema?.isSorptionContainer || false;
+    const flexDirection = context.node?.schema?.style?.flexDirection || 'row';
 
     const positionTpl = [
       getSchemaTpl('layout:position', {
-        visibleOn: '!data.stickyStatus'
+        visibleOn: '!this.stickyStatus'
       }),
       getSchemaTpl('layout:originPosition'),
       getSchemaTpl('layout:inset', {
@@ -137,15 +231,84 @@ export class FlexPluginBase extends LayoutBasePlugin {
           body: [
             getSchemaTpl('collapseGroup', [
               {
-                title: '布局',
+                title: '基础',
                 body: [
-                  isSorptionContainer ? getSchemaTpl('layout:sorption') : null,
+                  context.node &&
+                    getSchemaTpl('layout:flex-layout', {
+                      name: 'layout',
+                      label: '快捷版式设置',
+                      flexDirection,
+                      strictMode: false,
+                      pipeIn: () => {
+                        if (isAlive(context.node)) {
+                          let children = context.node?.children || [];
+                          if (
+                            children.every(
+                              item => item.schema?.style?.flex === '1 1 auto'
+                            )
+                          ) {
+                            return children
+                              .map(item => item.schema?.style?.flexGrow || 1)
+                              .join(':');
+                          }
+                        }
+                        return undefined;
+                      },
+                      pipeOut: (value: string) =>
+                        this.setFlexLayout(context.node, value)
+                    }),
 
-                  // 吸附容器不显示定位相关配置项
-                  ...(isSorptionContainer ? [] : positionTpl),
+                  {
+                    type: 'wrapper',
+                    size: 'none',
+                    className: 'grid grid-cols-2 gap-4 mb-4',
+                    body: [
+                      {
+                        children: (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              this.insertItem(context.node, 'under')
+                            }
+                          >
+                            <Icon className="icon" icon="arrow-to-bottom" />
+                            <span>下方插入新行</span>
+                          </Button>
+                        )
+                      },
+                      {
+                        children: (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              this.insertItem(context.node, 'upper')
+                            }
+                          >
+                            <Icon className="icon" icon="top-arrow-to-top" />
+                            <span>上方插入新行</span>
+                          </Button>
+                        )
+                      }
+                    ]
+                  },
+
+                  getSchemaTpl('theme:paddingAndMargin', {
+                    name: 'themeCss.baseControlClassName.padding-and-margin:default'
+                  }),
+                  getSchemaTpl('theme:border', {
+                    name: `themeCss.baseControlClassName.border:default`
+                  }),
+                  getSchemaTpl('theme:colorPicker', {
+                    name: 'themeCss.baseControlClassName.background:default',
+                    label: '背景',
+                    needCustom: true,
+                    needGradient: true,
+                    needImage: true,
+                    labelMode: 'input'
+                  }),
 
                   getSchemaTpl('layout:flex-setting', {
-                    label: '弹性布局设置',
+                    label: '内部对齐设置',
                     direction: curRendererSchema.direction,
                     justify: curRendererSchema.justify || 'center',
                     alignItems: curRendererSchema.alignItems,
@@ -160,10 +323,12 @@ export class FlexPluginBase extends LayoutBasePlugin {
 
                   getSchemaTpl('layout:flex-basis', {
                     label: '行间隔',
+                    tooltip: '垂直排布时，内部容器之间的间隔',
                     name: 'style.rowGap'
                   }),
                   getSchemaTpl('layout:flex-basis', {
                     label: '列间隔',
+                    tooltip: '水平排布时，内部容器之间的间隔',
                     name: 'style.columnGap'
                   }),
 
@@ -173,21 +338,21 @@ export class FlexPluginBase extends LayoutBasePlugin {
                           isFlexColumnItem,
                           label: isFlexColumnItem ? '高度设置' : '宽度设置',
                           visibleOn:
-                            'data.style && (data.style.position === "static" || data.style.position === "relative")'
+                            'this.style && (this.style.position === "static" || this.style.position === "relative")'
                         }),
                         getSchemaTpl('layout:flex-grow', {
                           visibleOn:
-                            'data.style && data.style.flex === "1 1 auto" && (data.style.position === "static" || data.style.position === "relative")'
+                            'this.style && this.style.flex === "1 1 auto" && (this.style.position === "static" || this.style.position === "relative")'
                         }),
                         getSchemaTpl('layout:flex-basis', {
                           label: isFlexColumnItem ? '弹性高度' : '弹性宽度',
                           visibleOn:
-                            'data.style && (data.style.position === "static" || data.style.position === "relative") && data.style.flex === "1 1 auto"'
+                            'this.style && (this.style.position === "static" || this.style.position === "relative") && this.style.flex === "1 1 auto"'
                         }),
                         getSchemaTpl('layout:flex-basis', {
                           label: isFlexColumnItem ? '固定高度' : '固定宽度',
                           visibleOn:
-                            'data.style && (data.style.position === "static" || data.style.position === "relative") && data.style.flex === "0 0 150px"'
+                            'this.style && (this.style.position === "static" || this.style.position === "relative") && this.style.flex === "0 0 150px"'
                         })
                       ]
                     : []),
@@ -195,7 +360,7 @@ export class FlexPluginBase extends LayoutBasePlugin {
                   getSchemaTpl('layout:overflow-x', {
                     visibleOn: `${
                       isFlexItem && !isFlexColumnItem
-                    } && data.style.flex === '0 0 150px'`
+                    } && this.style.flex === '0 0 150px'`
                   }),
 
                   getSchemaTpl('layout:isFixedHeight', {
@@ -217,9 +382,9 @@ export class FlexPluginBase extends LayoutBasePlugin {
                   getSchemaTpl('layout:overflow-y', {
                     visibleOn: `${
                       !isFlexItem || !isFlexColumnItem
-                    } && (data.isFixedHeight || data.style && data.style.maxHeight) || (${
+                    } && (this.isFixedHeight || this.style && this.style.maxHeight) || (${
                       isFlexItem && isFlexColumnItem
-                    } && data.style.flex === '0 0 150px')`
+                    } && this.style.flex === '0 0 150px')`
                   }),
 
                   getSchemaTpl('layout:isFixedWidth', {
@@ -234,18 +399,18 @@ export class FlexPluginBase extends LayoutBasePlugin {
                   getSchemaTpl('layout:max-width', {
                     visibleOn: `${
                       !isFlexItem || isFlexColumnItem
-                    } || ${isFlexItem} && data.style.flex !== '0 0 150px'`
+                    } || ${isFlexItem} && this.style.flex !== '0 0 150px'`
                   }),
                   getSchemaTpl('layout:min-width', {
                     visibleOn: `${
                       !isFlexItem || isFlexColumnItem
-                    } || ${isFlexItem} && data.style.flex !== '0 0 150px'`
+                    } || ${isFlexItem} && this.style.flex !== '0 0 150px'`
                   }),
 
                   getSchemaTpl('layout:overflow-x', {
                     visibleOn: `${
                       !isFlexItem || isFlexColumnItem
-                    } && (data.isFixedWidth || data.style && data.style.maxWidth)`
+                    } && (this.isFixedWidth || this.style && this.style.maxWidth)`
                   }),
 
                   !isFlexItem ? getSchemaTpl('layout:margin-center') : null,
@@ -253,12 +418,20 @@ export class FlexPluginBase extends LayoutBasePlugin {
                   !isSorptionContainer &&
                     getSchemaTpl('layout:sticky', {
                       visibleOn:
-                        'data.style && (data.style.position !== "fixed" && data.style.position !== "absolute")'
+                        'this.style && (this.style.position !== "fixed" && this.style.position !== "absolute")'
                     }),
                   getSchemaTpl('layout:stickyPosition')
                 ]
               },
-              getSchemaTpl('status')
+              getSchemaTpl('status'),
+              {
+                title: '高级',
+                body: [
+                  isSorptionContainer ? getSchemaTpl('layout:sorption') : null,
+                  // 吸附容器不显示定位相关配置项
+                  ...(isSorptionContainer ? [] : positionTpl)
+                ]
+              }
             ])
           ]
         },
@@ -289,7 +462,9 @@ export class FlexPluginBase extends LayoutBasePlugin {
     const draggableContainer = this.manager.draggableContainer(id);
     const isFlexItem = this.manager?.isFlexItem(id);
     const isFlexColumnItem = this.manager?.isFlexColumnItem(id);
-    const newColumnSchema = defaultFlexColumnSchema('新的一列');
+    const newColumnSchema = isFlexColumnItem
+      ? defaultFlexColumnSchema('', false)
+      : defaultFlexColumnSchema();
     const canAppendSiblings = this.manager?.canAppendSiblings();
     const toolbarsTooltips: any = {};
     toolbars.forEach(toolbar => {
@@ -350,7 +525,8 @@ export class FlexPluginBase extends LayoutBasePlugin {
             level: 'special',
             placement: 'bottom',
             className: 'ae-AppendChild',
-            onClick: () => this.manager.addElem(newColumnSchema)
+            onClick: () =>
+              this.manager.addElem(defaultFlexColumnSchema('', true))
           });
         }
       }

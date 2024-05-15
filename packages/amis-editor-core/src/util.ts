@@ -15,6 +15,7 @@ import isEqual from 'lodash/isEqual';
 import isNumber from 'lodash/isNumber';
 import debounce from 'lodash/debounce';
 import merge from 'lodash/merge';
+import {EditorModalBody} from './store/editor';
 
 const {
   guid,
@@ -193,7 +194,7 @@ export function JSONPipeOut(
     });
     return flag ? ret : obj;
   }
-  if (!isObject(obj) || isObservable(obj)) {
+  if (!isPlainObject(obj)) {
     return obj;
   }
 
@@ -1248,6 +1249,9 @@ export function clearDirtyCssKey(data: any) {
     if (key.startsWith('.') || key.startsWith('#')) {
       delete temp[key];
     }
+    if (key === 'editorState') {
+      delete temp[key];
+    }
   });
   return temp;
 }
@@ -1393,12 +1397,25 @@ export const scrollToActive = debounce((selector: string) => {
   }
 }, 200);
 
-export function addModal(schema: any, modal: any) {
+export function addModal(
+  schema: any,
+  modal: any,
+  definitions?: any,
+  isKeyValid?: (key: string) => boolean
+) {
   schema = {...schema, definitions: {...schema.definitions}};
+
+  // 如果有传入definitions，则合并到schema中
+  if (definitions && isPlainObject(definitions)) {
+    schema = mergeDefinitions(schema, definitions, modal);
+  }
 
   let idx = 1;
   while (true) {
-    if (!schema.definitions[`modal-ref-${idx}`]) {
+    if (
+      !schema.definitions[`modal-ref-${idx}`] &&
+      (!isKeyValid || isKeyValid(`modal-ref-${idx}`))
+    ) {
       break;
     }
     idx++;
@@ -1416,111 +1433,148 @@ export function addModal(schema: any, modal: any) {
 }
 
 /**
- * 获取弹窗事件
- * @param schema 遍历的schema
- * @param listType 列表形式，弹窗list或label value形式的数据源
- * @param filterId 要过滤弹窗的id
+ * 弹窗转成 definitions 定义
+ * 这样打开子弹窗的时候，可以把父级的弹窗列表透传到子弹窗里面去
+ *
+ * 这样子弹窗里面打开弹窗才能选到外面的弹窗
+ * @param modals
+ * @param definitions
+ * @returns
  */
-export const getDialogListBySchema = (
-  schema: Schema,
-  listType: 'list' | 'source',
-  filterId?: string
-) => {
-  let items: any[] = [];
-  const dialogMap: any = {
-    dialog: {
-      title: '弹窗',
-      body: 'dialog'
-    },
-    drawer: {
-      title: '抽屉式弹窗',
-      body: 'drawer'
-    },
-    confirmDialog: {
-      title: '确认对话框',
-      // 兼容历史args参数
-      body: ['dialog', 'args']
-    }
+export function modalsToDefinitions(
+  modals: Array<EditorModalBody>,
+  definitions: any = {},
+  edtingModal?: EditorModalBody
+) {
+  let schema = {
+    definitions
   };
 
-  JSONTraverse(
-    schema,
-    (value: any, key: string, object: any) => {
-      // definitions中的弹窗
-      if (key === 'type' && value === 'page') {
-        const definitions = object.definitions;
-        if (definitions) {
-          Object.keys(definitions).forEach(key => {
-            if (key.includes('ref-')) {
-              if (listType === 'list') {
-                items.push(definitions[key]);
-              } else {
-                const dialog = definitions[key];
-                const dialogTypeName = dialogMap[dialog.type].title;
-                items.push({
-                  label: `${dialog.title || '-'}（${dialogTypeName}）`,
-                  value: dialog.$$id
-                });
-              }
-            }
-          });
-        }
-      } else if (
-        (key === 'actionType' && value === 'dialog') ||
-        (key === 'actionType' && value === 'drawer') ||
-        (key === 'actionType' && value === 'confirmDialog')
-      ) {
-        let dialogBody = dialogMap[value].body!;
-        let dialogBodyContent = Array.isArray(dialogBody)
-          ? object[dialogBody[0]] || object[dialogBody[1]]
-          : object[dialogBody];
+  modals.forEach((modal, idx) => {
+    if (
+      edtingModal &&
+      (edtingModal.$$ref
+        ? edtingModal.$$ref === modal.$$ref
+        : edtingModal.$$id === modal.$$id)
+    ) {
+      // 自己不需要转成 definitions
+      return;
+    } else if (
+      !modal.$$ref &&
+      modal.$$id &&
+      (JSONGetById(schema.definitions, modal.$$id) ||
+        (edtingModal && JSONGetById(edtingModal, modal.$$id)))
+    ) {
+      // 内嵌弹窗，已经包含在 definitions 里面了
+      // 不需要转成 definitions
+      return;
+    }
 
-        // 有 $ref 的弹窗在definitions中
-        if (dialogMap[value] && dialogBodyContent && !dialogBodyContent.$ref) {
-          if (listType == 'list') {
-            // 没有 type: dialog的历史数据兼容一下
-            items.push({
-              ...dialogBodyContent,
-              type: Array.isArray(dialogBody) ? 'dialog' : dialogBody
-            });
-          } else {
-            // 新建弹窗切换到现有弹窗把自身过滤掉
-            if (!filterId || (filterId && filterId !== dialogBodyContent.id)) {
-              items.push({
-                label: `${dialogBodyContent?.title || '-'}（${
-                  dialogMap[value].title
-                }）`,
-                value: dialogBodyContent.$$id
-              });
-            }
-          }
-        }
-      }
-    },
-    (value, key) => key.toString().startsWith('__')
-  );
-  return items;
-};
+    if (modal.$$ref) {
+      schema.definitions[modal.$$ref] = JSONPipeIn(modal);
+    } else {
+      [schema] = addModal(
+        schema,
+        {...modal, $$originId: modal.$$id},
+        undefined,
+        key => !modals.find(m => m.$$ref && m.$$ref === key)
+      );
+    }
+  });
+  return schema.definitions;
+}
 
 /**
- * 获取弹窗的类型，来源于事件或definitions,由于历史数据可能没有type: dialog,在这里兼容一下
- * @param json
- * @param previewDialogId
+ * 从子弹窗的 definitions 合并回来到主弹窗的 definitions
+ *
+ * @param originSchema
+ * @param definitions
+ * @param modal
+ * @returns
  */
-export const getFixDialogType = (json: Schema, dialogId: string) => {
-  const dialogBodyMap = {
-    dialog: 'dialog',
-    drawer: 'drawer',
-    confirmDialog: 'dialog'
-  };
-  let parentSchema = JSONGetParentById(json, dialogId);
-  // 事件中的弹窗
-  if (parentSchema.actionType) {
-    return dialogBodyMap[parentSchema.actionType as keyof typeof dialogBodyMap];
-  }
-  // definitions中的弹窗
-  else {
-    let dialogRefSchema = JSONGetById(parentSchema, dialogId);
-    return dialogRefSchema.type;
-  }
-};
+export function mergeDefinitions(
+  originSchema: any,
+  definitions: any,
+  modal: any
+) {
+  const refs: Array<string> = [];
+  JSONTraverse(modal, (value, key) => {
+    if (key === '$ref') {
+      refs.push(value);
+    }
+  });
+
+  let schema = originSchema;
+  Object.keys(definitions).forEach(key => {
+    // 要修改就复制一份，避免污染原始数据
+    if (schema === originSchema) {
+      schema = {...schema, definitions: {...schema.definitions}};
+    }
+
+    const {$$originId, ...def} = definitions[key];
+
+    if ($$originId) {
+      const parent = JSONGetParentById(schema, $$originId);
+
+      // 当前更新弹窗里面用到了需要转成 ref
+      if (refs.includes(key)) {
+        if (schema.$$id === $$originId) {
+          schema = JSONUpdate(schema, $$originId, JSONPipeIn(def), true);
+          return;
+        }
+
+        if (!parent) {
+          throw new Error('Can not find modal action.');
+        }
+
+        const modalType = def.type === 'drawer' ? 'drawer' : 'dialog';
+        schema = JSONUpdate(
+          schema,
+          parent.$$id,
+          {
+            ...parent,
+            __actionModals: undefined,
+            args: undefined,
+            dialog: undefined,
+            drawer: undefined,
+            actionType: def.actionType ?? modalType,
+            [modalType]: JSONPipeIn({
+              $ref: key
+            })
+          },
+          true
+        );
+        schema.definitions[key] = JSONPipeIn(def);
+      } else if (parent) {
+        // 没用到，可能修改了弹窗的内容为引用其他弹窗，同样需要更新，但是不会提取为 definitions
+        const modalType = def.type === 'drawer' ? 'drawer' : 'dialog';
+        const origin = parent[modalType] || {};
+
+        // 这样处理是为了不要修改原来的 $$id
+        const changes = diff(origin, def, (path, key) => key === '$$id');
+        if (changes) {
+          const newModal = patchDiff(origin, changes);
+          delete newModal.$$originId;
+          schema = JSONUpdate(
+            schema,
+            parent.$$id,
+            {
+              ...parent,
+              __actionModals: undefined,
+              args: undefined,
+              dialog: undefined,
+              drawer: undefined,
+              actionType: def.actionType ?? modalType,
+              [modalType]: newModal
+            },
+            true
+          );
+        }
+      }
+    } else if (refs.includes(key)) {
+      schema.definitions[key] = JSONPipeIn(def);
+    }
+  });
+
+  return schema;
+}

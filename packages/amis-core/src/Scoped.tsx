@@ -85,13 +85,17 @@ export interface ScopedComponentType extends React.Component<RendererProps> {
   doAction?: (
     action: ActionObject,
     data: RendererData,
-    throwErrors?: boolean
+    throwErrors?: boolean,
+    args?: any
   ) => void;
   receive?: (values: RendererData, subPath?: string, replace?: boolean) => void;
   reload?: (
     subPath?: string,
     query?: RendererData | null,
-    ctx?: RendererData
+    ctx?: RendererData,
+    silent?: boolean,
+    replace?: boolean,
+    args?: any
   ) => void;
   context: any;
   setData?: (value?: object, replace?: boolean, index?: number) => void;
@@ -106,6 +110,10 @@ export interface IScopedContext {
   unRegisterComponent: (component: ScopedComponentType) => void;
   getComponentByName: (name: string) => ScopedComponentType;
   getComponentById: (id: string) => ScopedComponentType | undefined;
+  getComponentByIdUnderCurrentScope: (
+    id: string,
+    ignoreScope?: IScopedContext
+  ) => ScopedComponentType | undefined;
   getComponents: () => Array<ScopedComponentType>;
   reload: (target: string, ctx: RendererData) => void;
   send: (target: string, ctx: RendererData) => void;
@@ -182,26 +190,53 @@ function createScopedTools(
       return resolved || (parent && parent.getComponentByName(name));
     },
 
-    getComponentById(id: string) {
-      let root: AliasIScopedContext = this;
-      // 找到顶端scoped
-      while (root.parent && root.parent !== rootScopedContext) {
-        root = root.parent;
-      }
-
-      // 向下查找
+    getComponentByIdUnderCurrentScope(
+      id: string,
+      ignoreScope?: IScopedContext
+    ) {
       let component = undefined;
-      findTree([root], (item: TreeItem) =>
-        item.getComponents().find((cmpt: ScopedComponentType) => {
-          if (filter(cmpt.props.id, cmpt.props.data) === id) {
-            component = cmpt;
-            return true;
-          }
-          return false;
-        })
+      findTree(
+        [this],
+        (item: TreeItem) =>
+          item !== ignoreScope &&
+          item.getComponents().find((cmpt: ScopedComponentType) => {
+            if (filter(cmpt.props.id, cmpt.props.data) === id) {
+              component = cmpt;
+              return true;
+            }
+            return false;
+          })
       ) as ScopedComponentType | undefined;
 
       return component;
+    },
+
+    getComponentById(id: string) {
+      let root: AliasIScopedContext = this;
+      let ignoreScope: AliasIScopedContext | undefined = undefined;
+
+      // 找到顶端scoped
+      while (root) {
+        // 优先从当前scope查找
+        // 直接跑到顶层查找，对于有历史标签一次渲染多个页面的情况，会有问题
+        const component = root.getComponentByIdUnderCurrentScope(
+          id,
+          ignoreScope
+        );
+
+        if (component) {
+          return component;
+        }
+
+        if (!root.parent || root.parent === rootScopedContext) {
+          break;
+        }
+
+        ignoreScope = root;
+        root = root.parent;
+      }
+
+      return undefined;
     },
 
     /**

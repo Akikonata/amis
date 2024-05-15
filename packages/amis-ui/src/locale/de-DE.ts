@@ -253,6 +253,7 @@ register('de-DE', {
   'Table.valueField': 'valueField muss vorhanden sein',
   'Table.index': 'Index',
   'Table.add': 'Neu',
+  'Table.subAddRow': 'Unterzeile hinzufügen',
   'Table.addButtonDisabledTip':
     'Reichen Sie bei der Inhaltsbearbeitung zuerst ein und erstellen Sie dann eine neue Option',
   'Table.toggleColumn': 'Spalten anzeigen',
@@ -393,6 +394,11 @@ register('de-DE', {
   'expand': 'Entfalten',
   'FormulaEditor.btnLabel': 'Formel Bearbeiten',
   'FormulaEditor.title': 'Formel Editor',
+  'FormulaEditor.run': 'Laufen',
+  'FormulaEditor.sourceMode': 'Source Mode',
+  'FormulaEditor.runContext': 'Run Context',
+  'FormulaEditor.runResult': 'Run Result',
+  'FormulaEditor.toggleAll': 'Expand All',
   'FormulaEditor.variable': 'Variable',
   'FormulaEditor.function': 'Funktion',
   'FormulaEditor.invalidData':
@@ -427,8 +433,14 @@ register('de-DE', {
   'JSONSchema.array_items': 'Artikel',
   'JSONSchema.members': 'Mitglieder',
   'JSONSchema.key_duplicated': 'Schlüssel existiert bereits',
+  'JSONSchema.key_invalid': 'Schlüssel ungültig',
   'TimeNow': 'Jetzt',
   'Steps.step': 'Schritt {{index}}',
   'FormulaInput.True': 'Treu',
-  'FormulaInput.False': 'Falsch'
+  'FormulaInput.False': 'Falsch',
+  'Signature.clear': 'leer',
+  'Signature.undo': 'widerrufen',
+  'Signature.confirm': 'bestätigen',
+  'Signature.cancel': 'Abbrechen',
+  'Signature.embedLabel': 'Klicken Sie zum Signieren'
 });

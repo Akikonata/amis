@@ -3,7 +3,8 @@ import {
   FormItem,
   FormControlProps,
   FormBaseControl,
-  resolveEventData
+  resolveEventData,
+  getVariable
 } from 'amis-core';
 import cx from 'classnames';
 import {Checkbox} from 'amis-ui';
@@ -12,6 +13,7 @@ import {autobind, createObject} from 'amis-core';
 import {ActionObject} from 'amis-core';
 import {BaseSchema, FormBaseControlSchema} from '../../Schema';
 import {supportStatic} from './StaticHoc';
+import type {TestIdBuilder} from 'amis-core';
 
 export interface SchemaMap {
   checkbox: CheckboxControlSchema;
@@ -49,6 +51,7 @@ export interface CheckboxControlSchema extends FormBaseControlSchema {
   partial?: boolean;
   optionType?: 'default' | 'button';
   checked?: boolean;
+  testIdBuilder?: TestIdBuilder;
 }
 
 export interface CheckboxProps
@@ -68,13 +71,15 @@ export default class CheckboxControl extends React.Component<
   };
 
   doAction(action: ActionObject, data: object, throwErrors: boolean) {
-    const {resetValue, onChange} = this.props;
+    const {resetValue, onChange, formStore, store, name} = this.props;
     const actionType = action?.actionType as string;
 
     if (actionType === 'clear') {
       onChange('');
     } else if (actionType === 'reset') {
-      onChange(resetValue ?? '');
+      const pristineVal =
+        getVariable(formStore?.pristine ?? store?.pristine, name) ?? resetValue;
+      onChange(pristineVal ?? '');
     }
   }
 
@@ -139,6 +144,7 @@ export default class CheckboxControl extends React.Component<
       optionType,
       checked,
       labelClassName,
+      testIdBuilder,
       classPrefix: ns
     } = this.props;
 
@@ -155,6 +161,7 @@ export default class CheckboxControl extends React.Component<
           optionType={optionType}
           checked={checked}
           labelClassName={labelClassName}
+          testIdBuilder={testIdBuilder}
         >
           {option ? render('option', option) : null}
         </Checkbox>

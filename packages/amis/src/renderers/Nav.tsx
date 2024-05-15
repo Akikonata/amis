@@ -14,7 +14,8 @@ import {
   buildStyle,
   filter,
   evalExpression,
-  insertStyle
+  insertStyle,
+  isObjectShallowModified
 } from 'amis-core';
 import {
   guid,
@@ -174,8 +175,6 @@ export interface NavSchema extends BaseSchema {
    * 可以通过 API 拉取。
    */
   source?: SchemaApi;
-
-  testid?: string;
 
   /**
    * 懒加载 api，如果不配置复用 source 接口。
@@ -653,7 +652,7 @@ export class Navigation extends React.Component<
                   <Icon
                     key={`icon-${i}`}
                     cx={cx}
-                    icon={item['icon']}
+                    icon={item['icon'] || item}
                     className={isCollapsedNode ? '' : isAfter ? 'ml-2' : 'mr-2'}
                   />
                 );
@@ -854,8 +853,8 @@ export class Navigation extends React.Component<
       render,
       popOverContainer,
       env,
-      testid,
-      searchable
+      searchable,
+      testIdBuilder
     } = this.props;
     const {dropIndicator, filteredLinks} = this.state;
 
@@ -893,7 +892,10 @@ export class Navigation extends React.Component<
         classNameId = cx(`Nav-PopupClassName-${id}`);
         if (!document.getElementById(classNameId)) {
           // rc-menu的浮层只支持配置popupClassName 因此需要将配置的style插入到页面 然后将className赋值给浮层
-          insertStyle(`.${classNameId} ${styleText}`, classNameId);
+          insertStyle({
+            style: `.${classNameId} ${styleText}`,
+            classId: classNameId
+          });
         }
       } catch (e) {}
     }
@@ -919,7 +921,7 @@ export class Navigation extends React.Component<
             isOpen={(item: NavigationItem) => !!item.open}
             stacked={!!stacked}
             mode={mode}
-            testid={testid}
+            testIdBuilder={testIdBuilder}
             themeColor={themeColor}
             onSelect={this.handleClick}
             onToggle={this.toggleLink}
@@ -1058,7 +1060,9 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
         if (!!link.disabled) {
           return false;
         }
-        return motivation !== 'location-change' &&
+
+        return motivation &&
+          !['location-change', 'data-change'].includes(motivation) &&
           typeof link.active !== 'undefined'
           ? link.active
           : (depth === level
@@ -1216,6 +1220,17 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
         this.props.updateConfig(this.props.config, 'location-change');
       } else if (!isEqual(this.props.links, prevProps.links)) {
         this.props.updateConfig(this.props.links, 'update');
+      } else if (
+        isObjectShallowModified(
+          this.props.data,
+          prevProps.data,
+          false,
+          undefined,
+          undefined,
+          10
+        )
+      ) {
+        this.props.updateConfig(this.props.config, 'data-change');
       }
 
       // 外部修改defaultOpenLevel 会影响菜单的unfolded属性
@@ -1515,7 +1530,9 @@ export class NavigationRenderer extends React.Component<RendererProps> {
 
   doAction(
     action: ActionObject,
-    args: {
+    data: object,
+    throwErrors?: boolean,
+    args?: {
       value?: string | {[key: string]: string};
     }
   ) {

@@ -7,7 +7,9 @@ import {
   resolveEventData,
   CustomStyle,
   formatInputThemeCss,
-  setThemeClassName
+  setThemeClassName,
+  TestIdBuilder,
+  getVariable
 } from 'amis-core';
 import cx from 'classnames';
 import {NumberInput, Select} from 'amis-ui';
@@ -158,6 +160,8 @@ export interface NumberProps extends FormControlProps {
    * 是否在清空内容时从数据域中删除该表单项对应的值
    */
   clearValueOnEmpty?: boolean;
+
+  testIdBuilder?: TestIdBuilder;
 }
 
 interface NumberState {
@@ -220,7 +224,12 @@ export default class NumberControl extends React.Component<
   /**
    * 动作处理
    */
-  doAction(action: ActionObject, args: any) {
+  doAction(
+    action: ActionObject,
+    data: any,
+    throwErrors: boolean = false,
+    args?: any
+  ) {
     const actionType = action?.actionType as string;
     const {
       min,
@@ -230,7 +239,10 @@ export default class NumberControl extends React.Component<
       resetValue,
       big,
       onChange,
-      clearValueOnEmpty
+      clearValueOnEmpty,
+      formStore,
+      store,
+      name
     } = this.props;
 
     if (actionType === 'clear') {
@@ -240,12 +252,14 @@ export default class NumberControl extends React.Component<
         this.filterNum(precision),
         this.filterNum(step)
       );
+      const pristineVal =
+        getVariable(formStore?.pristine ?? store?.pristine, name) ?? resetValue;
       const value = NumberInput.normalizeValue(
-        resetValue ?? '',
+        pristineVal ?? '',
         this.filterNum(min, big),
         this.filterNum(max, big),
         finalPrecision,
-        resetValue ?? '',
+        pristineVal ?? '',
         clearValueOnEmpty,
         big
       );
@@ -317,7 +331,6 @@ export default class NumberControl extends React.Component<
     if (rendererEvent?.prevented) {
       return;
     }
-
     onChange(resultValue);
 
     setTimeout(() => {
@@ -446,7 +459,8 @@ export default class NumberControl extends React.Component<
       inputControlClassName,
       id,
       env,
-      name
+      name,
+      testIdBuilder
     } = this.props;
     const {unit} = this.state;
     const finalPrecision = this.filterNum(precision);
@@ -525,6 +539,7 @@ export default class NumberControl extends React.Component<
           displayMode={displayMode}
           big={big}
           clearValueOnEmpty={clearValueOnEmpty}
+          testIdBuilder={testIdBuilder}
         />
         {Array.isArray(unitOptions) && unitOptions.length !== 0 ? (
           unitOptions.length > 1 ? (

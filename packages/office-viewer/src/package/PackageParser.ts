@@ -2,6 +2,8 @@
  * 文件加载器默认是直接读取 zip，如果要对文件做特殊加密处理，可以实现这个接口
  */
 
+import {Unzipped} from '../util/fflate';
+
 export interface PackageParser {
   load(docxFile: ArrayBuffer | string): void;
 
@@ -21,6 +23,11 @@ export interface PackageParser {
   ): string | Blob | Uint8Array | null;
 
   /**
+   * 读取文本内容
+   */
+  getString(filePath: string): string;
+
+  /**
    * 写入文件，主要用于图片
    */
   saveFile(filePath: string, content: Uint8Array | string): void;
@@ -35,5 +42,9 @@ export interface PackageParser {
    *
    * @param docContent 新的 word/document.xml 文件内容
    */
-  generateZip(docContent: string): Blob;
+  generateZipBlob(docContent: string): Blob;
+
+  generateZip(): Uint8Array;
+
+  getZip(): Unzipped;
 }

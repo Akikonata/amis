@@ -2040,6 +2040,7 @@
   --Collapse-content-color: var(--collapse-default-content-color);
   --Collapse-content-fontSize: var(--collapse-default-content-fontSize);
   --Collapse-content-fontWeight: var(--collapse-default-content-fontWeight);
+  --Collapse-mobile-marginBottom: var(--sizes-size-9);
 
   // 选项卡
   --Tabs-borderColor: var(--colors-neutral-line-8);
@@ -3176,6 +3177,12 @@
   --inputTime-hover-bg-color: var(--colors-neutral-fill-10);
   --inputTime-active-color: var(--colors-neutral-text-2);
   --inputTime-active-bg-color: var(--colors-brand-10);
+
+  // Signature
+  --signature-tool-height: #{px2rem(40px)};
+  --signature-tool-margin-top: #{px2rem(8px)};
+  --signature-placeholder-gap: #{px2rem(10px)};
+  --signature-placeholder-color: var(--colors-neutral-line-6);
 
   --steps-base-color: var(--colors-neutral-text-2);
   --steps-base-fontSize: var(--fonts-size-7);

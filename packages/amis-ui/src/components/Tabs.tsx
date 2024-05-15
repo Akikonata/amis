@@ -5,7 +5,13 @@
  */
 
 import React from 'react';
-import {ClassName, localeable, LocaleProps, Schema} from 'amis-core';
+import {
+  ClassName,
+  localeable,
+  LocaleProps,
+  Schema,
+  TestIdBuilder
+} from 'amis-core';
 import Transition, {ENTERED, ENTERING} from 'react-transition-group/Transition';
 import {themeable, ThemeProps, noop} from 'amis-core';
 import {uncontrollable} from 'amis-core';
@@ -59,6 +65,7 @@ export interface TabProps extends ThemeProps {
   children?: React.ReactNode | Array<React.ReactNode>;
   swipeable?: boolean;
   onSelect?: (eventKey: string | number) => void;
+  testIdBuilder?: TestIdBuilder;
 }
 
 class TabComponent extends React.PureComponent<TabProps> {
@@ -113,7 +120,8 @@ class TabComponent extends React.PureComponent<TabProps> {
       children,
       className,
       swipeable,
-      mobileUI
+      mobileUI,
+      testIdBuilder
     } = this.props;
 
     return (
@@ -140,6 +148,7 @@ class TabComponent extends React.PureComponent<TabProps> {
               onTouchMove={swipeable && mobileUI ? this.onTouchMove : noop}
               onTouchEnd={swipeable && mobileUI ? this.onTouchEnd : noop}
               onTouchCancel={swipeable && mobileUI ? this.onTouchEnd : noop}
+              {...testIdBuilder?.getTestId()}
             >
               {children}
             </div>
@@ -181,6 +190,7 @@ export interface TabsProps extends ThemeProps, LocaleProps {
   collapseBtnLabel?: string;
   popOverContainer?: any;
   children?: React.ReactNode | Array<React.ReactNode>;
+  testIdBuilder?: TestIdBuilder;
 }
 
 export interface IDragInfo {
@@ -586,7 +596,8 @@ export class Tabs extends React.Component<TabsProps, any> {
       draggable,
       showTip,
       showTipClassName,
-      editable
+      editable,
+      testIdBuilder
     } = this.props;
 
     const {
@@ -631,22 +642,26 @@ export class Tabs extends React.Component<TabsProps, any> {
             {icon ? (
               iconPosition === 'right' ? (
                 <>
-                  {title} {iconElement}
+                  <span className={cx('Tabs-link-text mr-1')}>{title}</span>
+                  {iconElement}
                 </>
               ) : (
                 <>
-                  {iconElement} {title}
+                  {iconElement}
+                  <span className={cx('Tabs-link-text ml-1')}>{title}</span>
                 </>
               )
             ) : (
-              title
+              <span className={cx('Tabs-link-text')}>{title}</span>
             )}
             {React.isValidElement(toolbar) ? toolbar : null}
           </>
         )}
       </a>
     );
-
+    const tabTestIdBuidr = testIdBuilder?.getChild(
+      `tab-${typeof title === 'string' ? title : index}`
+    );
     return (
       <li
         className={cx(
@@ -662,6 +677,7 @@ export class Tabs extends React.Component<TabsProps, any> {
             typeof title === 'string' &&
             this.handleStartEdit(index, title);
         }}
+        {...tabTestIdBuidr?.getChild('link').getTestId()}
       >
         {showTip ? (
           <TooltipWrapper
@@ -684,6 +700,7 @@ export class Tabs extends React.Component<TabsProps, any> {
               this.props.onClose &&
                 this.props.onClose(index, eventKey ?? index);
             }}
+            {...tabTestIdBuidr?.getChild('close').getTestId()}
           >
             <Icon icon="close" className={cx('Tabs-link-close-icon')} />
           </span>
@@ -722,7 +739,7 @@ export class Tabs extends React.Component<TabsProps, any> {
   }
 
   renderArrow(type: 'left' | 'right') {
-    const {mode: dMode, tabsMode} = this.props;
+    const {mode: dMode, tabsMode, testIdBuilder} = this.props;
     const mode = tabsMode || dMode;
     if (['vertical', 'sidebar'].includes(mode)) {
       return;
@@ -738,6 +755,7 @@ export class Tabs extends React.Component<TabsProps, any> {
           'Tabs-linksContainer-arrow--' + type,
           disabled && 'Tabs-linksContainer-arrow--disabled'
         )}
+        {...testIdBuilder?.getChild(`arrow-${type}`).getTestId()}
       >
         <Icon icon="right-arrow-bold" className="icon" />
       </div>
@@ -835,7 +853,8 @@ export class Tabs extends React.Component<TabsProps, any> {
       draggable,
       sidePosition,
       addBtnText,
-      mobileUI
+      mobileUI,
+      testIdBuilder
     } = this.props;
 
     const {isOverflow} = this.state;
@@ -851,6 +870,7 @@ export class Tabs extends React.Component<TabsProps, any> {
           <div
             className={cx('Tabs-addable')}
             onClick={() => this.handleAddBtn()}
+            {...testIdBuilder?.getChild('add-tab').getTestId()}
           >
             <Icon icon="plus" className={cx('Tabs-addable-icon')} />
             {addBtnText}
@@ -871,6 +891,7 @@ export class Tabs extends React.Component<TabsProps, any> {
           className
         )}
         style={style}
+        {...testIdBuilder?.getTestId()}
       >
         {!['vertical', 'sidebar', 'chrome'].includes(mode) ? (
           <div
@@ -885,6 +906,7 @@ export class Tabs extends React.Component<TabsProps, any> {
                 'Tabs-linksContainer',
                 isOverflow && 'Tabs-linksContainer--overflow'
               )}
+              {...testIdBuilder?.getChild('links').getTestId()}
             >
               {!mobileUI ? this.renderArrow('left') : null}
               <div className={cx('Tabs-linksContainer-main')}>
@@ -911,6 +933,7 @@ export class Tabs extends React.Component<TabsProps, any> {
                 'is-mobile': mobileUI
               })}
               role="tablist"
+              {...testIdBuilder?.getChild('links').getTestId()}
             >
               {this.renderNavs()}
               {additionBtns}
@@ -925,7 +948,11 @@ export class Tabs extends React.Component<TabsProps, any> {
           })}
         </div>
         {draggable && (
-          <div className={cx('Tabs-drag-tip')} ref={this.dragTipRef} />
+          <div
+            className={cx('Tabs-drag-tip')}
+            ref={this.dragTipRef}
+            {...testIdBuilder?.getChild('drag').getTestId()}
+          />
         )}
       </div>
     );

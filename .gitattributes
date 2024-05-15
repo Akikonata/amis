@@ -9,3 +9,7 @@
 *.ttf binary
 *.woff binary
 *.docx binary
+*.xlsx binary
+*.pptx binary
+*.TTF binary
+*.sketch binary

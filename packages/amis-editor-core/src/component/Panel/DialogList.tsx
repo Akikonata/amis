@@ -2,47 +2,58 @@ import {ClassNamesFn} from 'amis-core';
 import {observer} from 'mobx-react';
 import React from 'react';
 import {EditorStoreType} from '../../store/editor';
-import {translateSchema} from '../../util';
+import {JSONGetById, modalsToDefinitions, translateSchema} from '../../util';
 import {Button, Icon, ListMenu, PopOverContainer, confirm} from 'amis';
+import {EditorManager} from '../../manager';
 
 export interface DialogListProps {
   classnames: ClassNamesFn;
   store: EditorStoreType;
+  manager: EditorManager;
 }
 
 export default observer(function DialogList({
   classnames: cx,
-  store
+  store,
+  manager
 }: DialogListProps) {
-  const modals = store.modals;
+  const modals = store.modals.filter(item => !item.disabled);
 
   const handleAddDialog = React.useCallback(() => {
-    store.openSubEditor({
+    const modal = {
+      type: 'dialog',
+      title: '未命名弹窗',
+      definitions: modalsToDefinitions(store.modals),
+      body: [
+        {
+          type: 'tpl',
+          tpl: '弹窗内容'
+        }
+      ]
+    };
+
+    manager.openSubEditor({
       title: '编辑弹窗',
-      value: {
-        type: 'dialog',
-        title: '未命名弹窗',
-        body: [
-          {
-            type: 'tpl',
-            tpl: '弹窗内容'
-          }
-        ]
-      },
-      onChange: (value: any, diff: any) => {
-        store.addModal(value);
+      value: modal,
+      onChange: ({definitions, ...modal}: any, diff: any) => {
+        store.addModal(modal, definitions);
       }
     });
   }, []);
 
   const handleEditDialog = React.useCallback((event: React.UIEvent<any>) => {
     const index = parseInt(event.currentTarget.getAttribute('data-index')!, 10);
-    const dialog = store.modals[index];
-    store.openSubEditor({
+    const modal = store.modals[index];
+    const modalId = modal.$$id!;
+    manager.openSubEditor({
       title: '编辑弹窗',
-      value: dialog,
-      onChange: (value: any, diff: any) => {
-        store.updateModal(dialog.$$id!, value);
+      value: {
+        type: 'dialog',
+        ...(modal as any),
+        definitions: modalsToDefinitions(store.modals, {}, modal)
+      },
+      onChange: ({definitions, ...modal}: any, diff: any) => {
+        store.updateModal(modalId, modal, definitions);
       }
     });
   }, []);
@@ -62,14 +73,10 @@ export default observer(function DialogList({
       const refsCount = store.countModalActionRefs(dialog.$$id!);
 
       const confirmed = await confirm(
-        `确认删除弹窗「${
-          dialog.editorSetting?.displayName || dialog.title
-        }」？${
-          refsCount
-            ? `<br/>当前弹窗已关联${refsCount} 个事件，删除后，所配置的事件动作将一起被删除。`
-            : ''
-        }`,
-        ''
+        refsCount
+          ? `当前弹窗已关联 ${refsCount} 个事件，删除后，所配置的事件动作将一起被删除。`
+          : '',
+        `确认删除弹窗「${dialog.editorSetting?.displayName || dialog.title}」？`
       );
 
       if (confirmed) {
@@ -78,6 +85,27 @@ export default observer(function DialogList({
     },
     []
   );
+
+  const handleCopyDialog = React.useCallback((event: React.UIEvent<any>) => {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const index = parseInt(
+      event.currentTarget.closest('[data-index]')!.getAttribute('data-index')!,
+      10
+    );
+    const dialog = store.modals[index];
+    store.addModal({
+      ...dialog,
+      title: `${dialog.title} - 复制`,
+      editorSetting: {
+        ...dialog.editorSetting,
+        displayName: dialog.editorSetting?.displayName
+          ? `${dialog.editorSetting?.displayName} - 复制`
+          : ''
+      }
+    });
+  }, []);
 
   return (
     <div className={cx('ae-DialogList-wrap', 'hoverShowScrollBar')}>
@@ -100,8 +128,11 @@ export default observer(function DialogList({
                   '未命名弹窗'
                 }`}
               </span>
+              <a onClick={handleCopyDialog} className="ae-DialogList-iconBtn">
+                <Icon className="icon" icon="copy" />
+              </a>
               <a onClick={handleDelDialog} className="ae-DialogList-iconBtn">
-                <Icon className="icon" icon="delete-bold-btn" />
+                <Icon className="icon" icon="trash" />
               </a>
             </li>
           ))}

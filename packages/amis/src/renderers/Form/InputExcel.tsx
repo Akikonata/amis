@@ -10,7 +10,9 @@ import {
   autobind,
   isObject,
   resolveEventData,
-  dataMapping
+  dataMapping,
+  TestIdBuilder,
+  getVariable
 } from 'amis-core';
 import {FormBaseControlSchema, SchemaTokenizeableString} from '../../Schema';
 import type {CellValue, CellRichTextValue} from 'exceljs';
@@ -64,6 +66,8 @@ export interface InputExcelControlSchema extends FormBaseControlSchema {
   autoFill?: {
     [propName: string]: SchemaTokenizeableString;
   };
+
+  testIdBuilder?: TestIdBuilder;
 }
 
 export interface ExcelProps
@@ -156,7 +160,8 @@ export default class ExcelControl extends React.PureComponent<
 
   processExcelFile(excelData: ArrayBuffer | string, fileName: string) {
     const {allSheets, onChange, parseImage, autoFill} = this.props;
-    import('exceljs').then(async (ExcelJS: any) => {
+    import('exceljs').then(async (E: any) => {
+      const ExcelJS = E.default || E;
       this.ExcelJS = ExcelJS;
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(excelData);
@@ -385,12 +390,14 @@ export default class ExcelControl extends React.PureComponent<
 
   doAction(action: any, data: object, throwErrors: boolean) {
     const actionType = action?.actionType as string;
-    const {onChange, resetValue} = this.props;
+    const {onChange, resetValue, formStore, store, name} = this.props;
 
     if (actionType === 'clear') {
       onChange('');
     } else if (actionType === 'reset') {
-      onChange(resetValue ?? '');
+      const pristineVal =
+        getVariable(formStore?.pristine ?? store?.pristine, name) ?? resetValue;
+      onChange(pristineVal ?? '');
     }
   }
 
@@ -401,7 +408,8 @@ export default class ExcelControl extends React.PureComponent<
       classPrefix: ns,
       disabled,
       translate: __,
-      placeholder
+      placeholder,
+      testIdBuilder
     } = this.props;
 
     return (
@@ -415,8 +423,14 @@ export default class ExcelControl extends React.PureComponent<
         >
           {({getRootProps, getInputProps}) => (
             <section className={cx('ExcelControl-container', className)}>
-              <div {...getRootProps({className: cx('ExcelControl-dropzone')})}>
-                <input {...getInputProps()} />
+              <div
+                {...getRootProps({className: cx('ExcelControl-dropzone')})}
+                {...testIdBuilder?.getTestId()}
+              >
+                <input
+                  {...getInputProps()}
+                  {...testIdBuilder?.getChild('input').getTestId()}
+                />
                 {this.state.filename ? (
                   __('Excel.parsed', {
                     filename: this.state.filename

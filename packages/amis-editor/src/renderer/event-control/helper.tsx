@@ -6,10 +6,10 @@ import {
   BaseEventContext,
   defaultValue,
   EditorManager,
-  getFixDialogType,
   getSchemaTpl,
   JsonGenerateID,
   JSONGetById,
+  modalsToDefinitions,
   persistGet,
   persistSet,
   PluginActions,
@@ -51,6 +51,18 @@ export const getArgsWrapper = (
   items: Array.isArray(items) ? items : [items]
 });
 
+const getRootManager = (manager: any) => {
+  let rootManager = manager;
+  while (rootManager) {
+    if (!rootManager.parent) {
+      break;
+    }
+    rootManager = manager.parent;
+  }
+
+  return rootManager;
+};
+
 // 数据容器范围
 export const DATA_CONTAINER = [
   'form',
@@ -77,12 +89,12 @@ export const SELECT_PROPS_CONTAINER = ['form'];
 // 是否数据容器
 export const IS_DATA_CONTAINER = `${JSON.stringify(
   DATA_CONTAINER
-)}.includes(data.__rendererName)`;
+)}.includes(this.__rendererName)`;
 
 // 是否下拉展示可赋值属性
 export const SHOW_SELECT_PROP = `${JSON.stringify(
   SELECT_PROPS_CONTAINER
-)}.includes(data.__rendererName)`;
+)}.includes(this.__rendererName)`;
 
 // 表单项组件
 export const FORMITEM_CMPTS = [
@@ -282,6 +294,89 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
   const variableOptions = variableManager?.getVariableOptions() || [];
   const pageVariableOptions = variableManager?.getPageVariablesOptions() || [];
 
+  const modalDescDetail: (info: any, context: any, props: any) => any = (
+    info,
+    {eventKey, actionIndex},
+    props: any
+  ) => {
+    const {
+      actionTree,
+      actions: pluginActions,
+      commonActions,
+      allComponents,
+      node,
+      manager
+    } = props;
+    const store = manager.store;
+    const modals = store.modals;
+    const onEvent = node.schema?.onEvent;
+    const action = onEvent?.[eventKey].actions?.[actionIndex];
+    const actionBody =
+      action?.[action?.actionType === 'drawer' ? 'drawer' : 'dialog'];
+    let modalId = actionBody?.$$id;
+    if (actionBody?.$ref) {
+      modalId =
+        modals.find((item: any) => item.$$ref === actionBody.$ref)?.$$id || '';
+    }
+    const modal = modalId
+      ? manager.store.modals.find((item: any) => item.$$id === modalId)
+      : '';
+    if (modal) {
+      return (
+        <>
+          <div>
+            打开&nbsp;
+            <a
+              href="#"
+              onClick={(e: React.UIEvent<any>) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const modalId = modal.$$id;
+                manager.openSubEditor({
+                  title: '编辑弹窗',
+                  value: {
+                    type: 'dialog',
+                    ...modal,
+                    definitions: modalsToDefinitions(store.modals, {}, modal)
+                  },
+                  onChange: ({definitions, ...modal}: any, diff: any) => {
+                    store.updateModal(modalId, modal, definitions);
+                  }
+                });
+              }}
+            >
+              {modal.editorSetting?.displayName || modal.title || '未命名弹窗'}
+            </a>
+            &nbsp;
+            {(modal as any).actionType === 'confirmDialog'
+              ? '确认框'
+              : modal.type === 'drawer'
+              ? '抽屉弹窗'
+              : '弹窗'}
+          </div>
+        </>
+      );
+    } else if (Array.isArray(info.__actionModals)) {
+      const modal = info.__actionModals.find((item: any) => item.isActive);
+      if (modal) {
+        // 这个时候还不能打开弹窗，schema 还没插入进去不知道 $$id，无法定位
+        return (
+          <>
+            <div>
+              打开
+              <span className="variable-left">{modal.label}</span>
+              &nbsp;
+              {modal.tip}
+            </div>
+          </>
+        );
+      }
+    }
+
+    return null;
+  };
+
   return [
     {
       actionLabel: '页面',
@@ -312,7 +407,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                   // placeholder: 'http://', 长文本暂不支持
                   size: 'lg',
                   required: true,
-                  visibleOn: 'data.actionType === "url"'
+                  visibleOn: 'this.actionType === "url"'
                 }),
                 {
                   type: 'combo',
@@ -370,13 +465,16 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
           description: '打开弹窗，弹窗内支持复杂的交互设计',
           actions: [
             {
-              actionType: 'dialog'
+              actionType: 'dialog',
+              descDetail: modalDescDetail
             },
             {
-              actionType: 'drawer'
+              actionType: 'drawer',
+              descDetail: modalDescDetail
             },
             {
-              actionType: 'confirmDialog'
+              actionType: 'confirmDialog',
+              descDetail: modalDescDetail
             }
           ],
           schema: [
@@ -418,7 +516,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
           //           value: 'closeDrawer'
           //         }
           //       ],
-          //       visibleOn: 'data.actionType === "closeDialog"'
+          //       visibleOn: 'this.actionType === "closeDialog"'
           //     }
           //   ]
           // })
@@ -1035,9 +1133,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                 // 找到组件并设置相关的属性
                 let schema = JSONGetById(manager.store.schema, value, 'id');
                 if (schema) {
-                  let __isScopeContainer = !!manager.dataSchema.getScope(
-                    `${schema.$$id}-${schema.type}`
-                  );
+                  let __isScopeContainer = DATA_CONTAINER.includes(schema.type);
                   let __rendererName = schema.type;
                   form.setValues({
                     __isScopeContainer,
@@ -1062,7 +1158,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
               offText: '否',
               mode: 'horizontal',
               pipeIn: defaultValue(true),
-              visibleOn: `data.actionType === "reload" && data.__rendererName === "crud"`
+              visibleOn: `this.actionType === "reload" && this.__rendererName === "crud"`
             },
             {
               type: 'switch',
@@ -1075,7 +1171,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
               offText: '否',
               mode: 'horizontal',
               pipeIn: defaultValue(false),
-              visibleOn: `data.actionType === "reload" &&  data.__isScopeContainer`,
+              visibleOn: `this.actionType === "reload" &&  this.__isScopeContainer`,
               onChange: (value: string, oldVal: any, data: any, form: any) => {
                 form.setValueByName('__containerType', 'all');
               }
@@ -1086,7 +1182,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
               mode: 'horizontal',
               label: '',
               pipeIn: defaultValue('all'),
-              visibleOn: `data.__addParam && data.actionType === "reload" && data.__isScopeContainer`,
+              visibleOn: `this.__addParam && this.actionType === "reload" && this.__isScopeContainer`,
               options: [
                 {
                   label: '直接赋值',
@@ -1109,7 +1205,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
               size: 'lg',
               mode: 'horizontal',
               required: true,
-              visibleOn: `data.__addParam && data.__containerType === "all" && data.actionType === "reload" && data.__isScopeContainer`
+              visibleOn: `this.__addParam && this.__containerType === "all" && this.actionType === "reload" && this.__isScopeContainer`
             }),
             {
               type: 'combo',
@@ -1137,7 +1233,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                   placeholder: '参数值'
                 })
               ],
-              visibleOn: `data.__addParam && data.__containerType === "appoint" && data.actionType === "reload" && data.__isScopeContainer`
+              visibleOn: `this.__addParam && this.__containerType === "appoint" && this.actionType === "reload" && this.__isScopeContainer`
             },
             {
               type: 'radios',
@@ -1148,7 +1244,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                 '选择“合并”时，会将数据合并到目标组件的数据域。<br/>选择“覆盖”时，数据会直接覆盖目标组件的数据域。'
               ),
               pipeIn: defaultValue('merge'),
-              visibleOn: `data.__addParam && data.actionType === "reload" && data.__isScopeContainer`,
+              visibleOn: `this.__addParam && this.actionType === "reload" && this.__isScopeContainer`,
               options: [
                 {
                   label: '合并',
@@ -1180,19 +1276,19 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                 {/* 只要path字段存在就认为是应用变量赋值，无论是否有值 */}
                 {typeof info?.args?.path === 'string' && !info?.componentId ? (
                   <>
-                    设置变量「
+                    设置变量
                     <span className="variable-left variable-right">
                       {variableManager.getNameByPath(info.args.path)}
                     </span>
-                    」的数据
+                    的数据
                   </>
                 ) : (
                   <>
-                    设置组件「
+                    设置组件
                     <span className="variable-left variable-right">
                       {info?.rendererLabel || info.componentId || '-'}
                     </span>
-                    」的数据
+                    的数据
                   </>
                 )}
                 {/* 值为
@@ -1244,7 +1340,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
               body: [
                 {
                   type: 'wrapper',
-                  visibleOn: 'data.componentId === "customCmptId"',
+                  visibleOn: 'this.componentId === "customCmptId"',
                   className: 'p-none mb-6',
                   body: [
                     ...renderCmptActionSelect(
@@ -1260,7 +1356,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                 },
                 {
                   type: 'wrapper',
-                  visibleOn: 'data.componentId !== "customCmptId"',
+                  visibleOn: 'this.componentId !== "customCmptId"',
                   className: 'p-none mb-6',
                   body: [
                     ...renderCmptActionSelect(
@@ -1275,11 +1371,14 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                 },
                 renderCmptIdInput(
                   (value: string, oldVal: any, data: any, form: any) => {
+                    // 找到root再查询
+                    const root = getRootManager(manager);
+
                     // 找到组件并设置相关的属性
-                    let schema = JSONGetById(manager.store.schema, value, 'id');
+                    let schema = JSONGetById(root.store.schema, value, 'id');
                     if (schema) {
-                      let __isScopeContainer = !!manager.dataSchema.getScope(
-                        `${schema.$$id}-${schema.type}`
+                      let __isScopeContainer = DATA_CONTAINER.includes(
+                        schema.type
                       );
                       let __rendererName = schema.type;
                       form.setValues({
@@ -1303,7 +1402,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                       mode: 'horizontal',
                       label: '数据设置',
                       pipeIn: defaultValue('all'),
-                      visibleOn: 'data.__isScopeContainer',
+                      visibleOn: 'this.__isScopeContainer',
                       options: [
                         {
                           label: '直接赋值',
@@ -1331,7 +1430,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                       mode: 'horizontal',
                       label: '数据设置',
                       pipeIn: defaultValue('all'),
-                      visibleOn: `data.__rendererName === 'combo' || data.__rendererName === 'input-table'`,
+                      visibleOn: `this.__rendererName === 'combo' || this.__rendererName === 'input-table'`,
                       options: [
                         {
                           label: '全量',
@@ -1361,8 +1460,8 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                       label: '输入序号',
                       size: 'lg',
                       placeholder: '请输入待更新序号',
-                      visibleOn: `(data.__rendererName === 'input-table' || data.__rendererName === 'combo')
-                    && data.__comboType === 'appoint'`
+                      visibleOn: `(this.__rendererName === 'input-table' || this.__rendererName === 'combo')
+                    && this.__comboType === 'appoint'`
                     },
                     {
                       type: 'combo',
@@ -1392,7 +1491,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                           placeholder: '字段值'
                         })
                       ],
-                      visibleOn: `data.__isScopeContainer && data.__containerType === 'appoint' || data.__comboType === 'appoint'`
+                      visibleOn: `this.__isScopeContainer && this.__containerType === 'appoint' || this.__comboType === 'appoint'`
                     },
                     {
                       type: 'combo',
@@ -1429,7 +1528,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                               labelField: 'label',
                               valueField: 'value',
                               required: true,
-                              visibleOn: `data.__rendererName`
+                              visibleOn: `this.__rendererName`
                             },
                             getSchemaTpl('formulaControl', {
                               name: 'val',
@@ -1438,8 +1537,8 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                           ]
                         }
                       ],
-                      visibleOn: `(data.__rendererName === 'combo' || data.__rendererName === 'input-table')
-                    && data.__comboType === 'all'`
+                      visibleOn: `(this.__rendererName === 'combo' || this.__rendererName === 'input-table')
+                    && this.__comboType === 'all'`
                     },
                     getSchemaTpl('formulaControl', {
                       name: '__valueInput',
@@ -1447,7 +1546,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                       variables: '${variables}',
                       size: 'lg',
                       mode: 'horizontal',
-                      visibleOn: `(data.__isScopeContainer || ${SHOW_SELECT_PROP}) && data.__containerType === 'all'`,
+                      visibleOn: `(this.__isScopeContainer || ${SHOW_SELECT_PROP}) && this.__containerType === 'all'`,
                       required: true
                     }),
                     getSchemaTpl('formulaControl', {
@@ -1456,7 +1555,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                       variables: '${variables}',
                       size: 'lg',
                       mode: 'horizontal',
-                      visibleOn: `data.__rendererName && !data.__isScopeContainer && data.__rendererName !== 'combo' && data.__rendererName !== 'input-table'`,
+                      visibleOn: `this.__rendererName && !this.__isScopeContainer && this.__rendererName !== 'combo' && this.__rendererName !== 'input-table'`,
                       required: true
                     })
                   ]
@@ -1763,7 +1862,7 @@ export const ACTION_TYPE_TREE = (manager: any): RendererPluginAction[] => {
                 variables: '${variables}',
                 mode: 'horizontal',
                 size: 'lg',
-                visibleOn: 'data.actionType === "copy"',
+                visibleOn: 'this.actionType === "copy"',
                 required: true
               }),
               {
@@ -1952,7 +2051,7 @@ export const renderCmptActionSelect = (
       required: true,
       label: '组件id',
       visibleOn:
-        'data.componentId === "customCmptId" && data.actionType === "component"',
+        'this.componentId === "customCmptId" && this.actionType === "component"',
       onChange: async (value: string, oldVal: any, data: any, form: any) => {
         let schema = JSONGetById(manager!.store.schema, value, 'id');
         if (schema) {
@@ -1972,7 +2071,7 @@ export const renderCmptActionSelect = (
       name: 'groupType',
       mode: 'horizontal',
       required: true,
-      visibleOn: 'data.actionType === "component"',
+      visibleOn: 'this.actionType === "component"',
       component: CmptActionSelect,
       description: '${__cmptActionDesc}'
     }
@@ -1989,7 +2088,7 @@ export const renderCmptIdInput = (
     size: 'lg',
     required: true,
     label: '组件id',
-    visibleOn: 'data.componentId === "customCmptId"',
+    visibleOn: 'this.componentId === "customCmptId"',
     onChange: async (value: string, oldVal: any, data: any, form: any) => {
       onChange?.(value, oldVal, data, form);
     }
@@ -2032,7 +2131,7 @@ export const COMMON_ACTION_SCHEMA_MAP: {
           mode: 'horizontal',
           label: '数据设置',
           pipeIn: defaultValue('all'),
-          visibleOn: 'data.__isScopeContainer',
+          visibleOn: 'this.__isScopeContainer',
           options: [
             {
               label: '直接赋值',
@@ -2055,7 +2154,7 @@ export const COMMON_ACTION_SCHEMA_MAP: {
           mode: 'horizontal',
           label: '数据设置',
           pipeIn: defaultValue('all'),
-          visibleOn: `data.__rendererName === 'combo' || data.__rendererName === 'input-table'`,
+          visibleOn: `this.__rendererName === 'combo' || this.__rendererName === 'input-table'`,
           options: [
             {
               label: '全量',
@@ -2080,8 +2179,8 @@ export const COMMON_ACTION_SCHEMA_MAP: {
           label: '输入序号',
           size: 'lg',
           placeholder: '请输入待更新序号',
-          visibleOn: `(data.__rendererName === 'input-table' || data.__rendererName === 'combo')
-      && data.__comboType === 'appoint'`
+          visibleOn: `(this.__rendererName === 'input-table' || this.__rendererName === 'combo')
+      && this.__comboType === 'appoint'`
         },
         {
           type: 'combo',
@@ -2111,7 +2210,7 @@ export const COMMON_ACTION_SCHEMA_MAP: {
               placeholder: '字段值'
             })
           ],
-          visibleOn: `data.__isScopeContainer && data.__containerType === 'appoint' || data.__comboType === 'appoint'`
+          visibleOn: `this.__isScopeContainer && this.__containerType === 'appoint' || this.__comboType === 'appoint'`
         },
         {
           type: 'combo',
@@ -2148,7 +2247,7 @@ export const COMMON_ACTION_SCHEMA_MAP: {
                   labelField: 'label',
                   valueField: 'value',
                   required: true,
-                  visibleOn: `data.__rendererName`
+                  visibleOn: `this.__rendererName`
                 },
                 getSchemaTpl('formulaControl', {
                   name: 'val',
@@ -2157,8 +2256,8 @@ export const COMMON_ACTION_SCHEMA_MAP: {
               ]
             }
           ],
-          visibleOn: `(data.__rendererName === 'combo' || data.__rendererName === 'input-table')
-      && data.__comboType === 'all'`
+          visibleOn: `(this.__rendererName === 'combo' || this.__rendererName === 'input-table')
+      && this.__comboType === 'all'`
         },
         getSchemaTpl('formulaControl', {
           name: '__valueInput',
@@ -2166,7 +2265,7 @@ export const COMMON_ACTION_SCHEMA_MAP: {
           variables: '${variables}',
           size: 'lg',
           mode: 'horizontal',
-          visibleOn: `(data.__isScopeContainer || ${SHOW_SELECT_PROP}) && data.__containerType === 'all'`,
+          visibleOn: `(this.__isScopeContainer || ${SHOW_SELECT_PROP}) && this.__containerType === 'all'`,
           required: true
         }),
         getSchemaTpl('formulaControl', {
@@ -2175,7 +2274,7 @@ export const COMMON_ACTION_SCHEMA_MAP: {
           variables: '${variables}',
           size: 'lg',
           mode: 'horizontal',
-          visibleOn: `data.__rendererName && !data.__isScopeContainer && data.__rendererName !== 'combo' && data.__rendererName !== 'input-table'`,
+          visibleOn: `this.__rendererName && !this.__isScopeContainer && this.__rendererName !== 'combo' && this.__rendererName !== 'input-table'`,
           required: true,
           horizontal: {
             leftFixed: true
@@ -2550,7 +2649,7 @@ export const getOldActionSchema = (
               {
                 type: 'input-text',
                 name: 'content',
-                visibleOn: 'data.actionType == "copy"',
+                visibleOn: 'this.actionType == "copy"',
                 label: '复制内容模板'
               },
 
@@ -2567,14 +2666,14 @@ export const getOldActionSchema = (
                     value: 'text/html'
                   }
                 ],
-                visibleOn: 'data.actionType == "copy"',
+                visibleOn: 'this.actionType == "copy"',
                 label: '复制格式'
               },
 
               {
                 type: 'input-text',
                 name: 'target',
-                visibleOn: 'data.actionType == "reload"',
+                visibleOn: 'this.actionType == "reload"',
                 label: '指定刷新目标',
                 required: true
               },
@@ -2638,7 +2737,7 @@ export const getOldActionSchema = (
 
               getSchemaTpl('api', {
                 label: '目标API',
-                visibleOn: 'data.actionType == "ajax"'
+                visibleOn: 'this.actionType == "ajax"'
               }),
 
               {
@@ -2710,21 +2809,21 @@ export const getOldActionSchema = (
                 type: 'input-text',
                 label: '目标地址',
                 name: 'link',
-                visibleOn: 'data.actionType == "link"'
+                visibleOn: 'this.actionType == "link"'
               },
 
               {
                 type: 'input-text',
                 label: '目标地址',
                 name: 'url',
-                visibleOn: 'data.actionType == "url"',
+                visibleOn: 'this.actionType == "url"',
                 placeholder: 'http://'
               },
 
               {
                 type: 'switch',
                 name: 'blank',
-                visibleOn: 'data.actionType == "url"',
+                visibleOn: 'this.actionType == "url"',
                 mode: 'inline',
                 className: 'w-full',
                 label: '是否用新窗口打开',
@@ -2734,7 +2833,7 @@ export const getOldActionSchema = (
               isInDialog
                 ? {
                     visibleOn:
-                      'data.actionType == "submit" || data.type == "submit"',
+                      'this.actionType == "submit" || this.type == "submit"',
                     name: 'close',
                     type: 'switch',
                     mode: 'inline',
@@ -2757,7 +2856,7 @@ export const getOldActionSchema = (
                 name: 'reload',
                 label: '刷新目标组件',
                 visibleOn:
-                  'data.actionType != "link" && data.actionType != "url"',
+                  'this.actionType != "link" && this.actionType != "url"',
                 description:
                   '当前动作完成后，指定目标组件刷新。支持传递数据如：<code>xxx?a=\\${a}&b=\\${b}</code>，多个目标请用英文逗号隔开。'
               },
@@ -2765,7 +2864,7 @@ export const getOldActionSchema = (
               {
                 type: 'input-text',
                 name: 'target',
-                visibleOn: 'data.actionType != "reload"',
+                visibleOn: 'this.actionType != "reload"',
                 label: '指定响应组件',
                 description:
                   '指定动作执行者，默认为当前组件所在的功能性性组件，如果指定则转交给目标组件来处理。'
@@ -2853,9 +2952,8 @@ export const getEventControlConfig = (
     } else if (Array.isArray(action.supportComponents)) {
       isSupport = action.supportComponents.includes(node.type);
     }
-    node.isScopeContainer = !!manager.dataSchema.getScope(
-      `${node.id}-${node.type}`
-    );
+
+    node.isScopeContainer = DATA_CONTAINER.includes(node.type);
     if (actionType === 'component' && !actions?.length) {
       node.disabled = true;
     }
@@ -2869,8 +2967,10 @@ export const getEventControlConfig = (
 
   return {
     showOldEntry:
-      !!context.schema.actionType ||
-      ['submit', 'reset'].includes(context.schema.type),
+      !!(
+        context.schema.actionType &&
+        !['dialog', 'drawer'].includes(context.schema.type)
+      ) || ['submit', 'reset'].includes(context.schema.type),
     actions: manager?.pluginActions,
     events: manager?.pluginEvents,
     actionTree,
@@ -3069,11 +3169,10 @@ export const getEventControlConfig = (
         }
 
         if (['setValue'].includes(action.actionType)) {
-          let schema = JSONGetById(manager.store.schema, config.__cmptId, 'id');
+          const root = getRootManager(manager);
+          let schema = JSONGetById(root.store.schema, config.__cmptId, 'id');
           if (schema) {
-            let __isScopeContainer = !!manager.dataSchema.getScope(
-              `${schema.$$id}-${schema.type}`
-            );
+            let __isScopeContainer = DATA_CONTAINER.includes(schema.type);
             config.__isScopeContainer = __isScopeContainer;
             config.__rendererName = schema.type;
           }
@@ -3175,138 +3274,6 @@ export const getEventControlConfig = (
       ['drawer', 'dialog', 'args'].forEach(key => {
         action[key] = action[key] ?? actionData?.[key];
       });
-
-      // if (config.actionType === 'openDialog') {
-      //   // 初始化弹窗schema
-      //   const dialogInitSchema = {
-      //     type: 'dialog',
-      //     title: action.__dialogTitle,
-      //     body: [
-      //       {
-      //         type: 'tpl',
-      //         tpl: '对，你刚刚点击了',
-      //         wrapperComponent: '',
-      //         inline: false
-      //       }
-      //     ],
-      //     showCloseButton: true,
-      //     showErrorMsg: true,
-      //     showLoading: true,
-      //     className: 'app-popover :AMISCSSWrapper',
-      //     actions: [
-      //       {
-      //         type: 'button',
-      //         actionType: 'cancel',
-      //         label: '取消'
-      //       },
-      //       {
-      //         type: 'button',
-      //         actionType: 'confirm',
-      //         label: '确认',
-      //         primary: true
-      //       }
-      //     ]
-      //   };
-
-      //   const drawerInitSchema = {
-      //     type: 'drawer',
-      //     title: action.__dialogTitle,
-      //     body: [
-      //       {
-      //         type: 'tpl',
-      //         tpl: '对，你刚刚点击了',
-      //         wrapperComponent: '',
-      //         inline: false
-      //       }
-      //     ],
-      //     className: 'app-popover :AMISCSSWrapper',
-      //     actions: [
-      //       {
-      //         type: 'button',
-      //         actionType: 'cancel',
-      //         label: '取消'
-      //       },
-      //       {
-      //         type: 'button',
-      //         actionType: 'confirm',
-      //         label: '确认',
-      //         primary: true
-      //       }
-      //     ]
-      //   };
-
-      //   const confirmDialogInitSchema = {
-      //     type: 'dialog',
-      //     title: action.__dialogTitle,
-      //     body: [
-      //       {
-      //         type: 'tpl',
-      //         tpl: '对，你刚刚点击了',
-      //         wrapperComponent: '',
-      //         inline: false
-      //       }
-      //     ],
-      //     dialogType: 'confirm',
-      //     confirmText: '确认',
-      //     cancelText: '取消',
-      //     confirmBtnLevel: 'primary'
-      //   };
-
-      //   const setInitSchema = (groupType: string, action: ActionConfig) => {
-      //     if (groupType === 'dialog') {
-      //       JsonGenerateID(dialogInitSchema);
-      //       action.dialog = dialogInitSchema;
-      //     } else if (groupType === 'drawer') {
-      //       JsonGenerateID(drawerInitSchema);
-      //       action.drawer = drawerInitSchema;
-      //     } else if (groupType === 'confirmDialog') {
-      //       JsonGenerateID(confirmDialogInitSchema);
-      //       action.dialog = confirmDialogInitSchema;
-      //     }
-      //   };
-
-      //   const chooseCurrentDialog = (action: ActionConfig, schema: Schema) => {
-      //     const selectDialog = action.__selectDialog;
-      //     let dialogType = getFixDialogType(schema, selectDialog);
-      //     // 选择现有弹窗后为了使之前的弹窗和现有弹窗$$id唯一，这里重新生成一下
-      //     let newDialogId = guid();
-      //     action.actionType = dialogType;
-      //     action[dialogType] = {
-      //       $$id: newDialogId,
-      //       type: dialogType
-      //     };
-      //     // 在这里记录一下新生成的弹窗id
-      //     action.__relatedDialogId = newDialogId;
-      //   };
-
-      //   if (type === 'add') {
-      //     if (config.__dialogSource === 'new') {
-      //       setInitSchema(config.groupType, action);
-      //     } else if (config.__dialogSource === 'current') {
-      //       chooseCurrentDialog(action, shcema!);
-      //     }
-      //   }
-      //   // 编辑
-      //   else if (type === 'update') {
-      //     if (config.__dialogSource === 'new') {
-      //       // 如果切换了弹窗类型或切换了弹窗来源，则初始化schema
-      //       if (
-      //         config.groupType !== actionData?.groupType ||
-      //         (config.__dialogSource === 'new' &&
-      //           actionData?.__dialogSource === 'current')
-      //       ) {
-      //         setInitSchema(config.groupType, action);
-      //       } else {
-      //         action[config.groupType] = {
-      //           ...actionData![config.groupType],
-      //           title: config.__dialogTitle
-      //         };
-      //       }
-      //     } else if (config.__dialogSource === 'current') {
-      //       chooseCurrentDialog(action, shcema!);
-      //     }
-      //   }
-      // }
 
       // 刷新组件时，处理是否追加事件变量
       if (config.actionType === 'reload') {

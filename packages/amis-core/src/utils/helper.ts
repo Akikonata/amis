@@ -625,7 +625,8 @@ export function difference<
           result[key] = a;
         }
 
-        if (isEqual(a, b)) {
+        // isEquals 里面没有处理好递归引用对象的情况
+        if (!isObjectShallowModified(a, b, false, undefined, undefined, 10)) {
           return;
         }
 
@@ -2282,18 +2283,49 @@ export function replaceUrlParams(path: string, params: Record<string, any>) {
 
 export const TEST_ID_KEY: 'data-testid' = 'data-testid';
 
-export function buildTestId(testid?: string, data?: PlainObject) {
-  if (!testid) {
-    return {};
-  }
-  return {
-    [TEST_ID_KEY]: filter(testid, data)
-  };
-}
+export class TestIdBuilder {
+  testId?: string;
 
-export function getTestId(testid?: string, data?: PlainObject) {
-  if (!testid) {
-    return undefined;
+  static fast(testId: string) {
+    return {
+      [TEST_ID_KEY]: testId
+    };
   }
-  return buildTestId(testid, data)[TEST_ID_KEY];
+
+  // 为空就表示没有启用testId，后续一直返回都将是空
+  constructor(testId?: string) {
+    this.testId = testId;
+  }
+
+  // 生成子区域的testid生成器
+  getChild(childPath: string | number, data?: object) {
+    if (this.testId == null) {
+      return new TestIdBuilder();
+    }
+
+    return new TestIdBuilder(
+      data
+        ? filter(`${this.testId}-${childPath}`, data)
+        : `${this.testId}-${childPath}`
+    );
+  }
+
+  // 获取当前组件的testid
+  getTestId(data?: object) {
+    if (this.testId == null) {
+      return undefined;
+    }
+
+    return {
+      [TEST_ID_KEY]: data ? filter(this.testId, data) : this.testId
+    };
+  }
+
+  getTestIdValue(data?: object) {
+    if (this.testId == null) {
+      return undefined;
+    }
+
+    return data ? filter(this.testId, data) : this.testId;
+  }
 }

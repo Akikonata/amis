@@ -1,5 +1,5 @@
 import React from 'react';
-import {buildTestId, Renderer, RendererProps} from 'amis-core';
+import {Renderer, RendererProps} from 'amis-core';
 import {Api, SchemaNode, Schema, ActionObject} from 'amis-core';
 import {isVisible} from 'amis-core';
 import {BaseSchema, SchemaObject} from '../Schema';
@@ -172,8 +172,7 @@ export default class Grid2D extends React.Component<Grid2DProps, object> {
   }
 
   render() {
-    const {grids, cols, gap, gapRow, width, rowHeight, style, testid} =
-      this.props;
+    const {grids, cols, gap, gapRow, width, rowHeight, style, id} = this.props;
 
     const templateColumns = new Array(cols);
     templateColumns.fill('1fr');
@@ -216,7 +215,7 @@ export default class Grid2D extends React.Component<Grid2DProps, object> {
     };
 
     return (
-      <div style={curStyle} {...buildTestId(testid)}>
+      <div style={curStyle} data-id={id}>
         {this.renderGrids()}
       </div>
     );

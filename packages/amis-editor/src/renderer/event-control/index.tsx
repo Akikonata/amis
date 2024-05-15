@@ -43,13 +43,11 @@ import {
   PluginEvents,
   RendererPluginAction,
   RendererPluginEvent,
-  SubRendererPluginAction,
-  getDialogListBySchema,
-  getFixDialogType
+  SubRendererPluginAction
 } from 'amis-editor-core';
 export * from './helper';
 import {i18n as _i18n} from 'i18n-runtime';
-import type {VariableItem} from 'amis-ui/lib/components/formula/Editor';
+import type {VariableItem} from 'amis-ui/src/components/formula/CodeEditor';
 import {reaction} from 'mobx';
 import {updateComponentContext} from 'amis-editor-core';
 
@@ -80,7 +78,8 @@ interface EventControlProps extends FormControlProps {
   // 监听面板提交事件
   // 更改后写入 store 前触发
   subscribeSchemaSubmit: (
-    fn: (schema: any, value: any, id: string, diff?: any) => any
+    fn: (schema: any, value: any, id: string, diff?: any) => any,
+    once?: boolean
   ) => () => void;
 }
 
@@ -893,7 +892,7 @@ export class EventControl extends React.Component<
   }
 
   // 渲染描述信息
-  renderDesc(action: ActionConfig) {
+  renderDesc(action: ActionConfig, actionIndex: number, eventKey: string) {
     const {
       actions: pluginActions,
       actionTree,
@@ -930,7 +929,16 @@ export class EventControl extends React.Component<
     }
 
     return typeof desc === 'function' ? (
-      <div className="action-control-content">{desc?.(info) || '-'}</div>
+      <div className="action-control-content">
+        {desc?.(
+          info,
+          {
+            actionIndex,
+            eventKey
+          },
+          this.props
+        ) || '-'}
+      </div>
     ) : null;
   }
 
@@ -971,6 +979,18 @@ export class EventControl extends React.Component<
   onClose() {
     this.removeDataSchema();
     this.setState({showAcionDialog: false});
+    this.unSubscribeSchemaSubmit?.();
+    delete this.unSubscribeSchemaSubmit;
+  }
+
+  unSubscribeSchemaSubmit?: () => void;
+  @autobind
+  subscribeSchemaSubmit(
+    fn: (schema: any, value: any, id: string, diff?: any) => any,
+    once?: boolean
+  ) {
+    this.unSubscribeSchemaSubmit = this.props.subscribeSchemaSubmit(fn, once);
+    return this.unSubscribeSchemaSubmit;
   }
 
   removeDataSchema() {
@@ -994,64 +1014,12 @@ export class EventControl extends React.Component<
   renderActionType(action: any, actionIndex: number, eventKey: string) {
     const {
       actionTree,
-      pluginActions,
+      actions: pluginActions,
       commonActions,
       allComponents,
       node,
       manager
     } = this.props;
-
-    if (['dialog', 'drawer', 'confirmDialog'].includes(action?.actionType)) {
-      const store = manager.store;
-      const modals = store.modals;
-      const onEvent = node.schema?.onEvent;
-      const action = onEvent?.[eventKey].actions?.[actionIndex];
-      const actionBody =
-        action?.[action?.actionType === 'drawer' ? 'drawer' : 'dialog'];
-      let modalId = actionBody?.$$id;
-      if (actionBody?.$ref) {
-        modalId =
-          modals.find((item: any) => item.$$ref === actionBody.$ref)?.$$id ||
-          '';
-      }
-      const modal = modalId
-        ? manager.store.modals.find((item: any) => item.$$id === modalId)
-        : '';
-      if (modal) {
-        return (
-          <>
-            <div className="m-b-xs">打开弹窗</div>
-            <div>
-              打开{' '}
-              <a
-                href="#"
-                onClick={(e: React.UIEvent<any>) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  store.openSubEditor({
-                    title: '编辑弹窗',
-                    value: modal,
-                    onChange: (value: any, diff: any) => {
-                      store.updateModal(modal.$$id!, value);
-                    }
-                  });
-                }}
-              >
-                {modal.editorSetting?.displayName ||
-                  modal.title ||
-                  '未命名弹窗'}
-              </a>{' '}
-              {(modal as any).actionType === 'confirmDialog'
-                ? '确认框'
-                : modal.type === 'drawer'
-                ? '抽屉弹窗'
-                : '弹窗'}
-            </div>
-          </>
-        );
-      }
-    }
 
     return (
       <span>
@@ -1293,10 +1261,7 @@ export class EventControl extends React.Component<
                                       }
                                     )}
                                   >
-                                    <Icon
-                                      className="icon"
-                                      icon="edit-full-btn"
-                                    />
+                                    <Icon className="icon" icon="setting" />
                                   </div>
                                   <div
                                     onClick={this.delAction.bind(
@@ -1313,7 +1278,7 @@ export class EventControl extends React.Component<
                                   </div>
                                 </div>
                               </div>
-                              {this.renderDesc(action)}
+                              {this.renderDesc(action, actionIndex, eventKey)}
                             </li>
                           );
                         }
@@ -1423,6 +1388,7 @@ export class EventControl extends React.Component<
           }
         )}
         <ActionDialog
+          closeOnEsc={false}
           show={showAcionDialog}
           type={type}
           actionTree={actionTree}
@@ -1433,7 +1399,7 @@ export class EventControl extends React.Component<
           onSubmit={this.onSubmit}
           onClose={this.onClose}
           render={this.props.render}
-          subscribeSchemaSubmit={subscribeSchemaSubmit}
+          subscribeSchemaSubmit={this.subscribeSchemaSubmit}
           subscribeActionSubmit={this.subscribeSubmit}
         />
       </div>

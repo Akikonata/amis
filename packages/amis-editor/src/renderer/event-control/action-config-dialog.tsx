@@ -22,6 +22,7 @@ interface ActionDialogProp {
   show: boolean;
   type: string;
   data: any;
+  closeOnEsc?: boolean;
   pluginActions: PluginActions; // 组件的动作列表
   actionTree: RendererPluginAction[]; // 动作树
   commonActions?: {[propName: string]: RendererPluginAction}; // 公共动作Map
@@ -40,7 +41,8 @@ interface ActionDialogProp {
   ) => JSX.Element;
 
   subscribeSchemaSubmit: (
-    fn: (schema: any, value: any, id: string, diff?: any) => any
+    fn: (schema: any, value: any, id: string, diff?: any) => any,
+    once?: boolean
   ) => () => void;
   subscribeActionSubmit: (fn: (value: any) => any) => () => void;
 }
@@ -223,7 +225,8 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
       getComponents,
       commonActions,
       onClose,
-      render
+      render,
+      closeOnEsc
     } = this.props;
     const commonUseActionSchema = this.getCommonUseActionSchema();
 
@@ -235,7 +238,7 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
         headerClassName: 'font-bold',
         className: 'action-config-dialog',
         bodyClassName: 'action-config-dialog-body',
-        closeOnEsc: true,
+        closeOnEsc: closeOnEsc,
         closeOnOutside: false,
         show,
         showCloseButton: true,
@@ -323,20 +326,20 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
                         type: 'tpl',
                         tpl: '动作说明',
                         className: 'action-panel-title',
-                        visibleOn: 'data.actionType',
+                        visibleOn: 'this.actionType',
                         inline: false
                       },
                       {
                         type: 'tpl',
                         className: 'action-desc',
                         tpl: '${__actionDesc}',
-                        visibleOn: 'data.actionType'
+                        visibleOn: 'this.actionType'
                       },
                       {
                         type: 'tpl',
                         tpl: '基础设置',
                         className: 'action-panel-title',
-                        visibleOn: 'data.actionType',
+                        visibleOn: 'this.actionType',
                         inline: false
                       },
                       {
@@ -354,12 +357,12 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
                             tpl: '高级设置',
                             inline: false,
                             className: 'action-panel-title',
-                            visibleOn: 'data.actionType'
+                            visibleOn: 'this.actionType'
                           },
                           {
                             type: 'button-group-select',
                             name: 'ignoreError',
-                            visibleOn: 'data.actionType',
+                            visibleOn: 'this.actionType',
                             label: tipedLabel(
                               '错误忽略',
                               '动作发生错误时，是否忽略错误继续执行'
@@ -392,7 +395,7 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
                               }
                             ],
                             description:
-                              '<%= data.ignoreError === false ? "找不到组件和动作执行失败都中断" : typeof data.ignoreError === "undefined" ? "找不到组件容忍，动作执行失败才中断" : ""%>'
+                              '<%= this.ignoreError === false ? "找不到组件和动作执行失败都中断" : typeof this.ignoreError === "undefined" ? "找不到组件容忍，动作执行失败才中断" : ""%>'
                           },
                           getSchemaTpl('expressionFormulaControl', {
                             name: 'stopPropagation',
@@ -404,7 +407,7 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
                             variables: '${variables}',
                             mode: 'horizontal',
                             size: 'lg',
-                            visibleOn: 'data.actionType'
+                            visibleOn: 'this.actionType'
                           }),
                           getSchemaTpl('expressionFormulaControl', {
                             name: 'expression',
@@ -414,7 +417,7 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
                             mode: 'horizontal',
                             size: 'lg',
                             placeholder: '默认执行该动作',
-                            visibleOn: 'data.actionType'
+                            visibleOn: 'this.actionType'
                           })
                         ]
                       }

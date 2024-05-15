@@ -5,6 +5,7 @@ import {
   ITableStore,
   RendererEvent,
   RendererProps,
+  TestIdBuilder,
   autobind,
   setVariable,
   traceProps
@@ -44,6 +45,8 @@ interface TableRowProps extends Pick<RendererProps, 'render'> {
   regionPrefix?: string;
   checkOnItemClick?: boolean;
   ignoreFootableContent?: boolean;
+  testIdBuilder?: (key: string) => TestIdBuilder;
+  rowPath: string; // 整体行的路径，树形时需要父行序号/当前展开层级下的行序号
   [propName: string]: any;
 }
 
@@ -72,13 +75,13 @@ export class TableRow extends React.PureComponent<
   @autobind
   handleMouseEnter(e: React.MouseEvent<HTMLTableRowElement>) {
     const {item, itemIndex, onRowMouseEnter} = this.props;
-    onRowMouseEnter?.(item?.data, itemIndex);
+    onRowMouseEnter?.(item, itemIndex);
   }
 
   @autobind
   handleMouseLeave(e: React.MouseEvent<HTMLTableRowElement>) {
     const {item, itemIndex, onRowMouseLeave} = this.props;
-    onRowMouseLeave?.(item?.data, itemIndex);
+    onRowMouseLeave?.(item, itemIndex);
   }
 
   // 定义点击一行的行为，通过 itemAction配置
@@ -103,7 +106,7 @@ export class TableRow extends React.PureComponent<
       checkOnItemClick
     } = this.props;
 
-    const rendererEvent = await onRowClick?.(item?.data, itemIndex);
+    const rendererEvent = await onRowClick?.(item, itemIndex);
 
     if (rendererEvent?.prevented) {
       return;
@@ -122,7 +125,7 @@ export class TableRow extends React.PureComponent<
   @autobind
   handleDbClick(e: React.MouseEvent<HTMLTableRowElement>) {
     const {item, itemIndex, onRowDbClick} = this.props;
-    onRowDbClick?.(item?.data, itemIndex);
+    onRowDbClick?.(item, itemIndex);
   }
 
   @autobind
@@ -198,7 +201,8 @@ export class TableRow extends React.PureComponent<
       checkdisable,
       trRef,
       isNested,
-
+      testIdBuilder,
+      rowPath,
       ...rest
     } = this.props;
 
@@ -260,7 +264,9 @@ export class TableRow extends React.PureComponent<
                               ...rest,
                               width: null,
                               rowIndex: itemIndex,
+                              rowIndexPath: item.path,
                               colIndex: column.index,
+                              rowPath,
                               key: column.index,
                               onAction: this.handleAction,
                               onQuickChange: this.handleQuickChange,
@@ -314,6 +320,7 @@ export class TableRow extends React.PureComponent<
           },
           `Table-tr--${depth}th`
         )}
+        {...testIdBuilder?.(rowPath)?.getTestId()}
       >
         {columns.map(column =>
           appeard ? (
@@ -321,6 +328,8 @@ export class TableRow extends React.PureComponent<
               ...rest,
               rowIndex: itemIndex,
               colIndex: column.index,
+              rowIndexPath: item.path,
+              rowPath,
               key: column.id,
               onAction: this.handleAction,
               onQuickChange: this.handleQuickChange,

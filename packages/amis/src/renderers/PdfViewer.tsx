@@ -4,7 +4,7 @@
  * @created: 2024/02/26
  */
 
-import React from 'react';
+import React, {Suspense} from 'react';
 import {
   autobind,
   getVariable,
@@ -40,6 +40,9 @@ export interface PdfViewerProps extends RendererProps {}
 
 interface PdfViewerState {
   loading: boolean;
+  inited: boolean;
+  width?: number;
+  error: boolean;
 }
 
 export default class PdfViewer extends React.Component<
@@ -49,14 +52,22 @@ export default class PdfViewer extends React.Component<
   file?: ArrayBuffer;
   reader?: FileReader;
   fetchCancel?: Function;
+  wrapper = React.createRef<HTMLDivElement>();
   constructor(props: PdfViewerProps) {
     super(props);
     this.state = {
-      loading: false
+      inited: false,
+      loading: false,
+      error: false
     };
   }
 
   componentDidMount() {
+    if (this.wrapper.current) {
+      this.setState({
+        width: this.wrapper.current.clientWidth - 100
+      });
+    }
     this.renderPdf();
   }
 
@@ -79,6 +90,10 @@ export default class PdfViewer extends React.Component<
     }
   }
 
+  componentWillUnmount() {
+    this.abortLoad();
+  }
+
   @autobind
   abortLoad() {
     if (this.fetchCancel) {
@@ -94,6 +109,7 @@ export default class PdfViewer extends React.Component<
   @autobind
   async renderPdf() {
     const {src, name, data} = this.props;
+    this.setState({error: false});
     // src 优先级高于 name
     if (src) {
       if (!this.file) {
@@ -117,6 +133,7 @@ export default class PdfViewer extends React.Component<
     }
 
     this.setState({
+      inited: true,
       loading: true
     });
 
@@ -128,6 +145,7 @@ export default class PdfViewer extends React.Component<
       this.file = res.data;
       this.forceUpdate();
     } catch (error) {
+      this.setState({error: true});
       console.error(error);
     } finally {
       this.setState({
@@ -140,30 +158,99 @@ export default class PdfViewer extends React.Component<
   async renderFormFile() {
     const {name, data} = this.props;
     const file = getVariable(data, name);
+    this.setState({
+      inited: true,
+      loading: true
+    });
     if (file instanceof File) {
       const reader = new FileReader();
       reader.onload = _e => {
         const data = reader.result as ArrayBuffer;
         this.file = data;
+        this.setState({
+          loading: false
+        });
         this.forceUpdate();
+      };
+      reader.onerror = _e => {
+        this.setState({error: true});
       };
       reader.readAsArrayBuffer(file);
       this.reader = reader;
     }
   }
 
+  @autobind
+  renderEmpty() {
+    const {src, name} = this.props;
+    if (!src && !name) {
+      return (
+        <svg width="100%" height="100" xmlns="http://www.w3.org/2000/svg">
+          <rect
+            x="0"
+            y="0"
+            width="100%"
+            height="100"
+            style={{fill: '#F7F7F9'}}
+          />
+          <text
+            x="50%"
+            y="50%"
+            fontSize="18"
+            textAnchor="middle"
+            alignmentBaseline="middle"
+            fontFamily="monospace, sans-serif"
+            fill="#555555"
+          >
+            PDF viewer
+          </text>
+        </svg>
+      );
+    }
+    return null;
+  }
+
+  @autobind
+  renderError() {
+    const {src, translate: __} = this.props;
+    const {error} = this.state;
+    if (error && src) {
+      return <div>{__('loadingFailed') + ' url:' + src}</div>;
+    }
+
+    return null;
+  }
+
   render() {
-    const {className, classnames: cx, width, height, background} = this.props;
+    const {
+      className,
+      classnames: cx,
+      translate: __,
+      height,
+      background,
+      src
+    } = this.props;
+    const {loading, inited, error} = this.state;
+    const width = Math.max(this.props.width || this.state.width, 300);
 
     return (
-      <PdfView
-        file={this.file}
-        className={className}
-        classnames={cx}
-        width={width}
-        height={height}
-        background={background}
-      />
+      <div ref={this.wrapper}>
+        {this.renderEmpty()}
+        <Suspense fallback={<div>...</div>}>
+          {inited && !error ? (
+            <PdfView
+              file={this.file}
+              loading={loading}
+              className={className}
+              classnames={cx}
+              width={width}
+              height={height}
+              background={background}
+            />
+          ) : null}
+        </Suspense>
+        {this.renderError()}
+      </div>
     );
   }
 }

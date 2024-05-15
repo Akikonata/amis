@@ -8,7 +8,7 @@ import {
   setVariable,
   setThemeClassName,
   ValidateError,
-  getTestId
+  RendererEvent
 } from 'amis-core';
 import {Renderer, RendererProps} from 'amis-core';
 import {SchemaNode, Schema, ActionObject} from 'amis-core';
@@ -53,8 +53,6 @@ export interface DialogSchema extends BaseSchema {
    * 默认不用填写，自动会创建确认和取消按钮。
    */
   actions?: Array<ActionSchema>;
-
-  testid?: string;
 
   /**
    * 内容区域
@@ -246,7 +244,7 @@ export default class Dialog extends React.Component<DialogProps> {
   }
 
   buildActions(): Array<ActionSchema> {
-    const {actions, confirm, testid, translate: __} = this.props;
+    const {actions, confirm, translate: __, testIdBuilder} = this.props;
 
     if (typeof actions !== 'undefined') {
       return actions;
@@ -255,7 +253,7 @@ export default class Dialog extends React.Component<DialogProps> {
     let ret: Array<ActionSchema> = [];
     ret.push({
       type: 'button',
-      testid: getTestId(testid && `${testid}-cancel`),
+      testIdBuilder: testIdBuilder?.getChild('cancel'),
       actionType: 'cancel',
       label: __('cancel')
     });
@@ -263,7 +261,7 @@ export default class Dialog extends React.Component<DialogProps> {
     if (confirm) {
       ret.push({
         type: 'button',
-        testid: getTestId(testid && `${testid}-confirm`),
+        testIdBuilder: testIdBuilder?.getChild('confirm'),
         actionType: 'confirm',
         label: __('confirm'),
         primary: true
@@ -279,6 +277,10 @@ export default class Dialog extends React.Component<DialogProps> {
     const rendererEvent = await dispatchEvent('cancel', this.props.data);
     if (rendererEvent?.prevented) {
       return;
+    }
+
+    if (rendererEvent?.pendingPromise.length) {
+      await rendererEvent.allDone();
     }
     // clear error
     store.updateMessage();
@@ -337,7 +339,7 @@ export default class Dialog extends React.Component<DialogProps> {
       return;
     }
 
-    store.closeDialog(true);
+    store.closeDialog(true, values);
   }
 
   handleDialogClose(...args: Array<any>) {
@@ -374,7 +376,7 @@ export default class Dialog extends React.Component<DialogProps> {
       return;
     }
 
-    store.closeDrawer();
+    store.closeDrawer(true, values);
   }
 
   handleDrawerClose(...args: Array<any>) {
@@ -387,7 +389,7 @@ export default class Dialog extends React.Component<DialogProps> {
       return;
     }
 
-    store.closeDrawer();
+    store.closeDrawer(...args);
   }
 
   handleEntered() {
@@ -410,6 +412,7 @@ export default class Dialog extends React.Component<DialogProps> {
     statusStore && isAlive(statusStore) && statusStore.resetAll();
     if (isAlive(store)) {
       store.reset();
+      store.clearMessage();
       store.setEntered(false);
       if (typeof lazySchema === 'function') {
         store.setSchema('');
@@ -428,11 +431,8 @@ export default class Dialog extends React.Component<DialogProps> {
 
     // 如果 dialog 里面不放 form，而是直接放表单项就会进到这里来。
     if (typeof name === 'string') {
-      const mergedData = {
-        ...store.form
-      };
-      setVariable(mergedData, name, data);
-      data = mergedData;
+      store.changeValue(name, data);
+      return;
     }
 
     store.setFormData(data);
@@ -555,6 +555,10 @@ export default class Dialog extends React.Component<DialogProps> {
           render(`action/${key}`, action, {
             data: store.formData,
             onAction: this.handleAction,
+            // 以免调用上层弹窗的 onActionSensor 方法
+            // 弹窗观察内部的动作执行，不需要观察到子弹窗里面去
+            // 所以这里传递了 undefined
+            onActionSensor: undefined,
             key,
             disabled: action.disabled || store.loading || !show
           })
@@ -715,7 +719,8 @@ export default class Dialog extends React.Component<DialogProps> {
             ) : null}
             {render('title', title, {
               data: store.formData,
-              onAction: this.handleAction
+              onAction: this.handleAction,
+              onActionSensor: undefined
             })}
           </div>
         ) : showCloseButton !== false && !store.loading ? (
@@ -731,7 +736,8 @@ export default class Dialog extends React.Component<DialogProps> {
         {header
           ? render('header', header, {
               data: store.formData,
-              onAction: this.handleAction
+              onAction: this.handleAction,
+              onActionSensor: undefined
             })
           : null}
 
@@ -953,15 +959,16 @@ export class DialogRenderer extends Dialog {
           store.updateMessage(reason.message, true);
           store.markBusying(false);
 
-          if (reason.constructor?.name === ValidateError.name) {
-            clearTimeout(this.clearErrorTimer);
-            this.clearErrorTimer = setTimeout(() => {
-              if (this.isDead) {
-                return;
-              }
-              store.updateMessage('');
-            }, 3000);
-          }
+          // 通常都是数据错误，过 3 秒自动清理错误信息
+          // if (reason.constructor?.name === ValidateError.name) {
+          clearTimeout(this.clearErrorTimer);
+          this.clearErrorTimer = setTimeout(() => {
+            if (this.isDead) {
+              return;
+            }
+            store.updateMessage('');
+          }, 3000);
+          // }
         });
 
       return true;
@@ -979,7 +986,8 @@ export class DialogRenderer extends Dialog {
     action: ActionObject,
     data: object,
     throwErrors: boolean = false,
-    delegate?: IScopedContext
+    delegate?: IScopedContext,
+    rendererEvent?: RendererEvent<any>
   ) {
     const {onAction, store, onConfirm, env, dispatchEvent, onClose} =
       this.props;
@@ -988,6 +996,10 @@ export class DialogRenderer extends Dialog {
       return onAction
         ? onAction(e, action, data, throwErrors, delegate || this.context)
         : false;
+    }
+
+    if (rendererEvent?.pendingPromise.length) {
+      await rendererEvent.allDone();
     }
 
     const scoped = this.context as IScopedContext;
@@ -1007,6 +1019,10 @@ export class DialogRenderer extends Dialog {
         return;
       }
 
+      if (rendererEvent?.pendingPromise.length) {
+        await rendererEvent.allDone();
+      }
+
       store.setCurrentAction(action, this.props.resolveDefinitions);
       // clear error
       store.updateMessage();
@@ -1021,8 +1037,13 @@ export class DialogRenderer extends Dialog {
         'confirm',
         createObject(this.props.data, data)
       );
+
       if (rendererEvent?.prevented) {
         return;
+      }
+
+      if (rendererEvent?.pendingPromise.length) {
+        await rendererEvent.allDone();
       }
 
       store.setCurrentAction(action, this.props.resolveDefinitions);
@@ -1057,15 +1078,31 @@ export class DialogRenderer extends Dialog {
       }
     } else if (action.actionType === 'dialog') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
-      store.openDialog(
-        data,
-        undefined,
-        action.callback,
-        delegate || (this.context as any)
-      );
+      return new Promise<any>(resolve => {
+        store.openDialog(
+          data,
+          undefined,
+          (confirmed: any, value: any) => {
+            action.callback?.(confirmed, value);
+            resolve({
+              confirmed,
+              value
+            });
+          },
+          delegate || (this.context as any)
+        );
+      });
     } else if (action.actionType === 'drawer') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
-      store.openDrawer(data);
+      return new Promise<any>(resolve => {
+        store.openDrawer(data, undefined, (confirmed: any, value: any) => {
+          action.callback?.(confirmed, value);
+          resolve({
+            confirmed,
+            value
+          });
+        });
+      });
     } else if (action.actionType === 'reload') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
       action.target && scoped.reload(action.target, data);
@@ -1080,7 +1117,7 @@ export class DialogRenderer extends Dialog {
       // do nothing
     } else if (action.actionType === 'ajax') {
       store.setCurrentAction(action, this.props.resolveDefinitions);
-      store
+      return store
         .saveRemote(action.api as string, data, {
           successMessage: action.messages && action.messages.success,
           errorMessage: action.messages && action.messages.failed

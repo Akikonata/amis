@@ -15,13 +15,14 @@ import ItemActionsWrapper from './ItemActionsWrapper';
 import {SchemaTpl} from '../../Schema';
 import {Icon} from 'amis-ui';
 
-import type {IColumn, IRow} from 'amis-core';
+import type {IColumn, IRow, TestIdBuilder} from 'amis-core';
 import ColGroup from './ColGroup';
 
 export interface TableContentProps extends LocaleProps {
   className?: string;
   tableClassName?: string;
   classnames: ClassNamesFn;
+  testIdBuilder?: TestIdBuilder;
   columns: Array<IColumn>;
   columnsGroup: Array<{
     label: string;
@@ -89,6 +90,7 @@ export interface TableContentProps extends LocaleProps {
   isSelectionThresholdReached?: boolean;
   orderBy?: string;
   orderDir?: string;
+  children?: React.ReactNode;
 }
 
 export function renderItemActions(
@@ -173,7 +175,9 @@ export class TableContent extends React.PureComponent<TableContentProps> {
       store,
       dispatchEvent,
       onEvent,
-      loading
+      loading,
+      testIdBuilder,
+      children
     } = this.props;
 
     const tableClassName = cx('Table-table', this.props.tableClassName);
@@ -299,6 +303,7 @@ export class TableContent extends React.PureComponent<TableContentProps> {
               prefixRow={prefixRow}
               affixRow={affixRow}
               data={data}
+              testIdBuilder={testIdBuilder}
               rowsProps={{
                 dispatchEvent,
                 onEvent
@@ -306,6 +311,7 @@ export class TableContent extends React.PureComponent<TableContentProps> {
             />
           )}
         </table>
+        {children}
       </div>
     );
   }

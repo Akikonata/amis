@@ -3,7 +3,8 @@ import {
   FormItem,
   FormControlProps,
   FormBaseControl,
-  resolveEventData
+  resolveEventData,
+  getVariable
 } from 'amis-core';
 import cx from 'classnames';
 import {filterDate, parseDuration} from 'amis-core';
@@ -13,7 +14,7 @@ import {ActionObject} from 'amis-core';
 import type {ShortCuts} from 'amis-ui/lib/components/DatePicker';
 import {FormBaseControlSchema} from '../../Schema';
 import {supportStatic} from './StaticHoc';
-
+import type {TestIdBuilder} from 'amis-core';
 /**
  * DateRange 日期范围控件
  * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/date-range
@@ -122,6 +123,11 @@ export interface DateRangeControlSchema extends FormBaseControlSchema {
    * (value: moment.Moment, config: {type: 'start' | 'end'; originValue: moment.Moment, timeFormat: string}, props: any, data: any, moment: moment) => moment.Moment;
    */
   transform?: string;
+
+  /**
+   * 弹窗容器选择器
+   */
+  popOverContainerSelector?: string;
 }
 
 export interface DateRangeProps
@@ -134,6 +140,7 @@ export interface DateRangeProps
   format: string;
   valueFormat: string;
   joinValues: boolean;
+  testIdBuilder?: TestIdBuilder;
 }
 
 export default class DateRangeControl extends React.Component<DateRangeProps> {
@@ -234,15 +241,17 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
 
   // 动作
   doAction(action: ActionObject, data: object, throwErrors: boolean) {
-    const {resetValue} = this.props;
+    const {resetValue, formStore, store, name} = this.props;
 
     if (action.actionType === 'clear') {
       this.dateRef?.clear();
       return;
     }
 
-    if (action.actionType === 'reset' && resetValue) {
-      this.dateRef?.reset();
+    if (action.actionType === 'reset') {
+      const pristineVal =
+        getVariable(formStore?.pristine ?? store?.pristine, name) ?? resetValue;
+      this.dateRef?.reset(pristineVal);
     }
   }
 
@@ -275,9 +284,11 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
       'change',
       resolveEventData(this.props, {value: nextValue})
     );
-    if (dispatcher?.prevented) {
-      return;
-    }
+    // 因为前面没有 await，所以这里的 dispatcher.prevented 是不准确的。
+    // 为什么没写 onChange，我估计是不能让 onChange 太慢执行
+    // if (dispatcher?.prevented) {
+    //   return;
+    // }
     this.props.onChange(nextValue);
   }
 
@@ -325,6 +336,7 @@ export default class DateRangeControl extends React.Component<DateRangeProps> {
               ? env?.getModalContainer
               : rest.popOverContainer || env.getModalContainer
           }
+          popOverContainerSelector={rest.popOverContainerSelector}
           onRef={this.getRef}
           data={data}
           valueFormat={valueFormat || format}

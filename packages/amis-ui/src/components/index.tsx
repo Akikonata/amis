@@ -41,7 +41,7 @@ import Radios from './Radios';
 import Range from './Range';
 import Rating from './Rating';
 // import RichText from './RichText';
-import Select from './Select';
+import Select, {value2array} from './Select';
 import SparkLine from './SparkLine';
 import {default as Spinner, type SpinnerExtraProps} from './Spinner';
 import Switch from './Switch';
@@ -74,7 +74,8 @@ import SchemaVariableList from './schema-editor/SchemaVariableList';
 import VariableList from './formula/VariableList';
 import FormulaPicker from './formula/Picker';
 import {FormulaEditor} from './formula/Editor';
-import type {VariableItem} from './formula/Editor';
+import FormulaCodeEditor from './formula/CodeEditor';
+import type {VariableItem} from './formula/CodeEditor';
 import PickerContainer from './PickerContainer';
 import InputJSONSchema from './json-schema';
 import {Badge, withBadge} from './Badge';
@@ -130,6 +131,7 @@ import InputBoxWithSuggestion from './InputBoxWithSuggestion';
 import {CodeMirrorEditor} from './CodeMirror';
 import type CodeMirror from 'codemirror';
 import OverflowTpl from './OverflowTpl';
+import Signature from './Signature';
 
 export {
   NotFound,
@@ -168,6 +170,7 @@ export {
   Rating,
   // RichText,
   Select,
+  value2array,
   SparkLine,
   Spinner,
   SpinnerExtraProps,
@@ -202,6 +205,7 @@ export {
   PickerContainer,
   ConfirmBox,
   FormulaPicker,
+  FormulaCodeEditor,
   VariableItem,
   FormulaEditor,
   InputJSONSchema,
@@ -263,5 +267,6 @@ export {
   Menu,
   CodeMirror,
   CodeMirrorEditor,
-  OverflowTpl
+  OverflowTpl,
+  Signature
 };

@@ -21,7 +21,8 @@ import {
   isVisible,
   qsstringify,
   createObject,
-  extendObject
+  extendObject,
+  TestIdBuilder
 } from 'amis-core';
 import {
   BaseSchema,
@@ -151,6 +152,7 @@ export interface ServiceProps
     Omit<ServiceSchema, 'type' | 'className'> {
   store: IServiceStore;
   messages: SchemaMessage;
+  testIdBuilder?: TestIdBuilder;
 }
 export default class Service extends React.Component<ServiceProps> {
   timer: ReturnType<typeof setTimeout>;
@@ -272,7 +274,12 @@ export default class Service extends React.Component<ServiceProps> {
     }
   }
 
-  doAction(action: ListenerAction, args: any) {
+  doAction(
+    action: ListenerAction,
+    data: any,
+    throwErrors: boolean = false,
+    args?: any
+  ) {
     if (action?.actionType === 'rebuild') {
       const {
         schemaApi,
@@ -685,7 +692,7 @@ export default class Service extends React.Component<ServiceProps> {
     targets: Array<any>
   ) {
     const {store} = this.props;
-    store.closeDialog(true);
+    store.closeDialog(true, values);
   }
 
   @autobind
@@ -800,11 +807,16 @@ export default class Service extends React.Component<ServiceProps> {
       classPrefix: ns,
       classnames: cx,
       loadingConfig,
-      showErrorMsg
+      showErrorMsg,
+      testIdBuilder
     } = this.props;
 
     return (
-      <div className={cx(`${ns}Service`, className)} style={style}>
+      <div
+        className={cx(`${ns}Service`, className)}
+        style={style}
+        {...testIdBuilder?.getTestId()}
+      >
         {!env.forceSilenceInsideError &&
         store.error &&
         showErrorMsg !== false ? (

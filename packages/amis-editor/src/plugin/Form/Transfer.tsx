@@ -1,8 +1,17 @@
-import {EditorManager, EditorNodeType, getSchemaTpl} from 'amis-editor-core';
+import {
+  EditorManager,
+  EditorNodeType,
+  defaultValue,
+  getSchemaTpl
+} from 'amis-editor-core';
 import {registerEditorPlugin} from 'amis-editor-core';
 import {BasePlugin, BaseEventContext} from 'amis-editor-core';
 import {getEventControlConfig} from '../../renderer/event-control/helper';
-import {RendererPluginAction, RendererPluginEvent} from 'amis-editor-core';
+import {
+  RendererPluginAction,
+  RendererPluginEvent,
+  undefinedPipeOut
+} from 'amis-editor-core';
 
 import {ValidatorTag} from '../../validator';
 import {tipedLabel} from 'amis-editor-core';
@@ -189,7 +198,7 @@ export class TransferPlugin extends BasePlugin {
                   type: 'select',
                   multiple: true
                 }),
-                visibleOn: 'data.options.length > 0'
+                visibleOn: 'this.options.length > 0'
               }),
               getSchemaTpl('switch', {
                 label: '统计数据',
@@ -239,7 +248,7 @@ export class TransferPlugin extends BasePlugin {
               },
 
               getSchemaTpl('optionControl', {
-                visibleOn: 'data.selectMode === "list"',
+                visibleOn: 'this.selectMode === "list"',
                 multiple: true
               }),
 
@@ -254,7 +263,7 @@ export class TransferPlugin extends BasePlugin {
               {
                 type: 'ae-transferTableControl',
                 label: '数据',
-                visibleOn: 'data.selectMode === "table"',
+                visibleOn: 'this.selectMode === "table"',
                 mode: 'normal',
                 // 自定义change函数
                 onValueChange: (
@@ -275,7 +284,7 @@ export class TransferPlugin extends BasePlugin {
               },
 
               getSchemaTpl('treeOptionControl', {
-                visibleOn: 'data.selectMode === "tree"'
+                visibleOn: 'this.selectMode === "tree"'
               }),
 
               getSchemaTpl('switch', {
@@ -286,7 +295,7 @@ export class TransferPlugin extends BasePlugin {
               getSchemaTpl('optionsMenuTpl', {
                 manager: this.manager,
                 onChange: (value: any) => {},
-                visibleOn: 'data.selectMode !== "table"'
+                visibleOn: 'this.selectMode !== "table"'
               }),
 
               {
@@ -329,7 +338,7 @@ export class TransferPlugin extends BasePlugin {
                 },
                 inputClassName: 'is-inline',
                 visibleOn:
-                  'data.selectMode === "list" && !data.resultListModeFollowSelect'
+                  'this.selectMode === "list" && !this.resultListModeFollowSelect'
               }),
 
               getSchemaTpl('optionsMenuTpl', {
@@ -337,7 +346,7 @@ export class TransferPlugin extends BasePlugin {
                 manager: this.manager,
                 onChange: (value: any) => {},
                 visibleOn:
-                  '!(data.selectMode === "table" && data.resultListModeFollowSelect)'
+                  '!(this.selectMode === "table" && this.resultListModeFollowSelect)'
               }),
               {
                 label: '标题',
@@ -373,7 +382,59 @@ export class TransferPlugin extends BasePlugin {
               label: 'AddOn',
               visibleOn: 'this.addOn && this.addOn.type === "text"'
             })
-          ])
+          ]),
+          ...(this.rendererName === 'transfer-picker'
+            ? [
+                {
+                  title: '边框',
+                  key: 'borderMode',
+                  body: [getSchemaTpl('borderMode')]
+                },
+                {
+                  title: '弹窗',
+                  key: 'picker',
+                  body: [
+                    {
+                      name: 'pickerSize',
+                      type: 'select',
+                      pipeIn: defaultValue(''),
+                      pipeOut: undefinedPipeOut,
+                      label: '弹窗大小',
+                      options: [
+                        {
+                          label: '默认',
+                          value: ''
+                        },
+                        {
+                          value: 'sm',
+                          label: '小'
+                        },
+
+                        {
+                          label: '中',
+                          value: 'md'
+                        },
+
+                        {
+                          label: '大',
+                          value: 'lg'
+                        },
+
+                        {
+                          label: '特大',
+                          value: 'xl'
+                        },
+
+                        {
+                          label: '全屏',
+                          value: 'full'
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            : [])
         ])
       },
       {

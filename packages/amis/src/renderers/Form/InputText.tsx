@@ -20,8 +20,7 @@ import {
   setVariable,
   ucFirst,
   isEffectiveApi,
-  getTestId,
-  buildTestId
+  getVariable
 } from 'amis-core';
 import {Icon, SpinnerExtraProps, Input, Spinner, OverflowTpl} from 'amis-ui';
 import {ActionSchema} from '../Action';
@@ -119,8 +118,6 @@ export interface TextControlSchema extends FormOptionsSchema {
 
   /** 在内容为空的时候清除值 */
   clearValueOnEmpty?: boolean;
-
-  testid?: string;
 }
 
 export type InputTextRendererEvent =
@@ -266,10 +263,17 @@ export default class TextControl extends React.PureComponent<
     this.input = ref;
   }
 
-  doAction(action: ListenerAction, args: any) {
+  doAction(
+    action: ListenerAction,
+    data: any,
+    throwErrors: boolean = false,
+    args?: any
+  ) {
     const actionType = action?.actionType as string;
 
-    if (!!~['clear', 'reset'].indexOf(actionType)) {
+    if (actionType === 'reset') {
+      this.resetValue();
+    } else if (actionType === 'clear') {
       this.clearValue();
     } else if (actionType === 'focus') {
       this.focus();
@@ -297,6 +301,34 @@ export default class TextControl extends React.PureComponent<
     }
   }
 
+  async resetValue() {
+    const {onChange, dispatchEvent, resetValue, formStore, store, name} =
+      this.props;
+    const pristineVal =
+      getVariable(formStore?.pristine ?? store?.pristine, name) ?? resetValue;
+
+    const changeEvent = await dispatchEvent(
+      'change',
+      resolveEventData(this.props, {value: pristineVal})
+    );
+
+    if (changeEvent?.prevented) {
+      return;
+    }
+
+    onChange(pristineVal);
+
+    this.setState(
+      {
+        inputValue: pristineVal
+      },
+      () => {
+        this.focus();
+        this.loadAutoComplete();
+      }
+    );
+  }
+
   async clearValue() {
     const {onChange, dispatchEvent, clearValueOnEmpty} = this.props;
     let resetValue = this.props.resetValue;
@@ -316,7 +348,7 @@ export default class TextControl extends React.PureComponent<
 
     const changeEvent = await dispatchEvent(
       'change',
-      resolveEventData(this.props, {resetValue})
+      resolveEventData(this.props, {value: resetValue})
     );
 
     if (changeEvent?.prevented) {
@@ -730,8 +762,8 @@ export default class TextControl extends React.PureComponent<
       themeCss,
       css,
       id,
-      testid,
-      nativeAutoComplete
+      nativeAutoComplete,
+      testIdBuilder
     } = this.props;
     let type = this.props.type?.replace(/^(?:native|input)\-/, '');
 
@@ -810,7 +842,7 @@ export default class TextControl extends React.PureComponent<
                 }
               )}
               onClick={this.handleClick}
-              {...buildTestId(testid, data)}
+              {...testIdBuilder?.getTestId()}
             >
               <>
                 {filteredPlaceholder &&
@@ -988,8 +1020,8 @@ export default class TextControl extends React.PureComponent<
       themeCss,
       css,
       id,
-      testid,
-      nativeAutoComplete
+      nativeAutoComplete,
+      testIdBuilder
     } = this.props;
 
     const type = this.props.type?.replace(/^(?:native|input)\-/, '');
@@ -1017,7 +1049,7 @@ export default class TextControl extends React.PureComponent<
           inputControlClassName,
           inputOnly ? className : ''
         )}
-        {...buildTestId(testid, data)}
+        {...testIdBuilder?.getTestId()}
       >
         {prefix ? (
           <span className={cx('TextControl-inputPrefix')}>
@@ -1045,7 +1077,7 @@ export default class TextControl extends React.PureComponent<
           className={cx(nativeInputClassName, {
             'TextControl-input-password': type === 'password' && revealPassword
           })}
-          {...buildTestId(testid && `${testid}-input`)}
+          {...testIdBuilder?.getChild('input').getTestId()}
         />
         {clearable && !disabled && !readOnly && value ? (
           <a onClick={this.clearValue} className={cx('TextControl-clear')}>

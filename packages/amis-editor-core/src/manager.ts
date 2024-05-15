@@ -215,7 +215,8 @@ export class EditorManager {
 
   constructor(
     readonly config: EditorManagerConfig,
-    readonly store: EditorStoreType
+    readonly store: EditorStoreType,
+    readonly parent?: EditorManager
   ) {
     // 传给 amis 渲染器的默认 env
     this.env = {
@@ -873,7 +874,11 @@ export class EditorManager {
    * @param rendererIdOrSchema
    * 备注：可以根据渲染器ID添加新元素，也可以根据现有schema片段添加新元素
    */
-  async addElem(rendererIdOrSchema: string | any, reGenerateId?: boolean) {
+  async addElem(
+    rendererIdOrSchema: string | any,
+    reGenerateId?: boolean,
+    activeChild: boolean = true
+  ) {
     if (!rendererIdOrSchema) {
       return;
     }
@@ -1029,7 +1034,7 @@ export class EditorManager {
       },
       reGenerateId
     );
-    if (child) {
+    if (child && activeChild) {
       // mobx 修改数据是异步的
       setTimeout(() => {
         store.setActiveId(child.$$id);
@@ -1354,6 +1359,21 @@ export class EditorManager {
    * @param config
    */
   openSubEditor(config: SubEditorContext) {
+    if (
+      ['dialog', 'drawer', 'confirmDialog'].includes(config.value.type) &&
+      this.parent
+    ) {
+      let parent: EditorManager | undefined = this.parent;
+      const id = config.value.$$originId || config.value.$$id;
+      while (parent) {
+        if (parent.store.schema.$$id === id) {
+          toast.warning('所选弹窗已经被打开，不能多次打开');
+          return;
+        }
+
+        parent = parent.parent;
+      }
+    }
     this.store.openSubEditor(config);
   }
 
@@ -1536,7 +1556,29 @@ export class EditorManager {
       return;
     }
     const json = reGenerateID(parse(this.clipboardData));
-    region ? this.addChild(id, region, json) : this.replaceChild(id, json);
+    if (region) {
+      this.addChild(id, region, json);
+      return;
+    }
+    if (this.replaceChild(id, json)) {
+      setTimeout(() => {
+        this.store.highlightNodes.forEach(node => {
+          node.calculateHighlightBox();
+        });
+        this.updateConfigPanel(json.type);
+      });
+    }
+  }
+
+  /**
+   * 重新生成当前节点的 id
+   */
+  reGenerateCurrentNodeID() {
+    const node = this.store.getNodeById(this.store.activeId);
+    if (!node) {
+      return;
+    }
+    this.replaceChild(node.id, reGenerateID(node.schema));
   }
 
   /**
@@ -2197,6 +2239,7 @@ export class EditorManager {
     this.trigger('dispose', {
       data: this
     });
+    delete (this as any).parent;
     this.toDispose.forEach(fn => fn());
     this.toDispose = [];
     this.plugins.forEach(p => p.dispose?.());

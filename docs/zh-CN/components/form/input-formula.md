@@ -22,7 +22,7 @@ order: 21
       "name": "formula",
       "label": "公式",
       "evalMode": true,
-      "value": "SUM(1 , 2)",
+      "value": "SUM(1 , user.id)",
       "variables": [
         {
           "label": "表单字段",
@@ -73,6 +73,20 @@ order: 21
           ]
         },
         {
+          "label": "人员对象",
+          "value": "user",
+          "children": [
+            {
+              "label": "ID",
+              "value": "user.id"
+            },
+            {
+              "label": "用户名",
+              "value": "user.name"
+            },
+          ]
+        },
+        {
           "label": "长文本测试分类长文本测试分类长文本测试分类长文本测试分类",
           "children": [
             {
@@ -102,8 +116,8 @@ order: 21
       "name": "formula",
       "label": "公式",
       "variableMode": "tree",
-      "evalMode": false,
-      "value": "${SUM(1 , 2)}",
+      "evalMode": true,
+      "value": "SUM(1 , 2)",
       "inputMode": "button",
       "variables": [
         {
@@ -313,77 +327,6 @@ Tab 结构：
       "label": "公式",
       "variableMode": "tabs",
       "evalMode": false,
-      "variables": [
-        {
-          "label": "表单字段",
-          "children": [
-            {
-              "label": "文章名",
-              "value": "name",
-              "tag": "文本"
-            },
-            {
-              "label": "作者",
-              "value": "author",
-              "tag": "文本"
-            },
-            {
-              "label": "售价",
-              "value": "price",
-              "tag": "数字"
-            },
-            {
-              "label": "出版时间",
-              "value": "time",
-              "tag": "时间"
-            },
-            {
-              "label": "版本号",
-              "value": "version",
-              "tag": "数字"
-            },
-            {
-              "label": "出版社",
-              "value": "publisher",
-              "tag": "文本"
-            }
-          ]
-        },
-        {
-          "label": "流程字段",
-          "children": [
-            {
-              "label": "联系电话",
-              "value": "telphone"
-            },
-            {
-              "label": "地址",
-              "value": "addr"
-            }
-          ]
-        }
-      ],
-    }
-  ]
-}
-```
-
-## 高亮文本
-
-通过配置`allowInput`为`false`可以高亮文本内容，但是只能在编辑器中编辑
-
-```schema: scope="body"
-{
-  "type": "form",
-  "debug": true,
-  "body": [
-    {
-      "type": "input-formula",
-      "name": "formula",
-      "allowInput": false,
-      "label": "公式",
-      "evalMode": true,
-      "value": "SUM(1, 2)",
       "variables": [
         {
           "label": "表单字段",

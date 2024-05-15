@@ -7,6 +7,7 @@ import {BaseSchema, SchemaIcon, SchemaUrlPath} from '../Schema';
 import {filter} from 'amis-core';
 import {resolveVariableAndFilter} from 'amis-core';
 import {Breadcrumb} from 'amis-ui';
+import type {TestIdBuilder} from 'amis-core';
 
 export type BreadcrumbBaseItemSchema = {
   /**
@@ -101,6 +102,8 @@ export interface BreadcrumbSchema extends BaseSchema {
    * 浮窗提示位置
    */
   tooltipPosition?: TooltipPositionType;
+
+  testIdBuilder?: TestIdBuilder;
 }
 
 export interface BreadcrumbProps
@@ -118,30 +121,33 @@ export class BreadcrumbField extends React.Component<BreadcrumbProps, object> {
           data,
           '| raw'
         ) as Array<BreadcrumbItemSchema>);
-    crumbItems = crumbItems.map(item => {
-      if (item.label) {
-        item.label = filter(item.label, data);
-      }
-      if (item.href) {
-        item.href = resolveVariableAndFilter(item.href, data, '| raw');
-      }
-      if (item.dropdown) {
-        item.dropdown = item.dropdown.map(dropdownItem => {
-          if (dropdownItem.label) {
-            dropdownItem.label = filter(dropdownItem.label, data);
-          }
-          if (dropdownItem.href) {
-            dropdownItem.href = resolveVariableAndFilter(
-              dropdownItem.href,
-              data,
-              '| raw'
-            );
-          }
-          return dropdownItem;
-        });
-      }
-      return item;
-    });
+
+    if (crumbItems) {
+      crumbItems = crumbItems.map(item => {
+        if (item.label) {
+          item.label = filter(item.label, data);
+        }
+        if (item.href) {
+          item.href = resolveVariableAndFilter(item.href, data, '| raw');
+        }
+        if (item.dropdown) {
+          item.dropdown = item.dropdown.map(dropdownItem => {
+            if (dropdownItem.label) {
+              dropdownItem.label = filter(dropdownItem.label, data);
+            }
+            if (dropdownItem.href) {
+              dropdownItem.href = resolveVariableAndFilter(
+                dropdownItem.href,
+                data,
+                '| raw'
+              );
+            }
+            return dropdownItem;
+          });
+        }
+        return item;
+      });
+    }
 
     return (
       <Breadcrumb

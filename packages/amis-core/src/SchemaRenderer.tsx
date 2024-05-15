@@ -16,13 +16,14 @@ import {IScopedContext, ScopedContext} from './Scoped';
 import {Schema, SchemaNode} from './types';
 import {DebugWrapper} from './utils/debug';
 import getExprProperties from './utils/filter-schema';
-import {anyChanged, chainEvents, autobind} from './utils/helper';
+import {anyChanged, chainEvents, autobind, TestIdBuilder} from './utils/helper';
 import {SimpleMap} from './utils/SimpleMap';
 import {bindEvent, dispatchEvent, RendererEvent} from './utils/renderer-event';
 import {isAlive} from 'mobx-state-tree';
 import {reaction} from 'mobx';
 import {resolveVariableAndFilter} from './utils/tpl-builtin';
 import {buildStyle} from './utils/style';
+import {isExpression} from './utils/formula';
 import {StatusScopedProps} from './StatusScoped';
 import {evalExpression, filter} from './utils/tpl';
 
@@ -44,6 +45,7 @@ export const RENDERER_TRANSMISSION_OMIT_PROPS = [
   'children',
   'ref',
   'visible',
+  'loading',
   'visibleOn',
   'hidden',
   'hiddenOn',
@@ -66,7 +68,8 @@ export const RENDERER_TRANSMISSION_OMIT_PROPS = [
   'renderLabel',
   'trackExpression',
   'editorSetting',
-  'updatePristineAfterStoreDataReInit'
+  'updatePristineAfterStoreDataReInit',
+  'source'
 ];
 
 const componentCache: SimpleMap = new SimpleMap();
@@ -476,14 +479,20 @@ export class SchemaRenderer extends React.Component<SchemaRendererProps, any> {
       (props as any).static = isStatic;
     }
 
-    if (rest.env.enableTestid && props.id && !props.testid) {
-      props.testid = props.id;
+    // 优先使用组件自己的testid或者id，这个解决不了table行内的一些子元素
+    // 每一行都会出现这个testid的元素，只在测试工具中直接使用nth拿序号
+    if (rest.env.enableTestid) {
+      if (props.testid || props.id || props.testIdBuilder == null) {
+        if (!(props.testIdBuilder instanceof TestIdBuilder)) {
+          props.testIdBuilder = new TestIdBuilder(props.testid || props.id);
+        }
+      }
     }
 
     // 自动解析变量模式，主要是方便直接引入第三方组件库，无需为了支持变量封装一层
     if (renderer.autoVar) {
       for (const key of Object.keys(schema)) {
-        if (typeof props[key] === 'string') {
+        if (typeof props[key] === 'string' && isExpression(props[key])) {
           props[key] = resolveVariableAndFilter(
             props[key],
             props.data,

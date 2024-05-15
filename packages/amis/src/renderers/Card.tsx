@@ -18,6 +18,7 @@ import Copyable, {SchemaCopyable} from './Copyable';
 import {
   BaseSchema,
   SchemaClassName,
+  SchemaCollection,
   SchemaExpression,
   SchemaObject,
   SchemaTpl,
@@ -86,7 +87,7 @@ export interface CardSchema extends BaseSchema {
     /**
      * 副标题
      */
-    subTitle?: SchemaTpl;
+    subTitle?: SchemaCollection;
     subTitleClassName?: SchemaClassName;
     subTitlePlaceholder?: string;
 
@@ -459,6 +460,7 @@ export class CardRenderer extends React.Component<CardProps> {
                 level: 'link',
                 type: 'button',
                 ...action,
+                testid: action.testid ? filter(action.testid, data) : index,
                 size
               },
               {
@@ -592,8 +594,8 @@ export class CardRenderer extends React.Component<CardProps> {
     if (header) {
       const {subTitle: subTitleTpl} = header || {};
 
-      const subTitle = filter(subTitleTpl, data);
-      return subTitle ? render('sub-title', subTitleTpl!) : undefined;
+      // const subTitle = filter(subTitleTpl, data);
+      return subTitleTpl ? render('sub-title', subTitleTpl, data) : undefined;
     }
     return;
   }

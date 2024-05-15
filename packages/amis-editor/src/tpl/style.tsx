@@ -592,20 +592,16 @@ setSchemaTpl(
     const curHidePaddingAndMargin = hidePaddingAndMargin ?? false;
     const styleStateFunc = (visibleOn: string, state: string) => {
       return [
-        getSchemaTpl('theme:border', {
-          visibleOn: visibleOn,
-          name: `themeCss.${classname}.border:${state}`
-        }),
-        getSchemaTpl('theme:radius', {
-          visibleOn: visibleOn,
-          name: `themeCss.${classname}.radius:${state}`
-        }),
         !curHidePaddingAndMargin
           ? getSchemaTpl('theme:paddingAndMargin', {
               visibleOn: visibleOn,
               name: `themeCss.${classname}.padding-and-margin:${state}`
             })
           : null,
+        getSchemaTpl('theme:border', {
+          visibleOn: visibleOn,
+          name: `themeCss.${classname}.border:${state}`
+        }),
         getSchemaTpl('theme:colorPicker', {
           visibleOn: visibleOn,
           name: `themeCss.${classname}.background:${state}`,
@@ -614,6 +610,10 @@ setSchemaTpl(
           needGradient: true,
           needImage: true,
           labelMode: 'input'
+        }),
+        getSchemaTpl('theme:radius', {
+          visibleOn: visibleOn,
+          name: `themeCss.${classname}.radius:${state}`
         }),
         getSchemaTpl('theme:shadow', {
           visibleOn: visibleOn,
@@ -634,7 +634,7 @@ setSchemaTpl(
     const styles = [
       {
         type: 'select',
-        name: 'editorState',
+        name: '__editorState',
         label: '状态',
         selectFirst: true,
         options: [
@@ -653,11 +653,11 @@ setSchemaTpl(
         ]
       },
       ...styleStateFunc(
-        "${editorState == 'default' || !editorState}",
+        "${__editorState == 'default' || !__editorState}",
         'default'
       ),
-      ...styleStateFunc("${editorState == 'hover'}", 'hover'),
-      ...styleStateFunc("${editorState == 'active'}", 'active')
+      ...styleStateFunc("${__editorState == 'hover'}", 'hover'),
+      ...styleStateFunc("${__editorState == 'active'}", 'active')
     ];
 
     return {

@@ -1,4 +1,5 @@
 import {Schema, SchemaNode} from '../types';
+import {extendObject} from '../utils';
 import {RendererEvent} from '../utils/renderer-event';
 import {filter} from '../utils/tpl';
 import {
@@ -34,11 +35,22 @@ export interface IDialogAction extends ListenerAction {
     dialog: SchemaNode;
   };
   dialog?: SchemaNode;
+
+  /**
+   * 是否等待确认结果
+   */
+  waitForAction?: boolean;
+
+  /**
+   * 如果等待结果，将弹窗结果保存到此处变量
+   */
+  outputVar?: string;
 }
 
 export interface IConfirmDialogAction extends ListenerAction {
   actionType: 'confirmDialog';
   dialog?: Schema;
+
   // 兼容历史，保留。不建议用args
   args: {
     msg: string;
@@ -71,16 +83,41 @@ export class DialogAction implements RendererAction {
       return;
     }
 
-    renderer.props.onAction?.(
-      event,
-      {
-        actionType: 'dialog',
-        dialog: action.dialog,
-        reload: 'none',
-        data: action.rawData
-      },
-      action.data
-    );
+    let ret = renderer.handleAction
+      ? renderer.handleAction(
+          event,
+          {
+            actionType: 'dialog',
+            dialog: action.dialog,
+            reload: 'none',
+            data: action.rawData
+          },
+          action.data
+        )
+      : renderer.props.onAction?.(
+          event,
+          {
+            actionType: 'dialog',
+            dialog: action.dialog,
+            reload: 'none',
+            data: action.rawData
+          },
+          action.data
+        );
+
+    event.pendingPromise.push(ret);
+    if (action.waitForAction) {
+      const {confirmed, value} = await ret;
+
+      event.setData(
+        extendObject(event.data, {
+          [action.outputVar || 'dialogResponse']: {
+            confirmed,
+            value
+          }
+        })
+      );
+    }
   }
 }
 
@@ -129,7 +166,8 @@ export class AlertAction implements RendererAction {
   ) {
     event.context.env.alert?.(
       filter(action.dialog?.msg, event.data) ?? action.args?.msg,
-      filter(action.dialog?.title, event.data) ?? action.args?.title
+      filter(action.dialog?.title, event.data) ?? action.args?.title,
+      filter(action.dialog?.className, event.data) ?? ''
     );
   }
 }
@@ -174,7 +212,8 @@ export class ConfirmAction implements RendererAction {
             action.args?.confirmBtnLevel,
           cancelBtnLevel:
             filter(action.dialog?.cancelBtnLevel, event.data) ||
-            action.args?.cancelBtnLevel
+            action.args?.cancelBtnLevel,
+          className: filter(action.dialog?.className, event.data) || ''
         }
       );
 
@@ -183,17 +222,29 @@ export class ConfirmAction implements RendererAction {
 
     // 自定义弹窗内容
     const confirmed = await new Promise((resolve, reject) => {
-      renderer.props.onAction?.(
-        event,
-        {
-          actionType: 'dialog',
-          dialog: modal,
-          data: action.rawData,
-          reload: 'none',
-          callback: (result: boolean) => resolve(result)
-        },
-        action.data
-      );
+      renderer.handleAction
+        ? renderer.handleAction(
+            event,
+            {
+              actionType: 'dialog',
+              dialog: modal,
+              data: action.rawData,
+              reload: 'none',
+              callback: (result: boolean) => resolve(result)
+            },
+            action.data
+          )
+        : renderer.props.onAction?.(
+            event,
+            {
+              actionType: 'dialog',
+              dialog: modal,
+              data: action.rawData,
+              reload: 'none',
+              callback: (result: boolean) => resolve(result)
+            },
+            action.data
+          );
     });
 
     return confirmed;
